@@ -1,0 +1,17 @@
+{
+  "name": "FATRAT",
+  "short_name": "FATRAT",
+  "description": "Evidence-based strength training, your way.",
+  "start_url": "/today",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "/fatrat-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

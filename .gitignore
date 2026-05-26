@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Next.js build output
+.next/
+out/
+**/.next/
+**/out/
+
+# Misc build artifacts
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Env (never commit secrets)
+.env
+.env*.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+
+# Vercel
+.vercel/
+
+# Local scratch
+*.swp
+*.bak
