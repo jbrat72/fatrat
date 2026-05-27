@@ -8,6 +8,17 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.54.1 — 2026-05-26
+
+- Fix: finishing onboarding bounced the user back to step 0 instead of /today.
+  Cause: app/onboarding/page.tsx still wrapped its content in its own
+  <UserProvider> (a leftover from before v0.53.1 hoisted UserProvider to the
+  root layout). That created a second, isolated UserProvider, so refresh()
+  after onboarding updated the local provider's state, but AppShell on the
+  /today route reads the root provider — which still saw user === null and
+  bounced back to /onboarding. Removed the redundant wrap; the root layout's
+  UserProvider is the single source of truth.
+
 ## v0.54.0 — 2026-05-26
 
 - Phases 4 + 5 of the live-launch work: real Firestore persistence is now

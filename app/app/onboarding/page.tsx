@@ -1,10 +1,6 @@
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
-import { UserProvider } from '@/components/app';
 
+// UserProvider lives in the root layout — don't wrap a second instance here.
 export default function OnboardingPage() {
-  return (
-    <UserProvider>
-      <OnboardingWizard />
-    </UserProvider>
-  );
+  return <OnboardingWizard />;
 }
