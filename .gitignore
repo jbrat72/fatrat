@@ -31,3 +31,7 @@ Thumbs.db
 # Local scratch
 *.swp
 *.bak
+
+# Firebase service account keys — never commit
+**/serviceAccountKey.json
+**/*-firebase-adminsdk-*.json

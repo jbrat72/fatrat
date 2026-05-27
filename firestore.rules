@@ -1,0 +1,31 @@
+// FATRAT Firestore security rules.
+//
+// Data layout (must match lib/firestore/firestoreRepository.ts):
+//   /exercises/{id}                — global library, read-only for users
+//   /users/{uid}                   — profile doc
+//   /users/{uid}/<anything>/{id}   — per-user subcollections
+//
+// Migration scripts use firebase-admin and bypass these rules entirely,
+// so the locked-down /exercises rule is fine even during the initial seed.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global exercise library — any signed-in user can read; no client writes.
+    // (Updates ship via the migration script using firebase-admin.)
+    match /exercises/{exerciseId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // The user's own profile doc and everything under it.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import { Onest, JetBrains_Mono } from 'next/font/google';
-import { ThemeProvider } from '@/components/app';
+import { ThemeProvider, UserProvider } from '@/components/app';
 import './globals.css';
 
 const sans = Onest({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
@@ -42,7 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script id="theme-bootstrap" strategy="beforeInteractive">
           {THEME_BOOTSTRAP}
         </Script>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <UserProvider>{children}</UserProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -8,6 +8,52 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.54.0 — 2026-05-26
+
+- Phases 4 + 5 of the live-launch work: real Firestore persistence is now
+  wired in, plus the security rules and migration script that go with it.
+- New module lib/firestore/firestoreRepository.ts implements DataRepository
+  against Firestore using the same interface the UI already speaks. Data
+  layout: /exercises/{id} (global, read-only), /users/{uid} for the profile,
+  and per-user subcollections (bodyWeight, macrocycles, mesocycles,
+  microcycles, sessions, customExercises, templates, exercisePrefs).
+- getRepository() now returns the Firestore repo when env vars are present
+  and falls back to the in-memory mock otherwise — local dev keeps working
+  with no Firebase configuration.
+- firestore.rules (project root) locks /exercises to read-only for signed-in
+  users and gates /users/{uid}/** to the matching authenticated user. Ready
+  to paste into the Firestore Rules tab.
+- scripts/migrate-exercises.ts one-shot copies GLOBAL_EXERCISES (175ish
+  movements) into Firestore /exercises/. Uses firebase-admin via a service
+  account key (scripts/serviceAccountKey.json, gitignored).
+- devDependencies: firebase-admin, tsx (for running the migration).
+
+## v0.53.1 — 2026-05-26
+
+- Fix: production build was failing because the /login page calls useUser()
+  but UserProvider only wrapped the (main) routes — Next's prerender for
+  /login couldn't find the context. Hoisted UserProvider to the root layout
+  so /login and /onboarding share the same auth context as the main app.
+- (main)/layout is now a thin wrapper that only renders AppShell.
+
+## v0.53.0 — 2026-05-26
+
+- Phase 3 of the live-launch work: real Firebase Auth wired up.
+- New module lib/firebase/client.ts initializes the SDK from
+  NEXT_PUBLIC_FIREBASE_* env vars. Falls back to "Firebase disabled" when env
+  vars are absent so local dev still works against the mock repo.
+- Login page now signs in with a real Google popup when Firebase is enabled;
+  in mock mode the old fake delay still works for local dev.
+- UserProvider listens to onAuthStateChanged, exposes the FirebaseUser, and
+  loads the matching profile from the repo by Firebase uid. Adds signOut().
+- AppShell adds an auth gate (Firebase mode only): unauthenticated visitors
+  to any (main) route are redirected to /login; signed-in users without a
+  profile are sent to /onboarding. DemoUserPicker is hidden in Firebase mode
+  and replaced with a Sign out button.
+- OnboardingWizard uses the Firebase uid as the new profile's userId so the
+  rest of the app (sessions, templates, body weight, etc.) keys off it.
+- package.json adds firebase ^11.0.0 as a dependency.
+
 ## v0.52.0 — 2026-05-25
 
 - Exercises now declare what they measure per set.

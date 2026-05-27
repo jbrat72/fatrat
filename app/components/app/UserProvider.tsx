@@ -1,7 +1,9 @@
 'use client';
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUser } from 'firebase/auth';
 import { getRepository } from '@/lib/firestore';
+import { getFirebaseAuth, isFirebaseEnabled } from '@/lib/firebase/client';
 import type { UserProfile } from '@/types';
 import { DEMO_USER_IDS } from '@/lib/firestore/seed/users';
 
@@ -10,8 +12,11 @@ const ACTIVE_USER_KEY = 'fatrat:activeUser:v1';
 interface UserContextValue {
   user: UserProfile | null;
   loading: boolean;
+  /** The Firebase auth user when Firebase is enabled; null in mock mode or signed out. */
+  firebaseUser: FirebaseUser | null;
   setActiveUserId: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
@@ -24,6 +29,8 @@ function defaultUserId(): string {
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  // Only used in mock mode (no Firebase env config).
   const [activeId, setActiveIdState] = useState<string>(() => defaultUserId());
 
   const load = async (id: string) => {
@@ -34,17 +41,50 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   };
 
-  useEffect(() => { load(activeId); }, [activeId]);
+  useEffect(() => {
+    if (isFirebaseEnabled()) {
+      const auth = getFirebaseAuth();
+      if (!auth) { setLoading(false); return; }
+      const unsub = onAuthStateChanged(auth, async (fbUser) => {
+        setFirebaseUser(fbUser);
+        if (fbUser) {
+          await load(fbUser.uid);
+        } else {
+          setUser(null);
+          setLoading(false);
+        }
+      });
+      return () => unsub();
+    }
+    // Mock mode — load by the active demo user id.
+    load(activeId);
+  }, [activeId]);
 
   const setActiveUserId = async (id: string) => {
+    if (isFirebaseEnabled()) return; // DemoUserPicker is hidden in Firebase mode
     if (typeof window !== 'undefined') window.localStorage.setItem(ACTIVE_USER_KEY, id);
     setActiveIdState(id);
   };
 
-  const refresh = async () => { await load(activeId); };
+  const refresh = async () => {
+    if (isFirebaseEnabled()) {
+      if (firebaseUser) await load(firebaseUser.uid);
+    } else {
+      await load(activeId);
+    }
+  };
+
+  const signOut = async () => {
+    if (isFirebaseEnabled()) {
+      const auth = getFirebaseAuth();
+      if (auth) await firebaseSignOut(auth);
+    } else {
+      setUser(null);
+    }
+  };
 
   return (
-    <UserContext.Provider value={{ user, loading, setActiveUserId, refresh }}>
+    <UserContext.Provider value={{ user, loading, firebaseUser, setActiveUserId, refresh, signOut }}>
       {children}
     </UserContext.Provider>
   );

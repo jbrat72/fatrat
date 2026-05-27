@@ -104,7 +104,7 @@ const INJURY_LABELS: Record<CommonInjurySite, string> = {
 
 export function OnboardingWizard() {
   const router = useRouter();
-  const { setActiveUserId, refresh } = useUser();
+  const { setActiveUserId, refresh, firebaseUser } = useUser();
   const [step, setStep] = useState(0);
   const [d, setD] = useState<Draft>(EMPTY_DRAFT);
 
@@ -135,7 +135,7 @@ export function OnboardingWizard() {
 
   const submit = async () => {
     const now = new Date().toISOString();
-    const userId = 'user-' + Math.random().toString(36).slice(2, 9);
+    const userId = firebaseUser?.uid ?? ('user-' + Math.random().toString(36).slice(2, 9));
     const { recommendTemplateId, generateProgram } = await import('@/lib/program');
     const wantsAdvancedTerms = d.chosenMode !== 'BASIC' && d.advancedTerminology;
     const profile: UserProfile = {

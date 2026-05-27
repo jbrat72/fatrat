@@ -1,25 +1,59 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { APP_VERSION } from '@/lib/version';
+import { useUser } from '@/components/app';
+import { getFirebaseAuth, isFirebaseEnabled } from '@/lib/firebase/client';
 
 /**
  * Login screen.
  *
- * UI-only for now: there is no real backend. "Sign in with Google" enters
- * the app with the seeded demo user. Real Firebase Google auth can replace
- * `handleGoogleSignIn` later without touching the layout.
+ * - Firebase mode (env vars present): real Google sign-in via popup, then
+ *   route to /today or /onboarding depending on whether the user has a profile.
+ * - Mock mode (no env vars): the original fake delay → /today, for local dev
+ *   without a Firebase project.
  */
 export default function LoginPage() {
   const router = useRouter();
+  const { firebaseUser, user, loading } = useUser();
   const [signingIn, setSigningIn] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGoogleSignIn = () => {
+  // If we're already signed in (returning visit, hot reload, etc.), route past
+  // the login screen as soon as the user/profile state settles.
+  useEffect(() => {
+    if (loading) return;
+    if (!isFirebaseEnabled()) return; // mock-mode routing is handled inline below
+    if (firebaseUser) {
+      router.replace(user ? '/today' : '/onboarding');
+    }
+  }, [firebaseUser, user, loading, router]);
+
+  const handleGoogleSignIn = async () => {
     if (signingIn) return;
+    setError(null);
+
+    if (!isFirebaseEnabled()) {
+      // Mock mode — fake the sign-in so local dev still works.
+      setSigningIn(true);
+      setTimeout(() => router.push('/today'), 350);
+      return;
+    }
+
+    const auth = getFirebaseAuth();
+    if (!auth) { setError('Auth is not configured.'); return; }
     setSigningIn(true);
-    // Brief delay so the button shows its signing-in state.
-    setTimeout(() => router.push('/today'), 350);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      // The useEffect above handles the redirect once UserProvider catches up.
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Sign-in failed';
+      setError(msg);
+      setSigningIn(false);
+    }
   };
 
   return (
@@ -35,7 +69,7 @@ export default function LoginPage() {
           className="h-44 w-44 object-contain"
         />
 
-        {/* Version — discreet, directly below the wordmark */}
+        {/* Version — discreet, directly below the logo */}
         <p className="numeric mt-2 text-xs tracking-wide text-ink-mute">
           v{APP_VERSION}
         </p>
@@ -44,7 +78,6 @@ export default function LoginPage() {
           Evidence-based strength training, your way.
         </p>
 
-        {/* Sign in with Google */}
         <button
           type="button"
           onClick={handleGoogleSignIn}
@@ -54,6 +87,12 @@ export default function LoginPage() {
           <GoogleMark />
           {signingIn ? 'Signing in…' : 'Sign in with Google'}
         </button>
+
+        {error && (
+          <p className="mt-3 text-center text-xs text-danger break-words">
+            {error}
+          </p>
+        )}
 
         <p className="mt-6 text-center text-xs text-ink-mute">
           A private app — sign-in is for you, friends, and family.
