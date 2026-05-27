@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { BottomNav } from './BottomNav';
 import { DemoUserPicker } from './DemoUserPicker';
 import { ThemeToggle } from './ThemeToggle';
+import { UpdateChecker } from './UpdateChecker';
 import { useUser } from './UserProvider';
 import { isFirebaseEnabled } from '@/lib/firebase/client';
 import { APP_VERSION } from '@/lib/version';
@@ -16,6 +17,9 @@ import type { ReactNode } from 'react';
  * In Firebase mode the DemoUserPicker is replaced with a sign-out button, and
  * the shell redirects unauthenticated visitors to /login. Visitors who are
  * signed in but haven't completed onboarding go to /onboarding.
+ *
+ * Also mounts UpdateChecker — polls /api/version and shows a toast when a
+ * newer deployment is live.
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -76,6 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       <main className="mx-auto max-w-md pb-24">{children}</main>
       <BottomNav />
+      <UpdateChecker />
     </div>
   );
 }

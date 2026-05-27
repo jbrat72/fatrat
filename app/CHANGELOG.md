@@ -8,6 +8,23 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.55.0 — 2026-05-26
+
+- App refresh / new-version detection.
+- New /api/version returns the deployed APP_VERSION (no-store, dynamic). The
+  client compares against the bundle's baked-in version and shows a toast
+  when they don't match.
+- UpdateChecker component polls on mount, on tab focus, on visibility change,
+  and on a slow 5-minute interval while the tab is active. Mounted in
+  AppShell so the toast appears on all authenticated routes (sits just above
+  the BottomNav so it doesn't overlap nav controls).
+- Toast: "A new version is available · vCurrent → vLatest" with Update and
+  dismiss buttons. Update clears all browser caches via the CacheStorage API
+  then reloads the page. Dismiss persists per-version in localStorage so the
+  toast doesn't keep re-popping until a fresh version lands.
+- No service worker / PWA build changes — purely application-level polling.
+  If we ever want offline support we can layer next-pwa on top later.
+
 ## v0.54.1 — 2026-05-26
 
 - Fix: finishing onboarding bounced the user back to step 0 instead of /today.

@@ -4,3 +4,4 @@ export * from './BottomNav';
 export * from './AppShell';
 export * from './ThemeProvider';
 export * from './ThemeToggle';
+export * from './UpdateChecker';
