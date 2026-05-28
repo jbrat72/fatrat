@@ -318,10 +318,29 @@ export function TemplateWizard({ open, onClose, onSaved, initialTemplate, modify
   }, [open, initialTemplate, user, library, history]);
 
   // Long-press move is per-step — drop the armed muscle when the step changes.
+  // Scroll the new step to the top. We use scrollTo with 'auto' to override any
+  // inherited smooth-scroll CSS, and run on requestAnimationFrame + a 50ms
+  // setTimeout so it beats focus-induced scrolling from form fields that mount
+  // with the new content. Also scroll the window itself as a belt-and-suspenders.
   useEffect(() => {
     setArmedMove(null);
-    if (mainRef.current) mainRef.current.scrollTop = 0;
+    const toTop = () => {
+      mainRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' });
+    };
+    toTop();
+    const raf = requestAnimationFrame(toTop);
+    const t = window.setTimeout(toTop, 50);
+    return () => { cancelAnimationFrame(raf); window.clearTimeout(t); };
   }, [step]);
+
+  // Also reset scroll whenever the wizard first opens.
+  useEffect(() => {
+    if (!open) return;
+    requestAnimationFrame(() => {
+      mainRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    });
+  }, [open]);
 
   const emphasizeCount = useMemo(
     () => TEMPLATE_MUSCLES.filter((m) => tiers[m] === 'emphasize').length,

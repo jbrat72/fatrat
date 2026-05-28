@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.55.1 — 2026-05-26
+
+- Fix: Template Wizard steps weren't reliably opening at the top — the scroll
+  reset on step change was racing with focus-induced scrolling from inputs
+  that mount with the new step. Now uses scrollTo({ behavior: 'auto' }) to
+  override any inherited smooth-scroll, runs at three points
+  (immediate, requestAnimationFrame, +50ms setTimeout) to beat late layout,
+  and also resets when the wizard itself first opens.
+
 ## v0.55.0 — 2026-05-26
 
 - App refresh / new-version detection.
