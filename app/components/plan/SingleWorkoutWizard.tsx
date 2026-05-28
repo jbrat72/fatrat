@@ -8,7 +8,7 @@ import { personalizeLibrary } from '@/lib/exercise/personalize';
 import { defaultRepRange, defaultTimeRange } from '@/lib/program';
 import { kgToDisplay, displayToKg, weightLabel } from '@/lib/ui/units';
 import type {
-  ExerciseDefinition, MuscleGroup, ProgramTemplate, TemplateExerciseSlot, WorkoutCategory,
+  ExerciseDefinition, EquipmentType, MuscleGroup, ProgramTemplate, TemplateExerciseSlot, WorkoutCategory,
 } from '@/types';
 
 interface Props {
@@ -32,6 +32,18 @@ const CATEGORY_OPTIONS: { value: WorkoutCategory; label: string }[] = [
 ];
 
 const REST_OPTIONS = [30, 45, 60, 90, 120, 180, 240, 300];
+
+// Equipment categories you can filter by on step 1. Selecting none = no filter.
+const EQUIPMENT_OPTIONS: { value: EquipmentType; label: string }[] = [
+  { value: 'barbell', label: 'Barbell' },
+  { value: 'dumbbell', label: 'Dumbbell' },
+  { value: 'machine', label: 'Machine' },
+  { value: 'cable', label: 'Cable' },
+  { value: 'bodyweight', label: 'Bodyweight' },
+  { value: 'kettlebell', label: 'Kettlebell' },
+  { value: 'band', label: 'Band' },
+  { value: 'smith', label: 'Smith' },
+];
 
 // Muscle filter pills shown above the exercise search.
 const MUSCLE_FILTERS: { value: MuscleGroup | 'all'; label: string }[] = [
@@ -80,6 +92,7 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
   const [library, setLibrary] = useState<ExerciseDefinition[]>([]);
   const [search, setSearch] = useState('');
   const [muscleFilter, setMuscleFilter] = useState<MuscleGroup | 'all'>('all');
+  const [equipmentFilter, setEquipmentFilter] = useState<EquipmentType[]>([]);
   const [weightEdits, setWeightEdits] = useState<Record<string, { weight?: number; repsLow?: number; repsHigh?: number; timeLow?: number; timeHigh?: number }>>({});
   const [saving, setSaving] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
@@ -132,7 +145,7 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
 
   const reset = () => {
     setStep(0); setName(''); setCategory('upper-body'); setRestSeconds(120);
-    setPicked([]); setSearch(''); setWeightEdits({}); setSaving(false);
+    setPicked([]); setSearch(''); setWeightEdits({}); setSaving(false); setEquipmentFilter([]);
     initRef.current = null;
   };
   const close = () => { reset(); onClose(); };
@@ -167,11 +180,15 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
       list = list.filter((e) => allow.has(e.primaryMuscle));
     }
     if (muscleFilter !== 'all') list = list.filter((e) => e.primaryMuscle === muscleFilter);
+    if (equipmentFilter.length > 0) {
+      const allow = new Set<EquipmentType>(equipmentFilter);
+      list = list.filter((e) => allow.has(e.equipment));
+    }
     if (q) list = list.filter((e) => e.name.toLowerCase().includes(q));
     // No slice — the search box and muscle filter narrow this down already,
     // and capping was hiding newer entries that sort late in the seed.
     return list;
-  }, [library, search, muscleFilter, allowedMuscles]);
+  }, [library, search, muscleFilter, equipmentFilter, allowedMuscles]);
 
   // If the user changes the category and the current muscle filter is no
   // longer allowed, drop back to 'all'.
@@ -301,6 +318,34 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
                       {c.label}
                     </button>
                   ))}
+                </div>
+              </div>
+              <div>
+                <div className="section-head mb-1">Equipment (optional)</div>
+                <p className="text-xs text-ink-dim mb-2">
+                  Tap any you want to use. Leave all off to see every exercise.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {EQUIPMENT_OPTIONS.map((e) => {
+                    const selected = equipmentFilter.includes(e.value);
+                    return (
+                      <button
+                        key={e.value}
+                        type="button"
+                        onClick={() => setEquipmentFilter((prev) =>
+                          prev.includes(e.value) ? prev.filter((v) => v !== e.value) : [...prev, e.value],
+                        )}
+                        className={cn(
+                          'rounded-md px-2.5 py-1 text-xs font-medium border transition',
+                          selected
+                            ? 'bg-accent text-white border-accent'
+                            : 'bg-bg-input text-ink-dim border-ink-line hover:text-ink',
+                        )}
+                      >
+                        {e.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

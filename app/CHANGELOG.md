@@ -8,6 +8,14 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.57.5 — 2026-05-26
+
+- SingleWorkoutWizard step 1 (Workout): equipment multi-select filter under
+  Category. Tap any combination of Barbell / Dumbbell / Machine / Cable /
+  Bodyweight / Kettlebell / Band / Smith — selected pills filter step 2's
+  exercise list to only those types. Leave them all off to see everything.
+  Wraps onto multiple lines (no horizontal scroll).
+
 ## v0.57.4 — 2026-05-26
 
 - Two fixes in the SingleWorkoutWizard's exercise + starting-values flow.
