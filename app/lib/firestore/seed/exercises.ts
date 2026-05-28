@@ -168,4 +168,29 @@ export const GLOBAL_EXERCISES: ExerciseDefinition[] = [
   { id: 'pullup-commando', name: 'Commando Pull-up', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'bodyweight', patterns: ['compound','pull'], metric: 'reps' },
   { id: 'pullup-archer', name: 'Archer Pull-up', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'bodyweight', patterns: ['compound','pull'], metric: 'reps' },
   { id: 'pullup-negative', name: 'Negative Pull-up', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'bodyweight', patterns: ['compound','pull'], metric: 'reps' },
+
+  // ---- Additions from a TRX-style chart (rotating presses, partials, swimmers, lunges, etc.) ----
+  { id: 'chest-press-rotating-dumbbell', name: 'Rotating Dumbbell Chest Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps','shoulders'], equipment: 'dumbbell', patterns: ['compound','push'] },
+  { id: 'skull-crusher-single-arm', name: 'Single-Arm Skull Crusher', primaryMuscle: 'triceps', equipment: 'dumbbell', patterns: ['isolation','push'] },
+  { id: 'row-wide-grip-dumbbell', name: 'Wide-Grip Dumbbell Row', primaryMuscle: 'back', secondaryMuscles: ['shoulders'], equipment: 'dumbbell', patterns: ['compound','pull'] },
+  { id: 'pullover-dumbbell', name: 'Dumbbell Pullover', primaryMuscle: 'back', secondaryMuscles: ['chest'], equipment: 'dumbbell', patterns: ['isolation','pull'] },
+  { id: 'reverse-fly-dumbbell', name: 'Reverse Fly', primaryMuscle: 'back', secondaryMuscles: ['shoulders'], equipment: 'dumbbell', patterns: ['isolation','pull'] },
+  { id: 'curl-wide-dumbbell', name: 'Wide Curl', primaryMuscle: 'biceps', equipment: 'dumbbell', patterns: ['isolation','pull'] },
+  { id: 'y-raise-dumbbell', name: 'Y Raise', primaryMuscle: 'shoulders', secondaryMuscles: ['back'], equipment: 'dumbbell', patterns: ['isolation'] },
+  { id: 'swimmers', name: 'Swimmers', primaryMuscle: 'back', secondaryMuscles: ['shoulders'], equipment: 'bodyweight', patterns: ['isolation','pull'], metric: 'reps' },
+  { id: 'upright-row-dumbbell', name: 'Dumbbell Upright Row', primaryMuscle: 'shoulders', secondaryMuscles: ['back'], equipment: 'dumbbell', patterns: ['compound','pull'] },
+  { id: 'goblet-squat-sumo', name: 'Sumo Goblet Squat', primaryMuscle: 'quads', secondaryMuscles: ['glutes'], equipment: 'dumbbell', patterns: ['compound','squat'] },
+  { id: 'lunge-side-dumbbell', name: 'Side Lunge', primaryMuscle: 'quads', secondaryMuscles: ['glutes','hamstrings'], equipment: 'dumbbell', patterns: ['compound','lunge'] },
+  { id: 'lunge-reverse-dumbbell', name: 'Reverse Lunge', primaryMuscle: 'quads', secondaryMuscles: ['glutes','hamstrings'], equipment: 'dumbbell', patterns: ['compound','lunge'] },
+  { id: 'squat-pulse-bodyweight', name: 'Pulse Squat', primaryMuscle: 'quads', equipment: 'bodyweight', patterns: ['isolation','squat'], metric: 'reps' },
+
+  // ---- Additional dumbbell/bodyweight variants for the TRX-chart movements ----
+  { id: 'bench-press-decline-dumbbell', name: 'Decline Dumbbell Bench Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps'], equipment: 'dumbbell', patterns: ['compound','push'] },
+  { id: 'skull-crusher-dumbbell', name: 'Dumbbell Skull Crusher', primaryMuscle: 'triceps', equipment: 'dumbbell', patterns: ['isolation','push'] },
+  { id: 'triceps-press-dumbbell', name: 'Dumbbell Triceps Press', primaryMuscle: 'triceps', secondaryMuscles: ['chest'], equipment: 'dumbbell', patterns: ['compound','push'] },
+  { id: 'curl-top-half-dumbbell', name: 'Top-Half Dumbbell Curl', primaryMuscle: 'biceps', equipment: 'dumbbell', patterns: ['isolation','pull'] },
+  { id: 'curl-bottom-half-dumbbell', name: 'Bottom-Half Dumbbell Curl', primaryMuscle: 'biceps', equipment: 'dumbbell', patterns: ['isolation','pull'] },
+  { id: 'deadlift-dumbbell', name: 'Dumbbell Deadlift', primaryMuscle: 'back', secondaryMuscles: ['hamstrings','glutes'], equipment: 'dumbbell', patterns: ['compound','hinge','pull'] },
+  { id: 'lunge-side-bodyweight', name: 'Bodyweight Side Lunge', primaryMuscle: 'quads', secondaryMuscles: ['glutes','hamstrings'], equipment: 'bodyweight', patterns: ['compound','lunge'], metric: 'reps' },
+  { id: 'lunge-reverse-bodyweight', name: 'Bodyweight Reverse Lunge', primaryMuscle: 'quads', secondaryMuscles: ['glutes','hamstrings'], equipment: 'bodyweight', patterns: ['compound','lunge'], metric: 'reps' },
 ];

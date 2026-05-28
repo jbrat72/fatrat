@@ -8,6 +8,36 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.57.1 — 2026-05-26
+
+- Exercise library: ensure every movement in the TRX-chart screenshot has a
+  dumbbell and/or bodyweight variant.
+- Re-tagged the three v0.57.0 entries that defaulted to cable/barbell:
+    Wide-Grip Row → Wide-Grip Dumbbell Row (dumbbell)
+    Reverse Fly → kept the name, now dumbbell (bent-over with dumbbells)
+    Wide-Grip Barbell Curl → Wide Curl (dumbbell)
+- Added 8 new entries so the remaining items have a dumbbell or bodyweight
+  option: Decline Dumbbell Bench Press, Dumbbell Skull Crusher, Dumbbell
+  Triceps Press, Top-Half Dumbbell Curl, Bottom-Half Dumbbell Curl,
+  Dumbbell Deadlift, Bodyweight Side Lunge, Bodyweight Reverse Lunge.
+
+## v0.57.0 — 2026-05-26
+
+- /plan/templates is now a landing page — pick Program (multi-week plan) or
+  Single Workout (one-shot routine). The two flows live at
+  /plan/templates/programs and /plan/templates/workouts respectively, each
+  with its own list + create-custom button. Detail page links unchanged.
+- SingleWorkoutWizard step 1 (Exercises) gained a horizontally-scrollable
+  muscle filter pill row above the search field — All / Chest / Back /
+  Shoulders / Biceps / Triceps / Forearms / Quads / Hams / Glutes / Calves /
+  Core / Neck. Combines with the text search.
+- 13 new exercises seeded into the global library:
+    Rotating Dumbbell Chest Press, Single-Arm Skull Crusher,
+    Wide-Grip Row, Dumbbell Pullover, Reverse Fly (back-focused cable),
+    Wide-Grip Barbell Curl, Y Raise, Swimmers (bodyweight),
+    Dumbbell Upright Row, Sumo Goblet Squat, Side Lunge, Reverse Lunge,
+    Pulse Squat.
+
 ## v0.56.0 — 2026-05-26
 
 - Single Workouts: a new template kind alongside Programs.

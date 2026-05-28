@@ -8,7 +8,7 @@ import { personalizeLibrary } from '@/lib/exercise/personalize';
 import { defaultRepRange, defaultTimeRange } from '@/lib/program';
 import { kgToDisplay, displayToKg, weightLabel } from '@/lib/ui/units';
 import type {
-  ExerciseDefinition, ProgramTemplate, TemplateExerciseSlot, WorkoutCategory,
+  ExerciseDefinition, MuscleGroup, ProgramTemplate, TemplateExerciseSlot, WorkoutCategory,
 } from '@/types';
 
 interface Props {
@@ -32,6 +32,23 @@ const CATEGORY_OPTIONS: { value: WorkoutCategory; label: string }[] = [
 ];
 
 const REST_OPTIONS = [30, 45, 60, 90, 120, 180, 240, 300];
+
+// Muscle filter pills shown above the exercise search.
+const MUSCLE_FILTERS: { value: MuscleGroup | 'all'; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'chest', label: 'Chest' },
+  { value: 'back', label: 'Back' },
+  { value: 'shoulders', label: 'Shoulders' },
+  { value: 'biceps', label: 'Biceps' },
+  { value: 'triceps', label: 'Triceps' },
+  { value: 'forearms', label: 'Forearms' },
+  { value: 'quads', label: 'Quads' },
+  { value: 'hamstrings', label: 'Hams' },
+  { value: 'glutes', label: 'Glutes' },
+  { value: 'calves', label: 'Calves' },
+  { value: 'core', label: 'Core' },
+  { value: 'neck', label: 'Neck' },
+];
 const fmtRest = (s: number) => (s < 60 ? `${s}s` : s % 60 === 0 ? `${s / 60} min` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
 
 interface Picked {
@@ -53,6 +70,7 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
   const [picked, setPicked] = useState<Picked[]>([]);
   const [library, setLibrary] = useState<ExerciseDefinition[]>([]);
   const [search, setSearch] = useState('');
+  const [muscleFilter, setMuscleFilter] = useState<MuscleGroup | 'all'>('all');
   const [weightEdits, setWeightEdits] = useState<Record<string, { weight?: number; repsLow?: number; repsHigh?: number; timeLow?: number; timeHigh?: number }>>({});
   const [saving, setSaving] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
@@ -122,9 +140,11 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
 
   const results = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const list = q ? library.filter((e) => e.name.toLowerCase().includes(q)) : library;
+    let list = library;
+    if (muscleFilter !== 'all') list = list.filter((e) => e.primaryMuscle === muscleFilter);
+    if (q) list = list.filter((e) => e.name.toLowerCase().includes(q));
     return list.slice(0, 30);
-  }, [library, search]);
+  }, [library, search, muscleFilter]);
 
   const add = (def: ExerciseDefinition) => {
     if (pickedIds.has(def.id)) return;
@@ -244,6 +264,25 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
             <div className="space-y-4">
               <div>
                 <div className="section-head mb-2">ADD EXERCISES</div>
+                <div className="-mx-4 px-4 mb-2 overflow-x-auto">
+                  <div className="flex gap-1.5 w-max">
+                    {MUSCLE_FILTERS.map((m) => (
+                      <button
+                        key={m.value}
+                        type="button"
+                        onClick={() => setMuscleFilter(m.value)}
+                        className={cn(
+                          'shrink-0 rounded-md px-2.5 py-1 text-xs font-medium border transition',
+                          muscleFilter === m.value
+                            ? 'bg-accent text-white border-accent'
+                            : 'bg-bg-input text-ink-dim border-ink-line hover:text-ink',
+                        )}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <TextField placeholder="Search the library — bench, row, plank…" value={search} onChange={(e) => setSearch(e.target.value)} />
                 <div className="mt-2 max-h-60 overflow-y-auto space-y-1.5 pr-0.5">
                   {results.length === 0 && <p className="text-sm text-ink-mute py-2">No exercises match that search.</p>}
