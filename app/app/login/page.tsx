@@ -62,7 +62,7 @@ export default function LoginPage() {
         {/* Logo — wordmark is baked into the mark itself. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/fatrat-logo.png"
+          src="/fatrat-logo2.png"
           alt="FATRAT"
           width={180}
           height={180}

@@ -8,6 +8,19 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.58.0 — 2026-05-26
+
+- Brand refresh.
+- /fatrat-logo2.png replaces /fatrat-logo.png as the canonical mark — used
+  on the login screen, in the PWA manifest, and as the favicon /
+  apple-touch icon (app/icon.png and app/apple-icon.png refreshed from the
+  new file). The original /fatrat-logo.png stays in /public so older
+  bookmarks / cached references don't 404.
+- AppShell header gains the bare rat illustration (/fatrat-rat.png) to the
+  left of the FATRAT wordmark + version, sized h-9 so it spans the height
+  of both lines of text. Marked aria-hidden — purely decorative; the
+  wordmark next to it is the accessible label.
+
 ## v0.57.5 — 2026-05-26
 
 - SingleWorkoutWizard step 1 (Workout): equipment multi-select filter under
