@@ -8,6 +8,22 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.57.4 — 2026-05-26
+
+- Two fixes in the SingleWorkoutWizard's exercise + starting-values flow.
+- Step 1 exercise list was capped at 30 results, which hid newer entries
+  that sort late in the seed (Dumbbell Row, Rotating Chest Press, etc.).
+  Cap removed — the muscle filter + search box are the only narrowing.
+- Step 3 (Starting values) now asks for a starting Weight per exercise
+  alongside reps or time, for any exercise whose metric uses weight
+  (weight-reps and weight-time). Band exercises still show "Band" instead
+  of a number field, matching the program wizard's behavior.
+- TemplateExerciseSlot gained startingWeightKg. WorkoutPicker and the
+  template detail page copy that weight into the materialized ExerciseEntry
+  sets, so picking a custom workout pre-fills the Ad-Hoc logger with weight
+  in addition to reps/time. Library single workouts (which don't have
+  startingWeightKg set) still work — those sets open empty for weight.
+
 ## v0.57.3 — 2026-05-26
 
 - Today → Ad-Hoc Workout → "Create Custom Workout" now routes to

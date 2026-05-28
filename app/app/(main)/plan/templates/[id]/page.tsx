@@ -52,7 +52,7 @@ export default function TemplateDetailPage() {
         const def = defs[slot.exerciseId];
         const muscle = def?.primaryMuscle ?? 'core';
         const metric = def?.metric ?? 'weight-reps';
-        const sets: SetEntry[] = Array.from({ length: slot.prescribedSets }, (_, i) => ({ setIndex: i, completed: false }));
+        const sets: SetEntry[] = Array.from({ length: slot.prescribedSets }, (_, i) => ({ setIndex: i, weightKg: slot.startingWeightKg, completed: false }));
         return {
           exerciseId: slot.exerciseId,
           name: def?.name ?? slot.exerciseId,

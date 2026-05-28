@@ -20,6 +20,9 @@ export interface TemplateExerciseSlot {
   /** Hold/carry duration (seconds) for time / weight-time exercises. */
   timeLow?: number;
   timeHigh?: number;
+  /** Starting weight (kg) — used by single-workout templates so the
+   *  Ad-Hoc logger opens pre-filled. Programs source weights separately. */
+  startingWeightKg?: number;
   startingRIR?: number;
   /** Optional acceptable swap muscle group when user lacks equipment. */
   fallbackMuscle?: MuscleGroup;

@@ -115,7 +115,8 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
     setPicked(day.exercises.map((slot) => ({ exerciseId: slot.exerciseId, prescribedSets: slot.prescribedSets })));
     const edits: typeof weightEdits = {};
     for (const slot of day.exercises) {
-      edits[slot.exerciseId] = { repsLow: slot.repsLow, repsHigh: slot.repsHigh, timeLow: slot.timeLow, timeHigh: slot.timeHigh };
+      const wDisp = slot.startingWeightKg != null ? kgToDisplay(slot.startingWeightKg, user!.units) ?? undefined : undefined;
+      edits[slot.exerciseId] = { repsLow: slot.repsLow, repsHigh: slot.repsHigh, timeLow: slot.timeLow, timeHigh: slot.timeHigh, weight: wDisp };
     }
     setWeightEdits(edits);
   }, [open, initialTemplate, library]);
@@ -139,6 +140,7 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
   const units = user?.units ?? 'metric';
   const wLabel = weightLabel(units);
   const wInc = units === 'imperial' ? 5 : 2.5;
+  const wDecimals = units === 'imperial' ? 0 : 1;
 
   const pickedDefs = useMemo(() =>
     picked.map((p) => ({ p, def: library.find((e) => e.id === p.exerciseId) })).filter((x) => x.def) as { p: Picked; def: ExerciseDefinition }[],
@@ -166,7 +168,9 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
     }
     if (muscleFilter !== 'all') list = list.filter((e) => e.primaryMuscle === muscleFilter);
     if (q) list = list.filter((e) => e.name.toLowerCase().includes(q));
-    return list.slice(0, 30);
+    // No slice — the search box and muscle filter narrow this down already,
+    // and capping was hiding newer entries that sort late in the seed.
+    return list;
   }, [library, search, muscleFilter, allowedMuscles]);
 
   // If the user changes the category and the current muscle filter is no
@@ -212,6 +216,8 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
       const metric = def.metric ?? 'weight-reps';
       const useReps = metric === 'weight-reps' || metric === 'reps';
       const useTime = metric === 'time' || metric === 'weight-time';
+      const useWeight = metric === 'weight-reps' || metric === 'weight-time';
+      const isBand = def.equipment === 'band';
       const ed = weightEdits[p.exerciseId] ?? {};
       const dr = defaultRepRange(def);
       const dt = defaultTimeRange(def);
@@ -219,7 +225,15 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
       const repsHigh = useReps && repsLow != null ? Math.max(repsLow, ed.repsHigh ?? dr.repsHigh) : undefined;
       const timeLow = useTime ? (ed.timeLow ?? dt.timeLow) : undefined;
       const timeHigh = useTime && timeLow != null ? Math.max(timeLow, ed.timeHigh ?? dt.timeHigh) : undefined;
-      return { exerciseId: p.exerciseId, prescribedSets: p.prescribedSets, repsLow, repsHigh, timeLow, timeHigh };
+      const startingWeightKg =
+        useWeight && !isBand && ed.weight != null
+          ? (displayToKg(ed.weight, user.units) ?? undefined)
+          : undefined;
+      return {
+        exerciseId: p.exerciseId,
+        prescribedSets: p.prescribedSets,
+        repsLow, repsHigh, timeLow, timeHigh, startingWeightKg,
+      };
     });
 
     const id = modifyTemplateId ?? ('wk-custom-' + Date.now().toString(36));
@@ -369,8 +383,8 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
           {step === 2 && (
             <div className="space-y-3">
               <p className="text-sm text-ink-dim">
-                Set starting reps or hold time for each exercise. Weights aren't stored on
-                single workouts — you'll fill those in when you run it.
+                Starting weight, reps, and hold time per exercise — pre-fills the logger
+                when you run this workout. Adjust anything that looks off.
               </p>
 
               <div className="card p-3">
@@ -398,6 +412,7 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
               <div className="space-y-2">
                 {pickedDefs.map(({ p, def }) => {
                   const metric = def.metric ?? 'weight-reps';
+                  const showWeight = metric === 'weight-reps' || metric === 'weight-time';
                   const showReps = metric === 'weight-reps' || metric === 'reps';
                   const showTime = metric === 'time' || metric === 'weight-time';
                   const dr = defaultRepRange(def);
@@ -407,6 +422,7 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
                   const repsHigh = ed.repsHigh ?? dr.repsHigh;
                   const timeLow = ed.timeLow ?? dt.timeLow;
                   const timeHigh = ed.timeHigh ?? dt.timeHigh;
+                  const weight = ed.weight ?? 0;
                   const setEdit = (patch: typeof ed) =>
                     setWeightEdits((prev) => ({ ...prev, [p.exerciseId]: { ...(prev[p.exerciseId] ?? {}), ...patch } }));
                   return (
@@ -416,6 +432,25 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
                         <MuscleBadge muscle={def.primaryMuscle} />
                       </div>
                       <div className="flex items-end gap-2">
+                        {showWeight && (
+                          <div className="flex-1 min-w-0">
+                            <div className="section-head mb-1">Weight</div>
+                            {def.equipment === 'band' ? (
+                              <div className="w-full h-11 px-2 rounded-lg bg-bg-input border border-ink-line text-sm font-semibold text-center text-ink-dim flex items-center justify-center">
+                                Band
+                              </div>
+                            ) : (
+                              <InlineNumber
+                                value={weight}
+                                onChange={(v) => setEdit({ weight: v ?? 0 })}
+                                step={wInc}
+                                min={0}
+                                decimals={wDecimals}
+                                unit={wLabel}
+                              />
+                            )}
+                          </div>
+                        )}
                         {showReps && (<>
                           <div className="flex-1 min-w-0">
                             <div className="section-head mb-1">Reps low</div>
