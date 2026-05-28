@@ -8,6 +8,33 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.56.0 — 2026-05-26
+
+- Single Workouts: a new template kind alongside Programs.
+- ProgramTemplate gained kind ('program' | 'workout') and a WorkoutCategory
+  field. 'program' is the default for everything that already exists, so no
+  data migration. A workout is a one-shot template (one week, one day).
+- Seeded 8 sample single workouts: Push Day, Pull Day, Upper Body Mass,
+  Squat Day, Hinge Day, Core Crusher, Quick Core, Quick Full Body —
+  spanning upper / lower / core / full-body categories.
+- Templates page split into two sections — Programs and Single Workouts —
+  each with its own "Create Custom" button. The programs section is unchanged;
+  the workouts section is new and lists library + user-saved workouts.
+- New SingleWorkoutWizard component — 3-step wizard mirroring the program
+  wizard's look: Workout (name/category), Exercises (pick/reorder/sets),
+  Starting values + Rest. Save writes a workout-kind ProgramTemplate.
+- Template detail page now detects kind: workout templates show category,
+  rest, and a single day's exercises (no week breakdown), with "Use This
+  Workout" button that opens AdHocWorkoutModal pre-populated. Modify on a
+  custom workout opens SingleWorkoutWizard.
+- Today's Ad-Hoc Workout button now opens a WorkoutPicker sheet listing
+  single workouts grouped by category, with "Create Custom Workout" at the
+  top. Picking one pre-populates the logging modal with that workout's
+  exercises (sets blanked but reps/time targets carried over).
+- AdHocWorkoutModal accepts initialExercises and an optional sourceLabel so
+  the sheet header shows the workout name when opened from the picker or
+  from the template detail page.
+
 ## v0.55.1 — 2026-05-26
 
 - Fix: Template Wizard steps weren't reliably opening at the top — the scroll

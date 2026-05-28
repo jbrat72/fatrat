@@ -4,8 +4,11 @@ import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { PageTitle, Card, Button, MuscleBadge, BackButton } from '@/components/ui';
 import { TemplateWizard } from '@/components/plan/TemplateWizard';
+import { SingleWorkoutWizard } from '@/components/plan/SingleWorkoutWizard';
+import { AdHocWorkoutModal } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
-import type { ProgramTemplate, ExerciseDefinition, Macrocycle } from '@/types';
+import { todayIso } from '@/lib/ui/date';
+import type { ProgramTemplate, ExerciseDefinition, Macrocycle, ExerciseEntry, SetEntry } from '@/types';
 
 export default function TemplateDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -17,6 +20,7 @@ export default function TemplateDetailPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [modifyMode, setModifyMode] = useState(false);
+  const [adHocOpen, setAdHocOpen] = useState(false);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -39,7 +43,36 @@ export default function TemplateDetailPage() {
 
   if (!user || !template) return <div className="p-6 text-ink-dim">Loading…</div>;
 
+  const isWorkout = template.kind === 'workout';
+
+  // Single-workout flow: materialize exercise entries from the template's
+  // single day, then open AdHocWorkoutModal pre-populated.
+  const workoutEntries: ExerciseEntry[] = isWorkout
+    ? (template.weeks[0]?.days[0]?.exercises ?? []).map((slot) => {
+        const def = defs[slot.exerciseId];
+        const muscle = def?.primaryMuscle ?? 'core';
+        const metric = def?.metric ?? 'weight-reps';
+        const sets: SetEntry[] = Array.from({ length: slot.prescribedSets }, (_, i) => ({ setIndex: i, completed: false }));
+        return {
+          exerciseId: slot.exerciseId,
+          name: def?.name ?? slot.exerciseId,
+          muscle,
+          metric,
+          prescribedSets: slot.prescribedSets,
+          prescribedRepsLow: slot.repsLow,
+          prescribedRepsHigh: slot.repsHigh,
+          prescribedTimeLow: slot.timeLow,
+          prescribedTimeHigh: slot.timeHigh,
+          sets,
+        };
+      })
+    : [];
+
   const startUsing = () => {
+    if (isWorkout) {
+      setAdHocOpen(true);
+      return;
+    }
     if (activeMacro) setConfirmOpen(true);
     else setWizardOpen(true);
   };
@@ -49,35 +82,60 @@ export default function TemplateDetailPage() {
       <div className="px-4 pt-4"><BackButton href="/plan/templates" label="Templates" /></div>
       <PageTitle title={template.name} subtitle={template.description} />
       <div className="px-4 space-y-3">
-        <Card>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div>
-              <div className="section-head">DAYS/WK</div>
-              <div className="text-2xl font-semibold tnum mt-1">{template.daysPerWeek}</div>
+        {!isWorkout && (
+          <Card>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <div className="section-head">DAYS/WK</div>
+                <div className="text-2xl font-semibold tnum mt-1">{template.daysPerWeek}</div>
+              </div>
+              <div>
+                <div className="section-head">SPLIT</div>
+                <div className="text-sm font-semibold mt-1 uppercase">{template.split.replace('-', ' ')}</div>
+              </div>
+              <div>
+                <div className="section-head">{template.programStyle === 'traditional' ? 'STYLE' : 'PHASE'}</div>
+                <div className="text-sm font-semibold mt-1 capitalize">{template.programStyle === 'traditional' ? 'Traditional' : template.defaultPhase}</div>
+              </div>
             </div>
-            <div>
-              <div className="section-head">SPLIT</div>
-              <div className="text-sm font-semibold mt-1 uppercase">{template.split.replace('-', ' ')}</div>
-            </div>
-            <div>
-              <div className="section-head">{template.programStyle === 'traditional' ? 'STYLE' : 'PHASE'}</div>
-              <div className="text-sm font-semibold mt-1 capitalize">{template.programStyle === 'traditional' ? 'Traditional' : template.defaultPhase}</div>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        )}
 
-        {template.weeks[0]?.days.map((day, di) => (
+        {isWorkout && (
+          <Card>
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <div>
+                <div className="section-head">CATEGORY</div>
+                <div className="text-sm font-semibold mt-1 capitalize">{(template.category ?? 'workout').toString().replace('-', ' ')}</div>
+              </div>
+              <div>
+                <div className="section-head">REST</div>
+                <div className="text-sm font-semibold mt-1 tnum">
+                  {template.restSeconds != null
+                    ? (template.restSeconds < 60 ? `${template.restSeconds}s` : `${Math.round(template.restSeconds / 60)} min`)
+                    : '—'}
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {(isWorkout ? [template.weeks[0]?.days[0]].filter(Boolean) : template.weeks[0]?.days ?? []).map((day, di) => (
           <Card key={di}>
-            <div className="section-head mb-2">{day.dayLabel.toUpperCase()}</div>
+            <div className="section-head mb-2">{(day!.dayLabel || 'WORKOUT').toUpperCase()}</div>
             <ul className="space-y-2">
-              {day.exercises.map((slot, si) => {
+              {day!.exercises.map((slot, si) => {
                 const def = defs[slot.exerciseId];
+                const metric = def?.metric ?? 'weight-reps';
+                const useTime = metric === 'time' || metric === 'weight-time';
                 return (
                   <li key={si} className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold truncate">{def?.name ?? slot.exerciseId}</div>
                       <div className="text-xs text-ink-dim tnum">
-                        {slot.prescribedSets} × {slot.repsLow}–{slot.repsHigh}
+                        {slot.prescribedSets} × {useTime
+                          ? `${slot.timeLow ?? '?'}–${slot.timeHigh ?? '?'}s`
+                          : `${slot.repsLow ?? '?'}–${slot.repsHigh ?? '?'}`}
                         {slot.startingRIR != null && ` · ${slot.startingRIR} RIR`}
                       </div>
                     </div>
@@ -89,7 +147,9 @@ export default function TemplateDetailPage() {
           </Card>
         ))}
 
-        <Button block size="lg" onClick={startUsing}>Use This Template</Button>
+        <Button block size="lg" onClick={startUsing}>
+          {isWorkout ? 'Use This Workout' : 'Use This Template'}
+        </Button>
         {template.isCustom && (
           <Button
             block
@@ -101,9 +161,15 @@ export default function TemplateDetailPage() {
           </Button>
         )}
         <p className="text-xs text-ink-mute text-center">
-          {template.isCustom
-            ? <>“Use This Template” starts a fresh program from it. “Modify” edits this template in the wizard and saves changes back to it.</>
-            : <>Opens the plan builder pre-loaded with this template — review or tweak anything, then activate it or save it as your own template.</>}
+          {isWorkout ? (
+            template.isCustom
+              ? <>“Use This Workout” opens it in the logger pre-filled. “Modify” edits the saved workout.</>
+              : <>“Use This Workout” opens it in the logger pre-filled — adjust anything, log your sets, and save.</>
+          ) : (
+            template.isCustom
+              ? <>“Use This Template” starts a fresh program from it. “Modify” edits this template in the wizard and saves changes back to it.</>
+              : <>Opens the plan builder pre-loaded with this template — review or tweak anything, then activate it or save it as your own template.</>
+          )}
         </p>
       </div>
 
@@ -129,13 +195,40 @@ export default function TemplateDetailPage() {
         </div>
       )}
 
-      <TemplateWizard
-        open={wizardOpen}
-        initialTemplate={template}
-        modifyTemplateId={modifyMode ? template.id : undefined}
-        onClose={() => { setWizardOpen(false); setModifyMode(false); }}
-        onSaved={(mode) => router.push(mode === 'activate' ? '/today' : '/plan/templates')}
-      />
+      {/* Program wizard — only for program-kind templates */}
+      {!isWorkout && (
+        <TemplateWizard
+          open={wizardOpen}
+          initialTemplate={template}
+          modifyTemplateId={modifyMode ? template.id : undefined}
+          onClose={() => { setWizardOpen(false); setModifyMode(false); }}
+          onSaved={(mode) => router.push(mode === 'activate' ? '/today' : '/plan/templates')}
+        />
+      )}
+
+      {/* Workout wizard — only for workout-kind templates, in Modify mode */}
+      {isWorkout && (
+        <SingleWorkoutWizard
+          open={wizardOpen}
+          initialTemplate={template}
+          modifyTemplateId={modifyMode ? template.id : undefined}
+          onClose={() => { setWizardOpen(false); setModifyMode(false); }}
+          onSaved={() => router.push('/plan/templates')}
+        />
+      )}
+
+      {/* AdHocWorkoutModal — used for "Use This Workout" on workout templates */}
+      {isWorkout && (
+        <AdHocWorkoutModal
+          open={adHocOpen}
+          date={todayIso()}
+          initialExercises={workoutEntries}
+          sourceLabel={template.name}
+          onClose={() => setAdHocOpen(false)}
+          onSaved={() => { setAdHocOpen(false); router.push('/today'); }}
+          macrocycleId={activeMacro?.id}
+        />
+      )}
     </div>
   );
 }

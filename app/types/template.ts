@@ -35,10 +35,22 @@ export interface TemplateWeek {
   days: TemplateDay[];
 }
 
+/** Kinds of saved template. Programs span weeks (with periodization model);
+ *  single workouts are one-shot ad-hoc routines that pre-populate the
+ *  AdHocWorkoutModal. */
+export type TemplateKind = 'program' | 'workout';
+
+/** Loose category for single-workout templates — drives grouping in the picker. */
+export type WorkoutCategory = 'upper-body' | 'lower-body' | 'core' | 'full-body' | 'custom';
+
 export interface ProgramTemplate {
   id: string;
   name: string;
   description: string;         // plain-English; no jargon for BASIC users
+  /** Defaults to 'program' when omitted (so older saved templates stay valid). */
+  kind?: TemplateKind;
+  /** For kind === 'workout' — coarse category used by the picker UI. */
+  category?: WorkoutCategory;
   daysPerWeek: number;
   split: SplitType;
   defaultPhase: MesocyclePhaseType;

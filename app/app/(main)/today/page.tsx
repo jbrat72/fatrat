@@ -3,11 +3,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/components/app';
 import { Card, PageTitle, Button, MuscleBadge } from '@/components/ui';
-import { BodyWeightCheckIn, CardioLogModal, StreakCard } from '@/components/today';
+import { BodyWeightCheckIn, CardioLogModal, StreakCard, WorkoutPicker } from '@/components/today';
 import { AdHocWorkoutModal } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
 import { resolveToday, type ResolvedToday } from '@/lib/session/resolveToday';
 import { todayIso } from '@/lib/ui/date';
+import type { ExerciseEntry } from '@/types';
 
 function formatLongDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
@@ -20,6 +21,8 @@ export default function TodayPage() {
   const [dayOrdinal, setDayOrdinal] = useState<number | null>(null);
   const [cardioOpen, setCardioOpen] = useState(false);
   const [adHocOpen, setAdHocOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [adHocSeed, setAdHocSeed] = useState<{ entries?: ExerciseEntry[]; label?: string }>({});
   const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
@@ -72,7 +75,7 @@ export default function TodayPage() {
                 <Button block>{workoutLabel}</Button>
               </Link>
             ) : (
-              <Button block className="col-span-3" onClick={() => setAdHocOpen(true)}>{workoutLabel}</Button>
+              <Button block className="col-span-3" onClick={() => setPickerOpen(true)}>{workoutLabel}</Button>
             )}
             <Button variant="ghost" block className="col-span-2" onClick={() => setCardioOpen(true)}>Log Cardio</Button>
           </div>
@@ -145,11 +148,27 @@ export default function TodayPage() {
       <AdHocWorkoutModal
         open={adHocOpen}
         date={todayIso()}
-        onClose={() => setAdHocOpen(false)}
-        onSaved={() => { setAdHocOpen(false); setRefreshTick((n) => n + 1); }}
+        initialExercises={adHocSeed.entries}
+        sourceLabel={adHocSeed.label}
+        onClose={() => { setAdHocOpen(false); setAdHocSeed({}); }}
+        onSaved={() => { setAdHocOpen(false); setAdHocSeed({}); setRefreshTick((n) => n + 1); }}
         microcycleId={today?.microcycle?.id}
         mesocycleId={today?.mesocycle?.id}
         macrocycleId={today?.macrocycle?.id}
+      />
+
+      <WorkoutPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onPick={(entries, label) => {
+          setAdHocSeed({ entries, label });
+          setPickerOpen(false);
+          setAdHocOpen(true);
+        }}
+        onCreateCustom={() => {
+          setAdHocSeed({});
+          setAdHocOpen(true);
+        }}
       />
     </div>
   );

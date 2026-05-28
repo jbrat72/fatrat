@@ -14,6 +14,11 @@ interface Props {
   microcycleId?: string;
   mesocycleId?: string;
   macrocycleId?: string;
+  /** When set, the modal opens pre-populated with these exercises (one entry
+   *  per slot, sets blanked but with prescribed reps/time copied). */
+  initialExercises?: ExerciseEntry[];
+  /** Optional title to show on the sheet (e.g. the source template name). */
+  sourceLabel?: string;
   onClose: () => void;
   onSaved?: () => void;
 }
@@ -31,7 +36,7 @@ function blankSets(count: number): SetEntry[] {
  * for that date if one already exists).
  */
 export function AdHocWorkoutModal({
-  open, date, microcycleId, mesocycleId, macrocycleId, onClose, onSaved,
+  open, date, microcycleId, mesocycleId, macrocycleId, initialExercises, sourceLabel, onClose, onSaved,
 }: Props) {
   const { user } = useUser();
   const [library, setLibrary] = useState<ExerciseDefinition[]>([]);
@@ -42,7 +47,7 @@ export function AdHocWorkoutModal({
   useEffect(() => {
     if (!open || !user) return;
     setSearch('');
-    setEntries([]);
+    setEntries(initialExercises ? initialExercises.map((e) => ({ ...e, sets: blankSets(e.prescribedSets || DEFAULT_SET_COUNT) })) : []);
     let cancelled = false;
     (async () => {
       const repo = getRepository();
@@ -175,8 +180,8 @@ export function AdHocWorkoutModal({
       >
         <div className="sticky top-0 bg-bg-card border-b border-ink-line px-4 py-3 flex items-center justify-between z-10">
           <div>
-            <div className="section-head">LOG A WORKOUT</div>
-            <div className="text-xs text-ink-dim mt-0.5 tnum">{date}</div>
+            <div className="section-head">{sourceLabel ? sourceLabel.toUpperCase() : 'LOG A WORKOUT'}</div>
+            <div className="text-xs text-ink-dim mt-0.5 tnum">{date}{sourceLabel ? ' · pre-filled, edit anything' : ''}</div>
           </div>
           <button type="button" onClick={onClose} className="w-9 h-9 rounded-md border border-ink-line text-ink-dim hover:text-ink" aria-label="Close">✕</button>
         </div>
