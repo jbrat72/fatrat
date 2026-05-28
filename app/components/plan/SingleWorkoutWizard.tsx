@@ -49,6 +49,15 @@ const MUSCLE_FILTERS: { value: MuscleGroup | 'all'; label: string }[] = [
   { value: 'core', label: 'Core' },
   { value: 'neck', label: 'Neck' },
 ];
+
+// Which muscles a single-workout category cares about. full-body / custom
+// returns null meaning "no restriction".
+function musclesForCategory(cat: WorkoutCategory): MuscleGroup[] | null {
+  if (cat === 'upper-body') return ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms'];
+  if (cat === 'lower-body') return ['quads', 'hamstrings', 'glutes', 'calves'];
+  if (cat === 'core') return ['core'];
+  return null; // full-body, custom — no restriction
+}
 const fmtRest = (s: number) => (s < 60 ? `${s}s` : s % 60 === 0 ? `${s / 60} min` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
 
 interface Picked {
@@ -138,13 +147,36 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
 
   const pickedIds = useMemo(() => new Set(picked.map((p) => p.exerciseId)), [picked]);
 
+  const allowedMuscles = useMemo(() => musclesForCategory(category), [category]);
+
+  // Filter pills shown above the search: always include 'all', then either
+  // every muscle (full-body / custom) or just the ones the category covers.
+  const visibleMuscleFilters = useMemo(() => {
+    if (!allowedMuscles) return MUSCLE_FILTERS;
+    const allow = new Set<string>(allowedMuscles);
+    return MUSCLE_FILTERS.filter((m) => m.value === 'all' || allow.has(m.value));
+  }, [allowedMuscles]);
+
   const results = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = library;
+    if (allowedMuscles) {
+      const allow = new Set<string>(allowedMuscles);
+      list = list.filter((e) => allow.has(e.primaryMuscle));
+    }
     if (muscleFilter !== 'all') list = list.filter((e) => e.primaryMuscle === muscleFilter);
     if (q) list = list.filter((e) => e.name.toLowerCase().includes(q));
     return list.slice(0, 30);
-  }, [library, search, muscleFilter]);
+  }, [library, search, muscleFilter, allowedMuscles]);
+
+  // If the user changes the category and the current muscle filter is no
+  // longer allowed, drop back to 'all'.
+  useEffect(() => {
+    if (muscleFilter === 'all') return;
+    if (allowedMuscles && !allowedMuscles.includes(muscleFilter)) {
+      setMuscleFilter('all');
+    }
+  }, [allowedMuscles, muscleFilter]);
 
   const add = (def: ExerciseDefinition) => {
     if (pickedIds.has(def.id)) return;
@@ -264,24 +296,22 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
             <div className="space-y-4">
               <div>
                 <div className="section-head mb-2">ADD EXERCISES</div>
-                <div className="-mx-4 px-4 mb-2 overflow-x-auto">
-                  <div className="flex gap-1.5 w-max">
-                    {MUSCLE_FILTERS.map((m) => (
-                      <button
-                        key={m.value}
-                        type="button"
-                        onClick={() => setMuscleFilter(m.value)}
-                        className={cn(
-                          'shrink-0 rounded-md px-2.5 py-1 text-xs font-medium border transition',
-                          muscleFilter === m.value
-                            ? 'bg-accent text-white border-accent'
-                            : 'bg-bg-input text-ink-dim border-ink-line hover:text-ink',
-                        )}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {visibleMuscleFilters.map((m) => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => setMuscleFilter(m.value)}
+                      className={cn(
+                        'rounded-md px-2.5 py-1 text-xs font-medium border transition',
+                        muscleFilter === m.value
+                          ? 'bg-accent text-white border-accent'
+                          : 'bg-bg-input text-ink-dim border-ink-line hover:text-ink',
+                      )}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
                 </div>
                 <TextField placeholder="Search the library — bench, row, plank…" value={search} onChange={(e) => setSearch(e.target.value)} />
                 <div className="mt-2 max-h-60 overflow-y-auto space-y-1.5 pr-0.5">

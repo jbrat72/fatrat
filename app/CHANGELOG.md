@@ -8,6 +8,19 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.57.2 — 2026-05-26
+
+- SingleWorkoutWizard step 1 (Exercises) — category-aware filtering.
+- The category picked on the Workout step now narrows what shows up on the
+  Exercise step: Upper Body limits to chest/back/shoulders/biceps/triceps/
+  forearms, Lower Body to quads/hams/glutes/calves, Core to core. Full Body
+  and Other don't restrict.
+- The muscle filter pills wrap onto multiple lines instead of horizontally
+  scrolling. Pills outside the chosen category are hidden entirely so the
+  user only sees relevant options.
+- If the user re-opens step 0 and changes category to a narrower one, the
+  current muscle filter falls back to All if it's no longer in scope.
+
 ## v0.57.1 — 2026-05-26
 
 - Exercise library: ensure every movement in the TRX-chart screenshot has a
