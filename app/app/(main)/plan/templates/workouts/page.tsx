@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { PageTitle, Card, BackButton } from '@/components/ui';
 import { SingleWorkoutWizard } from '@/components/plan/SingleWorkoutWizard';
@@ -11,9 +12,21 @@ const MODE_RANK: Record<UserMode, number> = { BASIC: 0, INTERMEDIATE: 1, ADVANCE
 
 export default function WorkoutTemplatesPage() {
   const { user } = useUser();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [templates, setTemplates] = useState<ProgramTemplate[]>([]);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
+
+  // Allow ?create=1 to deep-link straight into the new-workout wizard from
+  // the Today → Ad-Hoc Workout picker. Consume the param so reloads don't
+  // re-trigger.
+  useEffect(() => {
+    if (searchParams?.get('create') === '1') {
+      setWizardOpen(true);
+      router.replace('/plan/templates/workouts');
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     getRepository().listTemplates().then(setTemplates);

@@ -8,6 +8,16 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.57.3 — 2026-05-26
+
+- Today → Ad-Hoc Workout → "Create Custom Workout" now routes to
+  /plan/templates/workouts?create=1 instead of opening an empty
+  AdHocWorkoutModal. The workouts page consumes the query param and
+  auto-opens the SingleWorkoutWizard, so the user lands directly in the
+  full workout-creation flow (naming, category, muscle-filtered exercise
+  picker, starting values + rest). Newly-saved workouts then show up in
+  the picker library next time.
+
 ## v0.57.2 — 2026-05-26
 
 - SingleWorkoutWizard step 1 (Exercises) — category-aware filtering.

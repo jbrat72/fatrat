@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { Card, PageTitle, Button, MuscleBadge } from '@/components/ui';
 import { BodyWeightCheckIn, CardioLogModal, StreakCard, WorkoutPicker } from '@/components/today';
@@ -16,6 +17,7 @@ function formatLongDate(iso: string): string {
 }
 
 export default function TodayPage() {
+  const router = useRouter();
   const { user, loading } = useUser();
   const [today, setToday] = useState<ResolvedToday | null>(null);
   const [dayOrdinal, setDayOrdinal] = useState<number | null>(null);
@@ -166,8 +168,10 @@ export default function TodayPage() {
           setAdHocOpen(true);
         }}
         onCreateCustom={() => {
-          setAdHocSeed({});
-          setAdHocOpen(true);
+          // Route the user into the Single Workouts page in create mode —
+          // they get the full naming + category + filter flow there, and
+          // their new workout joins the picker library afterwards.
+          router.push('/plan/templates/workouts?create=1');
         }}
       />
     </div>
