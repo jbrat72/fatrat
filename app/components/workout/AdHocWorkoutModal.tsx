@@ -43,6 +43,15 @@ export function AdHocWorkoutModal({
   const [search, setSearch] = useState('');
   const [entries, setEntries] = useState<ExerciseEntry[]>([]);
   const [saving, setSaving] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(true);
+
+  // When opening with a pre-filled workout, hide the exercise picker by
+  // default so the screen reads as "run this workout" — not "create custom".
+  // The user can still tap to expose it if they want to add another move.
+  useEffect(() => {
+    if (!open) return;
+    setPickerOpen(!initialExercises || initialExercises.length === 0);
+  }, [open, initialExercises]);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -187,41 +196,58 @@ export function AdHocWorkoutModal({
         </div>
 
         <div className="px-4 py-3 space-y-4 pb-8">
-          {/* Exercise picker */}
-          <div>
-            <div className="section-head mb-2">ADD EXERCISE</div>
-            <TextField
-              placeholder="Search the library — bench, row, squat…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <div className="mt-2 max-h-52 overflow-y-auto space-y-1.5 pr-0.5">
-              {results.length === 0 && (
-                <p className="text-sm text-ink-mute py-2">No exercises match that search.</p>
-              )}
-              {results.map((ex) => {
-                const added = pickedIds.has(ex.id);
-                return (
+          {/* Exercise picker — collapsed when the modal opens with a pre-filled
+              workout, so the screen doesn't look like the empty create-custom
+              flow stacked on top. The user can expand it to add more. */}
+          {pickerOpen ? (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="section-head">ADD EXERCISE</div>
+                {initialExercises && initialExercises.length > 0 && (
                   <button
-                    key={ex.id}
                     type="button"
-                    onClick={() => addExercise(ex)}
-                    disabled={added}
-                    className="w-full text-left card flex items-center gap-3 p-2.5 transition disabled:opacity-50 enabled:hover:border-accent"
+                    onClick={() => setPickerOpen(false)}
+                    className="text-[11px] text-ink-mute hover:text-ink underline-offset-2 hover:underline"
                   >
-                    <MuscleBadge muscle={ex.primaryMuscle} />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{ex.name}</div>
-                      <div className="text-xs text-ink-dim capitalize">{ex.equipment}</div>
-                    </div>
-                    <span className={added ? 'text-ok text-xs font-semibold' : 'text-accent text-lg leading-none'}>
-                      {added ? 'Added' : '+'}
-                    </span>
+                    Hide
                   </button>
-                );
-              })}
+                )}
+              </div>
+              <TextField
+                placeholder="Search the library — bench, row, squat…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <div className="mt-2 max-h-52 overflow-y-auto space-y-1.5 pr-0.5">
+                {results.length === 0 && (
+                  <p className="text-sm text-ink-mute py-2">No exercises match that search.</p>
+                )}
+                {results.map((ex) => {
+                  const added = pickedIds.has(ex.id);
+                  return (
+                    <button
+                      key={ex.id}
+                      type="button"
+                      onClick={() => addExercise(ex)}
+                      disabled={added}
+                      className="w-full text-left card flex items-center gap-3 p-2.5 transition disabled:opacity-50 enabled:hover:border-accent"
+                    >
+                      <MuscleBadge muscle={ex.primaryMuscle} />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{ex.name}</div>
+                        <div className="text-xs text-ink-dim capitalize">{ex.equipment}</div>
+                      </div>
+                      <span className={added ? 'text-ok text-xs font-semibold' : 'text-accent text-lg leading-none'}>
+                        {added ? 'Added' : '+'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          ) : (
+            <Button variant="ghost" block onClick={() => setPickerOpen(true)}>+ Add an exercise</Button>
+          )}
 
           {/* Picked exercises with set logging */}
           <div>

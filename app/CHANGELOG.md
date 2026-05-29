@@ -8,6 +8,16 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.58.1 — 2026-05-26
+
+- Fix: when picking a workout from Today's Ad-Hoc picker, the AdHocWorkoutModal
+  still showed its ADD EXERCISE search panel at the top alongside the
+  pre-populated workout — looked like the empty "create custom" flow was
+  stacked above the chosen workout. The picker is now collapsed by default
+  when the modal opens with a pre-filled workout, and replaced by a
+  "+ Add an exercise" button that re-expands it. Opening with an empty
+  workout (true create-custom) keeps the picker expanded as before.
+
 ## v0.58.0 — 2026-05-26
 
 - Brand refresh.
