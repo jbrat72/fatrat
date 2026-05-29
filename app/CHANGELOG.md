@@ -8,6 +8,23 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.59.0 — 2026-05-26
+
+- Workout-run flow restructured. Picking a single workout — from Today's
+  Ad-Hoc Workout picker OR from a workout template's detail page — now
+  creates a real WorkoutSession (marked started, not completed) and routes
+  to /today/workout, the same full logging experience as a scheduled day
+  in a program. AdHocWorkoutModal is no longer used from those entry
+  points; it stays mounted on the Plan and History pages for after-the-fact
+  logging of past days.
+- resolveToday now consults getTodaySession first. Any session whose date
+  matches today wins regardless of microcycle membership — so ad-hoc
+  sessions (no microcycleId) are found, and a session attached to today's
+  micro is still found by date even if micro/meso state is unusual.
+- If a session already exists for today when picking a workout, it's
+  overwritten in place (same id) with the new exercises — single source of
+  truth per date.
+
 ## v0.58.1 — 2026-05-26
 
 - Fix: when picking a workout from Today's Ad-Hoc picker, the AdHocWorkoutModal

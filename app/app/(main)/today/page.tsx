@@ -5,11 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { Card, PageTitle, Button, MuscleBadge } from '@/components/ui';
 import { BodyWeightCheckIn, CardioLogModal, StreakCard, WorkoutPicker } from '@/components/today';
-import { AdHocWorkoutModal } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
 import { resolveToday, type ResolvedToday } from '@/lib/session/resolveToday';
 import { todayIso } from '@/lib/ui/date';
-import type { ExerciseEntry } from '@/types';
+import type { WorkoutSession } from '@/types';
 
 function formatLongDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
@@ -22,9 +21,7 @@ export default function TodayPage() {
   const [today, setToday] = useState<ResolvedToday | null>(null);
   const [dayOrdinal, setDayOrdinal] = useState<number | null>(null);
   const [cardioOpen, setCardioOpen] = useState(false);
-  const [adHocOpen, setAdHocOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [adHocSeed, setAdHocSeed] = useState<{ entries?: ExerciseEntry[]; label?: string }>({});
   const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
@@ -147,25 +144,33 @@ export default function TodayPage() {
         macrocycleId={today?.macrocycle?.id}
       />
 
-      <AdHocWorkoutModal
-        open={adHocOpen}
-        date={todayIso()}
-        initialExercises={adHocSeed.entries}
-        sourceLabel={adHocSeed.label}
-        onClose={() => { setAdHocOpen(false); setAdHocSeed({}); }}
-        onSaved={() => { setAdHocOpen(false); setAdHocSeed({}); setRefreshTick((n) => n + 1); }}
-        microcycleId={today?.microcycle?.id}
-        mesocycleId={today?.mesocycle?.id}
-        macrocycleId={today?.macrocycle?.id}
-      />
-
       <WorkoutPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onPick={(entries, label) => {
-          setAdHocSeed({ entries, label });
+        onPick={async (entries) => {
+          if (!user) return;
+          const repo = getRepository();
+          const date = todayIso();
+          const existing = await repo.getTodaySession(user.userId, date);
+          const dow = new Date(date + 'T00:00:00').getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+          // Build / replace today's session with the chosen workout, then run
+          // it via /today/workout (same flow as a scheduled day).
+          const session: WorkoutSession = {
+            id: existing?.id ?? ('workout-' + Math.random().toString(36).slice(2, 9)),
+            userId: user.userId,
+            date,
+            dayOfWeek: dow,
+            completed: false,
+            startedAt: new Date().toISOString(),
+            exercises: entries,
+            cardio: existing?.cardio ?? [],
+            microcycleId: today?.microcycle?.id,
+            mesocycleId: today?.mesocycle?.id,
+            macrocycleId: today?.macrocycle?.id,
+          };
+          await repo.upsertSession(session);
           setPickerOpen(false);
-          setAdHocOpen(true);
+          router.push('/today/workout');
         }}
         onCreateCustom={() => {
           // Route the user into the Single Workouts page in create mode —

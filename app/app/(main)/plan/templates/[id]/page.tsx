@@ -5,10 +5,9 @@ import { useUser } from '@/components/app';
 import { PageTitle, Card, Button, MuscleBadge, BackButton } from '@/components/ui';
 import { TemplateWizard } from '@/components/plan/TemplateWizard';
 import { SingleWorkoutWizard } from '@/components/plan/SingleWorkoutWizard';
-import { AdHocWorkoutModal } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
 import { todayIso } from '@/lib/ui/date';
-import type { ProgramTemplate, ExerciseDefinition, Macrocycle, ExerciseEntry, SetEntry } from '@/types';
+import type { ProgramTemplate, ExerciseDefinition, Macrocycle, ExerciseEntry, SetEntry, WorkoutSession } from '@/types';
 
 export default function TemplateDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,7 +19,7 @@ export default function TemplateDetailPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [modifyMode, setModifyMode] = useState(false);
-  const [adHocOpen, setAdHocOpen] = useState(false);
+
 
   useEffect(() => {
     if (!id || !user) return;
@@ -68,9 +67,26 @@ export default function TemplateDetailPage() {
       })
     : [];
 
-  const startUsing = () => {
+  const startUsing = async () => {
     if (isWorkout) {
-      setAdHocOpen(true);
+      if (!user) return;
+      const repo = getRepository();
+      const date = todayIso();
+      const existing = await repo.getTodaySession(user.userId, date);
+      const dow = new Date(date + 'T00:00:00').getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+      const session: WorkoutSession = {
+        id: existing?.id ?? ('workout-' + Math.random().toString(36).slice(2, 9)),
+        userId: user.userId,
+        date,
+        dayOfWeek: dow,
+        completed: false,
+        startedAt: new Date().toISOString(),
+        exercises: workoutEntries,
+        cardio: existing?.cardio ?? [],
+        macrocycleId: activeMacro?.id,
+      };
+      await repo.upsertSession(session);
+      router.push('/today/workout');
       return;
     }
     if (activeMacro) setConfirmOpen(true);
@@ -217,18 +233,7 @@ export default function TemplateDetailPage() {
         />
       )}
 
-      {/* AdHocWorkoutModal — used for "Use This Workout" on workout templates */}
-      {isWorkout && (
-        <AdHocWorkoutModal
-          open={adHocOpen}
-          date={todayIso()}
-          initialExercises={workoutEntries}
-          sourceLabel={template.name}
-          onClose={() => setAdHocOpen(false)}
-          onSaved={() => { setAdHocOpen(false); router.push('/today'); }}
-          macrocycleId={activeMacro?.id}
-        />
-      )}
+
     </div>
   );
 }
