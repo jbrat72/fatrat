@@ -8,6 +8,19 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.59.1 — 2026-05-26
+
+- Fix: programs activated against the live Firebase backend appeared to
+  load (macrocycle + mesocycle showed up on Plan) but the week calendar
+  was all Off-day hatching with no sessions. Cause: firestoreRepository's
+  listSessionsInMicrocycle combined where('microcycleId', '==', x) with
+  orderBy('date', 'asc') — a compound query that Firestore requires a
+  composite index for. Without the index, the query throws (silently in
+  some SDK error modes) and returns no docs. Dropped the server-side
+  orderBy and sort client-side instead; sessions-per-micro counts are
+  small so the cost is negligible and we skip the index roundtrip
+  entirely.
+
 ## v0.59.0 — 2026-05-26
 
 - Workout-run flow restructured. Picking a single workout — from Today's

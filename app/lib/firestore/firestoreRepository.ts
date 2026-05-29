@@ -150,13 +150,14 @@ export function firestoreRepository(): DataRepository {
     },
     async listSessionsInMicrocycle(microId) {
       const uid = currentUid();
-      const q = query(
-        subCol(uid, 'sessions'),
-        where('microcycleId', '==', microId),
-        orderBy('date', 'asc'),
-      );
+      // Firestore would require a composite index for where + orderBy on
+      // different fields. Sort client-side instead — session counts per
+      // micro are tiny (3-6), and this skips an index roundtrip.
+      const q = query(subCol(uid, 'sessions'), where('microcycleId', '==', microId));
       const snap = await getDocs(q);
-      return snap.docs.map((d) => d.data() as WorkoutSession);
+      const out = snap.docs.map((d) => d.data() as WorkoutSession);
+      out.sort((a, b) => a.date.localeCompare(b.date));
+      return out;
     },
     async getSession(sessionId) {
       const uid = currentUid();
