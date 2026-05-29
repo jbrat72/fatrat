@@ -8,6 +8,14 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.59.5 — 2026-05-26
+
+- Settings → ACCOUNT card refreshed. The stale dev-mode copy ("Auth comes
+  online with Firebase. For now, switch demo users from the header pill.")
+  is gone — it predated real Firebase auth. The card now shows the
+  signed-in email and a Sign out button next to the (still-disabled)
+  Delete account placeholder.
+
 ## v0.59.4 — 2026-05-26
 
 - Removed the "Reset demo data" card from Settings (Danger Zone). It only

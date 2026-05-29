@@ -21,7 +21,7 @@ function download(filename: string, mime: string, content: string) {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, refresh } = useUser();
+  const { user, refresh, firebaseUser, signOut } = useUser();
   const [modeOpen, setModeOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -140,8 +140,21 @@ export default function SettingsPage() {
 
         <Card>
           <div className="section-head mb-2">ACCOUNT</div>
-          <p className="text-ink-dim text-sm mb-2">Auth comes online with Firebase. For now, switch demo users from the header pill.</p>
-          <Button variant="ghost" size="sm" disabled>Delete account (coming soon)</Button>
+          {firebaseUser?.email && (
+            <p className="text-ink-dim text-sm mb-2">
+              Signed in as <span className="text-ink font-medium">{firebaseUser.email}</span>.
+            </p>
+          )}
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => { await signOut(); router.replace('/login'); }}
+            >
+              Sign out
+            </Button>
+            <Button variant="ghost" size="sm" disabled>Delete account (coming soon)</Button>
+          </div>
         </Card>
 
         <div className="pt-2 text-center">
