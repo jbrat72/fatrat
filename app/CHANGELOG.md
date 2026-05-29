@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.59.4 — 2026-05-26
+
+- Removed the "Reset demo data" card from Settings (Danger Zone). It only
+  ever did anything in mock mode — it wiped the in-memory store and
+  re-seeded the three demo users. In Firebase mode it was a no-op that
+  reloaded the page. Now that the app is on real Firebase it's misleading
+  to expose. Also dropped the unused resetMockRepository import and the
+  doReset / confirmReset state.
+
 ## v0.59.3 — 2026-05-26
 
 - Fix: Plan calendar was opening to the wrong week. When today's date didn't

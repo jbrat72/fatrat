@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { Button, Card, ModeChip, PageTitle, ChoicePill } from '@/components/ui';
 import { ModeSwitchDialog } from '@/components/settings';
-import { getRepository, resetMockRepository } from '@/lib/firestore';
+import { getRepository } from '@/lib/firestore';
 import { toJSON, setsCSV } from '@/lib/export';
 import type { ExportBundle } from '@/lib/export';
 import type { UserMode, Units } from '@/types';
@@ -24,7 +24,6 @@ export default function SettingsPage() {
   const { user, refresh } = useUser();
   const [modeOpen, setModeOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
 
   if (!user) return null;
 
@@ -76,11 +75,6 @@ export default function SettingsPage() {
     if (fmt === 'json') download(`fatrat-${user.displayName}-${Date.now()}.json`, 'application/json', toJSON(bundle));
     else                download(`fatrat-sets-${user.displayName}-${Date.now()}.csv`, 'text/csv', setsCSV(bundle));
     setExporting(false);
-  };
-
-  const doReset = () => {
-    resetMockRepository();
-    if (typeof window !== 'undefined') window.location.reload();
   };
 
   return (
@@ -142,26 +136,6 @@ export default function SettingsPage() {
         <Card>
           <div className="section-head mb-2">NOTIFICATIONS</div>
           <p className="text-ink-dim text-sm">None in v1. Future: rest-day reminders, body-weight prompts, deload heads-ups.</p>
-        </Card>
-
-        <Card>
-          <div className="section-head mb-2 text-danger">DANGER ZONE</div>
-          {!confirmReset ? (
-            <div className="flex gap-2 flex-wrap">
-              <Button variant="ghost" size="sm" onClick={() => setConfirmReset(true)}>Reset demo data</Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-danger text-sm">
-                This wipes all session history and resets the 3 demo users (Molly / Brian / Zach).
-                It does not affect any data in real Firestore (which we're not connected to yet).
-              </p>
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setConfirmReset(false)}>Cancel</Button>
-                <Button variant="danger" onClick={doReset}>Reset</Button>
-              </div>
-            </div>
-          )}
         </Card>
 
         <Card>
