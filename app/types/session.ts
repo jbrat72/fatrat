@@ -104,6 +104,9 @@ export interface MuscleSoreness {
 export interface WorkoutSession {
   id: string;
   userId: string;
+  /** Display name for ad-hoc workouts (e.g. "Push Day"). Programmed sessions
+   *  derive their label from microcycle / mesocycle context instead. */
+  name?: string;
   microcycleId?: string;
   mesocycleId?: string;
   macrocycleId?: string;

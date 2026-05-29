@@ -96,11 +96,20 @@ export default function TodayPage() {
           <Card>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-lg font-semibold leading-tight">
-                  {micro ? `WEEK ${micro.weekNumber}` : ''}
-                  {dayOrdinal ? <span className="text-accent">{` DAY ${dayOrdinal}`}</span> : ''}
-                </div>
-                {meso?.name && <div className="text-lg font-medium leading-tight mt-0.5">{meso.name}</div>}
+                {session.microcycleId ? (
+                  <>
+                    <div className="text-lg font-semibold leading-tight">
+                      {micro ? `WEEK ${micro.weekNumber}` : ''}
+                      {dayOrdinal ? <span className="text-accent">{` DAY ${dayOrdinal}`}</span> : ''}
+                    </div>
+                    {meso?.name && <div className="text-lg font-medium leading-tight mt-0.5">{meso.name}</div>}
+                  </>
+                ) : (
+                  <>
+                    <div className="text-lg font-semibold leading-tight">AD-HOC WORKOUT</div>
+                    {session.name && <div className="text-lg font-medium leading-tight mt-0.5">{session.name}</div>}
+                  </>
+                )}
                 <div className="text-xs text-ink-dim mt-1">{formatLongDate(session.date)}</div>
               </div>
               {session.completed && (
@@ -147,7 +156,7 @@ export default function TodayPage() {
       <WorkoutPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onPick={async (entries) => {
+        onPick={async (entries, label) => {
           if (!user) return;
           const repo = getRepository();
           const date = todayIso();
@@ -155,18 +164,20 @@ export default function TodayPage() {
           const dow = new Date(date + 'T00:00:00').getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6;
           // Build / replace today's session with the chosen workout, then run
           // it via /today/workout (same flow as a scheduled day).
+          // Ad-hoc workouts are intentionally NOT attached to the active
+          // program's micro/meso/macro so the Today card renders them as
+          // standalone "Ad-Hoc Workout" instead of "Week 1 / Day N" of the
+          // program. resolveToday still picks the session up by date.
           const session: WorkoutSession = {
             id: existing?.id ?? ('workout-' + Math.random().toString(36).slice(2, 9)),
             userId: user.userId,
+            name: label,
             date,
             dayOfWeek: dow,
             completed: false,
             startedAt: new Date().toISOString(),
             exercises: entries,
             cardio: existing?.cardio ?? [],
-            microcycleId: today?.microcycle?.id,
-            mesocycleId: today?.mesocycle?.id,
-            macrocycleId: today?.macrocycle?.id,
           };
           await repo.upsertSession(session);
           setPickerOpen(false);

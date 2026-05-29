@@ -77,13 +77,15 @@ export default function TemplateDetailPage() {
       const session: WorkoutSession = {
         id: existing?.id ?? ('workout-' + Math.random().toString(36).slice(2, 9)),
         userId: user.userId,
+        name: template.name,
         date,
         dayOfWeek: dow,
         completed: false,
         startedAt: new Date().toISOString(),
         exercises: workoutEntries,
         cardio: existing?.cardio ?? [],
-        macrocycleId: activeMacro?.id,
+        // Intentionally no microcycleId/mesocycleId/macrocycleId — this is
+        // an ad-hoc workout, not a programmed day.
       };
       await repo.upsertSession(session);
       router.push('/today/workout');

@@ -8,6 +8,20 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.59.2 — 2026-05-26
+
+- Fix: picking an ad-hoc workout was attaching it to the active program's
+  micro/meso/macro ids, so Today rendered it as "WEEK 1 / Full Body / Block 1
+  / Thursday" — looked like a programmed day. Two parts:
+- (1) WorkoutSession gained optional name. The picker and the workout-template
+  detail page now save the chosen workout's name on the session and DON'T set
+  microcycleId / mesocycleId / macrocycleId. resolveToday still picks the
+  session up by date so /today/workout works the same.
+- (2) Today's session card branches on session.microcycleId. Programmed
+  sessions still show WEEK N DAY M + the mesocycle name. Ad-hoc sessions
+  show "AD-HOC WORKOUT" + the workout's name (e.g. "Push Day"), with the
+  exercise list and Continue/Start button identical to a programmed day.
+
 ## v0.59.1 — 2026-05-26
 
 - Fix: programs activated against the live Firebase backend appeared to
