@@ -8,6 +8,17 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.59.3 — 2026-05-26
+
+- Fix: Plan calendar was opening to the wrong week. When today's date didn't
+  fall inside any of the program's weeks (a fresh program whose week 1
+  starts a few days from now, or a paused program), the old fallback chose
+  the LAST week with sessions — so a brand-new 3-week program starting next
+  Monday opened to Week 3 (June 15-21) instead of Week 1.
+- Default-week selection is now: (1) the week containing today, else (2)
+  the active microcycle's weekNumber, else (3) the first week that has
+  sessions, else (4) Week 1.
+
 ## v0.59.2 — 2026-05-26
 
 - Fix: picking an ad-hoc workout was attaching it to the active program's

@@ -154,14 +154,22 @@ export function WeekCalendar(props: Props) {
     return null;
   }, [weekCount, todayIso, startOfWeekByWeek]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Where the calendar opens: the week containing today; failing that, the most
-  // recent week that has sessions; failing that, week 1.
+  // Where the calendar opens. Priority:
+  //   1) The week that contains today (program is mid-run).
+  //   2) The active micro's weekNumber (program is brand-new with a future
+  //      start, or paused — show the user the week they're "on").
+  //   3) The first week with sessions (program hasn't started yet).
+  //   4) Week 1.
+  // The previous fallback used the *last* week with sessions, which made
+  // a fresh program whose week 1 starts next Monday default to week 3.
   const defaultWeek = useMemo(() => {
     if (currentWeekNum != null) return currentWeekNum;
+    const activeMicro = sortedMicros.find((m) => m.status === 'active');
+    if (activeMicro) return Math.min(activeMicro.weekNumber, weekCount);
     const withSessions = [...startOfWeekByWeek.keys()].sort((a, b) => a - b);
-    if (withSessions.length) return Math.min(withSessions[withSessions.length - 1]!, weekCount);
+    if (withSessions.length) return Math.min(withSessions[0]!, weekCount);
     return 1;
-  }, [currentWeekNum, startOfWeekByWeek, weekCount]);
+  }, [currentWeekNum, sortedMicros, startOfWeekByWeek, weekCount]);
 
   const [viewWeek, setViewWeek] = useState(defaultWeek);
   // Until the user pages manually, keep snapping to the default ("this week").
