@@ -8,6 +8,22 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.60.0 — 2026-05-26
+
+- Plan page: two new program-management actions.
+- Restart from a new date. The Change sheet on the Plan page now has a
+  "Restart from a new date…" action. Pick a date in the sheet, and every
+  workout in the program shifts so the first one lands on that date
+  (delta-shift; preserves day-of-week pattern). All completion flags
+  clear, all micros reset, the first week becomes active. Use case: you
+  set up a program a couple days early, didn't actually start, and want
+  it to start fresh today.
+- Move a missed workout onto an off-day. When you tap any day in the
+  calendar's "Add to this day" sheet, it now shows a "Move a missed
+  workout here (N)" option whenever you have skipped sessions
+  (incomplete, date < today). Picking one shows the missed sessions and
+  tapping reassigns that session's date + dayOfWeek to the new day.
+
 ## v0.59.5 — 2026-05-26
 
 - Settings → ACCOUNT card refreshed. The stale dev-mode copy ("Auth comes
