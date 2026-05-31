@@ -31,9 +31,9 @@ interface Props {
    *    - "This week" / today highlights are suppressed
    *    - Future planned cells render as rest (the block isn't actually
    *      scheduling work anymore)
-   *    - Weeks entirely in the future show a "No active plan" placeholder
-   *      in place of the day grid, with the Week N of N header preserved
-   *      so the user knows which week they're paged to.
+   *    - For weeks entirely in the future, the "Week N of N" header swaps
+   *      to "No Active Plan" but the calendar grid still renders, naturally
+   *      showing all-rest cells so the user sees a real off-day schedule.
    *    - The default visible week is Week 1 (start of the archived block)
    *      instead of "today's week", which is meaningless for an old block.
    */
@@ -340,10 +340,11 @@ export function WeekCalendar(props: Props) {
   const startOfWeek = startOfWeekFor(week);
   const intensity = intensityLabel(mode, microByWeek.get(week)?.targetRIR);
   const isCurrentWeek = !!startOfWeek && todayIso >= startOfWeek && todayIso <= addDays(startOfWeek, 6);
-  // Only weeks that are *entirely* in the future trigger the placeholder.
-  // The current week (which contains some past days you can still page back
-  // through to inspect history) still renders the normal grid — past days
-  // show their actual data, future days within the week show as rest.
+  // Future weeks of a non-current block don't represent any real schedule —
+  // swap the "Week N of N" header out for a "No Active Plan" label. The grid
+  // still renders normally; because !isCurrent makes cellState fall through
+  // to 'rest' for empty days, the user sees a real off-day calendar instead
+  // of a placeholder card.
   const isFutureWeek = !!startOfWeek && startOfWeek > todayIso;
   const showNoPlan = !isCurrent && isFutureWeek;
 
@@ -361,11 +362,17 @@ export function WeekCalendar(props: Props) {
   return (
     <div>
       <div className="flex items-baseline gap-2 flex-wrap">
-        <span className="text-base font-semibold leading-none">Week {week} of {weekCount}</span>
-        {intensity && (
-          <span className="font-mono text-2xs uppercase tracking-wider2 text-ink-dim bg-bg-elev rounded px-1.5 py-0.5">
-            {intensity}
-          </span>
+        {showNoPlan ? (
+          <span className="text-base font-semibold leading-none">No Active Plan</span>
+        ) : (
+          <>
+            <span className="text-base font-semibold leading-none">Week {week} of {weekCount}</span>
+            {intensity && (
+              <span className="font-mono text-2xs uppercase tracking-wider2 text-ink-dim bg-bg-elev rounded px-1.5 py-0.5">
+                {intensity}
+              </span>
+            )}
+          </>
         )}
       </div>
       <div className="text-xs text-ink-mute tnum mt-0.5">
@@ -384,35 +391,25 @@ export function WeekCalendar(props: Props) {
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
 
-        {showNoPlan ? (
-          <div className="flex-1 min-w-0 rounded-lg border border-dashed border-ink-line bg-bg-input/40 px-3 py-6 text-center">
-            <div className="text-sm font-semibold text-ink">No active plan</div>
-            <p className="text-2xs text-ink-dim mt-1 leading-snug">
-              This block has ended. Start a new program from{' '}
-              <span className="text-ink">Plan → Templates</span>.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-7 gap-1 flex-1">
-            {dayLabels.map((label, col) => {
-              const dow = dowForCol(col);
-              const session = byDay[dow] ?? null;
-              const cellDate = startOfWeek ? addDays(startOfWeek, col) : null;
-              const isToday = cellDate === todayIso;
-              return (
-                <div key={col} className="flex flex-col min-w-0">
-                  <div className={cn('text-2xs text-center mb-1', isToday ? 'text-accent font-semibold' : 'text-ink-dim')}>
-                    {label}
-                  </div>
-                  {dayTile(week, col)}
-                  <div className={cn('text-2xs text-center mt-1 truncate', session ? 'text-ink-dim' : 'text-ink-mute')}>
-                    {caption(session, startOfWeek ? addDays(startOfWeek, col) : null, dow)}
-                  </div>
+        <div className="grid grid-cols-7 gap-1 flex-1">
+          {dayLabels.map((label, col) => {
+            const dow = dowForCol(col);
+            const session = byDay[dow] ?? null;
+            const cellDate = startOfWeek ? addDays(startOfWeek, col) : null;
+            const isToday = cellDate === todayIso;
+            return (
+              <div key={col} className="flex flex-col min-w-0">
+                <div className={cn('text-2xs text-center mb-1', isToday ? 'text-accent font-semibold' : 'text-ink-dim')}>
+                  {label}
                 </div>
-              );
-            })}
-          </div>
-        )}
+                {dayTile(week, col)}
+                <div className={cn('text-2xs text-center mt-1 truncate', session ? 'text-ink-dim' : 'text-ink-mute')}>
+                  {caption(session, startOfWeek ? addDays(startOfWeek, col) : null, dow)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
         <button
           type="button"

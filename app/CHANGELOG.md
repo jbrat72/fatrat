@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.60.9 — 2026-05-31
+
+- Inverted the archived-block "no plan" treatment: instead of replacing
+  the calendar with a placeholder card, the calendar always renders so
+  the user can see real off-days. For weeks entirely in the future of
+  a non-current block, the "Week N of N" header swaps to "No Active
+  Plan" while the grid below it shows all-rest cells (since cellState
+  already returns 'rest' for empty days on archived blocks).
+
 ## v0.60.8 — 2026-05-31
 
 - Refine archived-block calendar in History:
