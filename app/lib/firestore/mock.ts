@@ -198,6 +198,9 @@ export function mockRepository(): DataRepository {
       store().sessions[s.id] = clone(s); persist();
       return clone(s);
     },
+    async deleteSession(sessionId) {
+      delete store().sessions[sessionId]; persist();
+    },
     async getTodaySession(userId, isoDate) {
       const todays = Object.values(store().sessions).find(
         (s) => s.userId === userId && s.date === isoDate,

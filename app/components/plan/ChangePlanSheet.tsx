@@ -35,6 +35,14 @@ export function ChangePlanSheet({ open, macro, meso, micros, sessions, onClose, 
 
   const archiveCurrent = async () => {
     const repo = getRepository();
+    // Drop pending (un-logged) sessions so they don't show up as orphan
+    // workouts on Today after the plan is archived. Completed sessions
+    // stay for History.
+    for (const sn of sessions) {
+      if (!sn.completed) {
+        try { await repo.deleteSession(sn.id); } catch { /* keep going */ }
+      }
+    }
     await repo.upsertMacrocycle({ ...macro, status: 'archived' });
     await repo.upsertMesocycle({ ...meso, status: 'archived' });
   };

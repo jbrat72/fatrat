@@ -38,8 +38,15 @@ export async function resolveToday(
   const micros = meso ? await repo.listMicrocycles(meso.id) : [];
   const micro = micros.find((m) => m.status === 'active') ?? micros[micros.length - 1] ?? null;
 
+  // Only accept the date-matched session if it's ad-hoc (no macroId) or
+  // belongs to the user's currently active macro. A leftover programmed
+  // session from a cancelled plan is otherwise stale and shouldn't show.
   if (todaySession) {
-    return { macrocycle: macro, mesocycle: meso, microcycle: micro, session: todaySession, state: 'today' };
+    const linkedToProgram = todaySession.macrocycleId != null;
+    const matchesActive = linkedToProgram && macro && macro.id === todaySession.macrocycleId;
+    if (!linkedToProgram || matchesActive) {
+      return { macrocycle: macro, mesocycle: meso, microcycle: micro, session: todaySession, state: 'today' };
+    }
   }
 
   if (!micro) {

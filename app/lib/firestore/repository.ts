@@ -46,6 +46,8 @@ export interface DataRepository {
   listSessionsInMicrocycle(microId: string): Promise<WorkoutSession[]>;
   getSession(sessionId: string): Promise<WorkoutSession | null>;
   upsertSession(s: WorkoutSession): Promise<WorkoutSession>;
+  /** Hard-delete a session (used when cancelling a plan to clear pending sessions). */
+  deleteSession(sessionId: string): Promise<void>;
   /** Convenience: today's session for the active microcycle, or null. */
   getTodaySession(userId: string, isoDate: string): Promise<WorkoutSession | null>;
 

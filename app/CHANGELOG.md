@@ -8,6 +8,24 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.60.3 — 2026-05-26
+
+- Fix: Today showed a random workout for users with no active plan. Cause:
+  cancelling a plan only archived the macro/meso but left pending sessions
+  in Firestore. resolveToday found them by date and rendered them.
+- Two-part fix:
+- (1) resolveToday only accepts a date-matched session if it's ad-hoc
+  (no macrocycleId) OR its macrocycleId matches the currently active macro.
+  Stale sessions from cancelled programs are now ignored — defense in depth.
+- (2) ChangePlanSheet's Cancel and Cancel-and-switch actions now also delete
+  every pending (un-logged) session belonging to the macro being archived.
+  Completed sessions stay so History remains intact.
+- Added DataRepository.deleteSession and implementations in both the mock
+  and Firestore repos to support the cleanup.
+- Existing orphan sessions auto-clear: visit Today once on v0.60.3 — the
+  guard in resolveToday hides them. (They'll still live in Firestore until
+  you cancel/restart that plan again.)
+
 ## v0.60.2 — 2026-05-26
 
 - TemplateWizard's Modify Day modal: Core was missing from the "Add a

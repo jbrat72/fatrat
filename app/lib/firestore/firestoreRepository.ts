@@ -168,6 +168,11 @@ export function firestoreRepository(): DataRepository {
       await setDoc(subDoc(s.userId, 'sessions', s.id), stripUndefined(s));
       return s;
     },
+    async deleteSession(sessionId) {
+      const { deleteDoc } = await import('firebase/firestore');
+      const uid = currentUid();
+      await deleteDoc(subDoc(uid, 'sessions', sessionId));
+    },
     async getTodaySession(userId, isoDate) {
       const q = query(subCol(userId, 'sessions'), where('date', '==', isoDate), limitFn(1));
       const snap = await getDocs(q);
