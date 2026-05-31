@@ -28,7 +28,9 @@ interface Props {
   variant?: Variant;
   /** Is the block being viewed the user's currently active program?
    *  When false (e.g. an archived block in History), suppress
-   *  'This week' / today indicators so it doesn't look current. */
+   *  'This week' / today indicators, hide planned cells, and for the
+   *  current week + any future week show a "No active plan" placeholder
+   *  instead of the grid (the block has ended; nothing's scheduled). */
   isCurrent?: boolean;
 }
 
@@ -334,6 +336,13 @@ export function WeekCalendar(props: Props) {
   const startOfWeek = startOfWeekFor(week);
   const intensity = intensityLabel(mode, microByWeek.get(week)?.targetRIR);
   const isCurrentWeek = !!startOfWeek && todayIso >= startOfWeek && todayIso <= addDays(startOfWeek, 6);
+  const isFutureWeek = !!startOfWeek && startOfWeek > todayIso;
+
+  // On an archived/non-current block, the current week and any future weeks
+  // have no scheduled work — there's nothing to show. Drop the calendar grid
+  // for those weeks and tell the user plainly. Past weeks still render normally
+  // (they hold the actual completed/skipped history for the block).
+  const showNoPlan = !isCurrent && (isCurrentWeek || isFutureWeek);
 
   let rangeLabel = '';
   if (startOfWeek) {
@@ -345,6 +354,46 @@ export function WeekCalendar(props: Props) {
   }
 
   const byDay = weekByDay(week);
+
+  if (showNoPlan) {
+    return (
+      <div>
+        <div className="rounded-lg border border-dashed border-ink-line bg-bg-input/40 px-4 py-10 text-center">
+          <div className="text-base font-semibold text-ink">No active plan</div>
+          <p className="text-xs text-ink-dim mt-1.5 max-w-[18rem] mx-auto">
+            This block has ended. Start a new program from <span className="text-ink">Plan → Templates</span> to schedule
+            new workouts.
+          </p>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => goWeek(week - 1)}
+            disabled={week <= 1}
+            className="h-9 px-3 rounded-md border border-ink-line bg-bg-input text-ink-dim flex items-center gap-1.5 text-xs font-semibold transition hover:border-accent hover:text-accent disabled:opacity-30 disabled:pointer-events-none"
+            aria-label="Previous week"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            Prev
+          </button>
+          <span className="text-2xs uppercase tracking-wider2 text-ink-mute tnum">
+            Week {week} of {weekCount}
+          </span>
+          <button
+            type="button"
+            onClick={() => goWeek(week + 1)}
+            disabled={week >= weekCount}
+            className="h-9 px-3 rounded-md border border-ink-line bg-bg-input text-ink-dim flex items-center gap-1.5 text-xs font-semibold transition hover:border-accent hover:text-accent disabled:opacity-30 disabled:pointer-events-none"
+            aria-label="Next week"
+          >
+            Next
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

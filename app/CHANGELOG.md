@@ -8,6 +8,18 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.60.7 — 2026-05-31
+
+- Fix: History dropdown still showed current/future weeks of an archived
+  block as if they were a real schedule (empty Rest tiles with date numbers
+  and "Week N of N" header), which read as "this is your current plan".
+  When the viewed block isn't the user's active block:
+  - The current week and any future weeks now show a "No active plan"
+    placeholder instead of the calendar grid, with prev/next nav to step
+    back into the weeks that do have data.
+  - Past weeks still render normally so the actual completed/skipped
+    history remains visible.
+
 ## v0.60.6 — 2026-05-26
 
 - Fix: History showed future "Lift" / "Planned" cells on archived blocks —
