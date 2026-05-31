@@ -70,7 +70,7 @@ export function ExerciseCard({
               }
               return `${exercise.prescribedRepsLow ?? '?'}–${exercise.prescribedRepsHigh ?? '?'} reps`;
             })()}
-            {exercise.prescribedRIR != null && ` · ${exercise.prescribedRIR} RIR`}
+            {mode === 'ADVANCED' && exercise.prescribedRIR != null && ` · ${exercise.prescribedRIR} RIR`}
             {exercise.setStyle === 'pyramid' && ' · Pyramid'}
             {exercise.setStyle === 'drop' && ' · Drop sets'}
           </div>

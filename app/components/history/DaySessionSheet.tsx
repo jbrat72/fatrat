@@ -5,8 +5,8 @@ import { getRepository } from '@/lib/firestore';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
 import { PUMP_LABEL, VOLUME_LABEL, PAIN_LABEL } from '@/lib/ui/feedback';
 import { useUser } from '@/components/app';
-import { terminologyMode } from '@/lib/periodization';
-import type { WorkoutSession, UserMode, EffortRPE, SorenessRating } from '@/types';
+import { terminologyMode, effortShort } from '@/lib/periodization';
+import type { WorkoutSession, SorenessRating } from '@/types';
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -16,22 +16,6 @@ const SORENESS_LABEL: Record<SorenessRating, string> = {
   3: 'Healed just on time',
   4: 'Still sore',
 };
-
-function effortShort(mode: UserMode, rpe: EffortRPE): string {
-  if (mode === 'BASIC') {
-    if (rpe <= 6.5) return 'Easy';
-    if (rpe <= 8)   return 'Just right';
-    return 'Hard';
-  }
-  if (mode === 'INTERMEDIATE') {
-    if (rpe <= 6.5) return 'Smooth';
-    if (rpe <= 7.5) return 'Solid';
-    if (rpe <= 8.5) return 'Tough';
-    if (rpe <= 9.5) return 'Grinding';
-    return 'Failed';
-  }
-  return `RPE ${rpe}`;
-}
 
 interface Props {
   sessionId: string | null;

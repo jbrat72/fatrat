@@ -9,7 +9,7 @@ import { resolveToday } from '@/lib/session/resolveToday';
 import { hydrateFromHistory } from '@/lib/session/hydrateFromHistory';
 import { nudgeNextSet } from '@/lib/session/nextSetNudge';
 import { planAdvance } from '@/lib/session/advance';
-import { defaultRestSec, terminologyMode } from '@/lib/periodization';
+import { defaultRestSec, terminologyMode, isPeriodizedSession } from '@/lib/periodization';
 import type { WorkoutSession, SetEntry, ExerciseEntry, SessionFeedback, Mesocycle, Microcycle, ExerciseDefinition, MovementPattern, MuscleGroup, SorenessRating, MuscleSoreness } from '@/types';
 import { todayIso } from '@/lib/ui/date';
 
@@ -83,9 +83,9 @@ export default function WorkoutPage() {
   // that was trained in an earlier session, ask how sore it got.
   useEffect(() => {
     if (!session || sorenessMuscle) return;
-    // Soreness drives volume adjustments in the periodization model — Traditional
-    // programs don't use it, so we don't prompt for it there.
-    if (meso?.programStyle === 'traditional') return;
+    // Soreness drives volume adjustments in the periodization model — only
+    // periodized sessions (microcycleId + non-traditional meso) use it.
+    if (!isPeriodizedSession(session, meso)) return;
     const ex = session.exercises[activeExerciseIdx];
     if (!ex) return;
     const muscle = ex.muscle;
@@ -216,11 +216,11 @@ export default function WorkoutPage() {
     setSession(next); queueSave(next);
 
     // Per-muscle feedback: if this set finished the muscle group, ask for it.
-    // Pump/volume/pain feedback only drives the periodization model — Traditional
-    // programs don't use it, so we don't prompt for it there.
+    // Pump/volume/pain feedback only drives the periodization model — ad-hoc
+    // and traditional sessions don't use it, so we don't prompt for it there.
     const justMuscle = ex.muscle;
     if (
-      meso?.programStyle !== 'traditional' &&
+      isPeriodizedSession(next, meso) &&
       muscleFinished(next, justMuscle) &&
       !next.feedback?.perMuscle.some((p) => p.muscle === justMuscle) &&
       !feedbackAsked.has(justMuscle) &&
@@ -347,7 +347,7 @@ export default function WorkoutPage() {
   // finalize. If every worked muscle already has feedback, finalize straight.
   const requestFinish = () => {
     if (!session) return;
-    if (meso?.programStyle !== 'traditional' && musclesMissingFeedback(session).length > 0) {
+    if (isPeriodizedSession(session, meso) && musclesMissingFeedback(session).length > 0) {
       setFeedbackOpen(true);
     } else {
       finalizeWorkout(session.feedback ?? null);

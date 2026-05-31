@@ -11,7 +11,7 @@
  *
  * Pure functions — no React, no Firestore.
  */
-import type { UserMode } from '@/types';
+import type { UserMode, EffortRPE, WorkoutSession, Mesocycle } from '@/types';
 
 /** The slice of a profile these helpers need. */
 export interface TerminologyUser {
@@ -36,4 +36,49 @@ export function usesAdvancedTerminology(user: TerminologyUser): boolean {
 export function terminologyMode(user: TerminologyUser): UserMode {
   if (usesAdvancedTerminology(user)) return 'ADVANCED';
   return user.mode === 'ADVANCED' ? 'INTERMEDIATE' : user.mode;
+}
+
+/**
+ * True when a session participates in the periodization model — i.e. it
+ * belongs to an active mesocycle whose `programStyle` is not 'traditional'.
+ *
+ * Use this to gate periodization-only behavior: soreness check-in, per-muscle
+ * pump/volume/joint-pain feedback prompts, post-workout "tune the next session"
+ * copy, RIR/RPE prescription readouts, deload language, etc.
+ *
+ * Ad-hoc sessions (no microcycleId) and Traditional-style programs both read
+ * as `false`. Pass `null`/`undefined` for `meso` when one isn't loaded.
+ */
+export function isPeriodizedSession(
+  session: Pick<WorkoutSession, 'microcycleId'> | null | undefined,
+  meso: Pick<Mesocycle, 'programStyle'> | null | undefined,
+): boolean {
+  if (!session?.microcycleId) return false;
+  if (!meso) return false;
+  return meso.programStyle !== 'traditional';
+}
+
+/**
+ * Per-set effort label, terminology-aware.
+ *   BASIC        → Easy / Just right / Hard
+ *   INTERMEDIATE → Smooth / Solid / Tough / Grinding / Failed
+ *   ADVANCED     → `RPE X` (raw number)
+ *
+ * Single source of truth — used by the workout summary, the day-detail sheet,
+ * and anywhere else a logged RPE is rendered as words.
+ */
+export function effortShort(mode: UserMode, rpe: EffortRPE): string {
+  if (mode === 'BASIC') {
+    if (rpe <= 6.5) return 'Easy';
+    if (rpe <= 8)   return 'Just right';
+    return 'Hard';
+  }
+  if (mode === 'INTERMEDIATE') {
+    if (rpe <= 6.5) return 'Smooth';
+    if (rpe <= 7.5) return 'Solid';
+    if (rpe <= 8.5) return 'Tough';
+    if (rpe <= 9.5) return 'Grinding';
+    return 'Failed';
+  }
+  return `RPE ${rpe}`;
 }

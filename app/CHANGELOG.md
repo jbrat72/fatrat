@@ -8,6 +8,24 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.60.10 — 2026-05-31
+
+- B1 clarity audit — confined periodization vocabulary and prompts to
+  periodized sessions only. New `isPeriodizedSession(session, meso)`
+  helper in `lib/periodization/terminology.ts` returns true iff the
+  session has a `microcycleId` and the meso's `programStyle` isn't
+  `traditional`. The prior gates used `meso?.programStyle !== 'traditional'`,
+  which silently fired for ad-hoc workouts (no meso at all). Fixed
+  three sites in `today/workout/page.tsx` (soreness check-in, per-muscle
+  feedback mid-workout, finish-workout feedback prompt) plus the
+  post-workout summary's "Add feedback" card. Ad-hoc and Traditional
+  sessions no longer get periodization-only prompts.
+- Hid the ` · X RIR` readout on `ExerciseCard` unless the user reads as
+  ADVANCED — it was leaking jargon to BASIC/INTERMEDIATE.
+- Consolidated the duplicated `effortShort(mode, rpe)` function (workout
+  summary + day-session sheet) into `lib/periodization/terminology.ts`.
+  Single source of truth for the per-set effort label.
+
 ## v0.60.9 — 2026-05-31
 
 - Inverted the archived-block "no plan" treatment: instead of replacing

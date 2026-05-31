@@ -8,26 +8,10 @@ import { SessionFeedbackModal } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
 import { PUMP_LABEL, VOLUME_LABEL, PAIN_LABEL } from '@/lib/ui/feedback';
-import { terminologyMode } from '@/lib/periodization';
-import type { WorkoutSession, Mesocycle, Microcycle, SessionFeedback, UserMode, EffortRPE, MuscleGroup } from '@/types';
+import { terminologyMode, effortShort, isPeriodizedSession } from '@/lib/periodization';
+import type { WorkoutSession, Mesocycle, Microcycle, SessionFeedback, MuscleGroup } from '@/types';
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-
-function effortShort(mode: UserMode, rpe: EffortRPE): string {
-  if (mode === 'BASIC') {
-    if (rpe <= 6.5) return 'Easy';
-    if (rpe <= 8)   return 'Just right';
-    return 'Hard';
-  }
-  if (mode === 'INTERMEDIATE') {
-    if (rpe <= 6.5) return 'Smooth';
-    if (rpe <= 7.5) return 'Solid';
-    if (rpe <= 8.5) return 'Tough';
-    if (rpe <= 9.5) return 'Grinding';
-    return 'Failed';
-  }
-  return `RPE ${rpe}`;
-}
 
 export default function SessionSummaryPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -173,7 +157,7 @@ export default function SessionSummaryPage() {
           </ul>
         </Card>
 
-        {missingFeedback.length > 0 && (
+        {missingFeedback.length > 0 && isPeriodizedSession(session, meso) && (
           <Card className="border-accent/40">
             <div className="section-head mb-2 text-accent">FEEDBACK</div>
             <p className="text-sm text-ink-dim mb-3">
