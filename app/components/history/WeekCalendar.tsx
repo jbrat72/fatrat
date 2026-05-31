@@ -27,10 +27,16 @@ interface Props {
    */
   variant?: Variant;
   /** Is the block being viewed the user's currently active program?
-   *  When false (e.g. an archived block in History), suppress
-   *  'This week' / today indicators, hide planned cells, and for the
-   *  current week + any future week show a "No active plan" placeholder
-   *  instead of the grid (the block has ended; nothing's scheduled). */
+   *  When false (e.g. an archived block in History):
+   *    - "This week" / today highlights are suppressed
+   *    - Future planned cells render as rest (the block isn't actually
+   *      scheduling work anymore)
+   *    - Weeks entirely in the future show a "No active plan" placeholder
+   *      in place of the day grid, with the Week N of N header preserved
+   *      so the user knows which week they're paged to.
+   *    - The default visible week is Week 1 (start of the archived block)
+   *      instead of "today's week", which is meaningless for an old block.
+   */
   isCurrent?: boolean;
 }
 
@@ -160,22 +166,20 @@ export function WeekCalendar(props: Props) {
     return null;
   }, [weekCount, todayIso, startOfWeekByWeek]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Where the calendar opens. Priority:
-  //   1) The week that contains today (program is mid-run).
-  //   2) The active micro's weekNumber (program is brand-new with a future
-  //      start, or paused — show the user the week they're "on").
-  //   3) The first week with sessions (program hasn't started yet).
-  //   4) Week 1.
-  // The previous fallback used the *last* week with sessions, which made
-  // a fresh program whose week 1 starts next Monday default to week 3.
+  // Where the calendar opens.
+  //   - Current/active block: today's week → active micro → first-with-sessions → 1
+  //   - Archived block: Week 1 (start at the beginning so you can scroll
+  //     through the block's actual history; "today's week" is irrelevant
+  //     to a block that has ended)
   const defaultWeek = useMemo(() => {
+    if (!isCurrent) return 1;
     if (currentWeekNum != null) return currentWeekNum;
     const activeMicro = sortedMicros.find((m) => m.status === 'active');
     if (activeMicro) return Math.min(activeMicro.weekNumber, weekCount);
     const withSessions = [...startOfWeekByWeek.keys()].sort((a, b) => a - b);
     if (withSessions.length) return Math.min(withSessions[0]!, weekCount);
     return 1;
-  }, [currentWeekNum, sortedMicros, startOfWeekByWeek, weekCount]);
+  }, [isCurrent, currentWeekNum, sortedMicros, startOfWeekByWeek, weekCount]);
 
   const [viewWeek, setViewWeek] = useState(defaultWeek);
   // Until the user pages manually, keep snapping to the default ("this week").
@@ -336,13 +340,12 @@ export function WeekCalendar(props: Props) {
   const startOfWeek = startOfWeekFor(week);
   const intensity = intensityLabel(mode, microByWeek.get(week)?.targetRIR);
   const isCurrentWeek = !!startOfWeek && todayIso >= startOfWeek && todayIso <= addDays(startOfWeek, 6);
+  // Only weeks that are *entirely* in the future trigger the placeholder.
+  // The current week (which contains some past days you can still page back
+  // through to inspect history) still renders the normal grid — past days
+  // show their actual data, future days within the week show as rest.
   const isFutureWeek = !!startOfWeek && startOfWeek > todayIso;
-
-  // On an archived/non-current block, the current week and any future weeks
-  // have no scheduled work — there's nothing to show. Drop the calendar grid
-  // for those weeks and tell the user plainly. Past weeks still render normally
-  // (they hold the actual completed/skipped history for the block).
-  const showNoPlan = !isCurrent && (isCurrentWeek || isFutureWeek);
+  const showNoPlan = !isCurrent && isFutureWeek;
 
   let rangeLabel = '';
   if (startOfWeek) {
@@ -354,46 +357,6 @@ export function WeekCalendar(props: Props) {
   }
 
   const byDay = weekByDay(week);
-
-  if (showNoPlan) {
-    return (
-      <div>
-        <div className="rounded-lg border border-dashed border-ink-line bg-bg-input/40 px-4 py-10 text-center">
-          <div className="text-base font-semibold text-ink">No active plan</div>
-          <p className="text-xs text-ink-dim mt-1.5 max-w-[18rem] mx-auto">
-            This block has ended. Start a new program from <span className="text-ink">Plan → Templates</span> to schedule
-            new workouts.
-          </p>
-        </div>
-
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => goWeek(week - 1)}
-            disabled={week <= 1}
-            className="h-9 px-3 rounded-md border border-ink-line bg-bg-input text-ink-dim flex items-center gap-1.5 text-xs font-semibold transition hover:border-accent hover:text-accent disabled:opacity-30 disabled:pointer-events-none"
-            aria-label="Previous week"
-          >
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-            Prev
-          </button>
-          <span className="text-2xs uppercase tracking-wider2 text-ink-mute tnum">
-            Week {week} of {weekCount}
-          </span>
-          <button
-            type="button"
-            onClick={() => goWeek(week + 1)}
-            disabled={week >= weekCount}
-            className="h-9 px-3 rounded-md border border-ink-line bg-bg-input text-ink-dim flex items-center gap-1.5 text-xs font-semibold transition hover:border-accent hover:text-accent disabled:opacity-30 disabled:pointer-events-none"
-            aria-label="Next week"
-          >
-            Next
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -421,25 +384,35 @@ export function WeekCalendar(props: Props) {
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
 
-        <div className="grid grid-cols-7 gap-1 flex-1">
-          {dayLabels.map((label, col) => {
-            const dow = dowForCol(col);
-            const session = byDay[dow] ?? null;
-            const cellDate = startOfWeek ? addDays(startOfWeek, col) : null;
-            const isToday = cellDate === todayIso;
-            return (
-              <div key={col} className="flex flex-col min-w-0">
-                <div className={cn('text-2xs text-center mb-1', isToday ? 'text-accent font-semibold' : 'text-ink-dim')}>
-                  {label}
+        {showNoPlan ? (
+          <div className="flex-1 min-w-0 rounded-lg border border-dashed border-ink-line bg-bg-input/40 px-3 py-6 text-center">
+            <div className="text-sm font-semibold text-ink">No active plan</div>
+            <p className="text-2xs text-ink-dim mt-1 leading-snug">
+              This block has ended. Start a new program from{' '}
+              <span className="text-ink">Plan → Templates</span>.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-7 gap-1 flex-1">
+            {dayLabels.map((label, col) => {
+              const dow = dowForCol(col);
+              const session = byDay[dow] ?? null;
+              const cellDate = startOfWeek ? addDays(startOfWeek, col) : null;
+              const isToday = cellDate === todayIso;
+              return (
+                <div key={col} className="flex flex-col min-w-0">
+                  <div className={cn('text-2xs text-center mb-1', isToday ? 'text-accent font-semibold' : 'text-ink-dim')}>
+                    {label}
+                  </div>
+                  {dayTile(week, col)}
+                  <div className={cn('text-2xs text-center mt-1 truncate', session ? 'text-ink-dim' : 'text-ink-mute')}>
+                    {caption(session, startOfWeek ? addDays(startOfWeek, col) : null, dow)}
+                  </div>
                 </div>
-                {dayTile(week, col)}
-                <div className={cn('text-2xs text-center mt-1 truncate', session ? 'text-ink-dim' : 'text-ink-mute')}>
-                  {caption(session, startOfWeek ? addDays(startOfWeek, col) : null, dow)}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         <button
           type="button"

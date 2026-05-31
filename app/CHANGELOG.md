@@ -8,6 +8,20 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.60.8 — 2026-05-31
+
+- Refine archived-block calendar in History:
+  - "No active plan" placeholder now only shows for weeks **entirely** in
+    the future. The current week (which still contains past days worth
+    inspecting) renders the normal grid again — past days show their real
+    history, future days within the week render as rest.
+  - Week N of N header + date range stay visible above the placeholder so
+    you always know which week you're paged to.
+  - When the viewed block isn't the active one, the calendar defaults to
+    Week 1 of that block instead of "today's week" (which is meaningless
+    for an archived block). Combined with the existing `key=` remount,
+    switching blocks via the dropdown now lands you at Week 1 every time.
+
 ## v0.60.7 — 2026-05-31
 
 - Fix: History dropdown still showed current/future weeks of an archived
