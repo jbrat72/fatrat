@@ -5,6 +5,7 @@ import { useUser } from '@/components/app';
 import { PageTitle, Card, Button, ModeChip, MuscleBadge } from '@/components/ui';
 import { VolumeDashboard } from '@/components/plan/VolumeDashboard';
 import { TemplateWizard } from '@/components/plan/TemplateWizard';
+import { ChangePlanSheet } from '@/components/plan/ChangePlanSheet';
 import { WeekCalendar, CalendarLegend } from '@/components/history';
 import { CardioLogModal } from '@/components/today';
 import { AdHocWorkoutModal } from '@/components/workout';
@@ -63,9 +64,6 @@ export default function PlanPage() {
   const [adHocOpen, setAdHocOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [changeSheet, setChangeSheet] = useState(false);
-  const [restartSheet, setRestartSheet] = useState(false);
-  const [restartDate, setRestartDate] = useState(todayIso());
-  const [restartSaving, setRestartSaving] = useState(false);
   const [moveSheet, setMoveSheet] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const router = useRouter();
@@ -92,48 +90,6 @@ export default function PlanPage() {
     };
     load();
   }, [user, refreshTick]);
-
-  // Restart: shift every session forward/backward so its date lines up with
-  // the new program start. Logged completion is wiped — caller picks a fresh
-  // start date and treats the program as if it's day 1 again.
-  const doRestart = async () => {
-    if (!user || !macro || !meso || sessions.length === 0 || restartSaving) return;
-    setRestartSaving(true);
-    try {
-      const repo = getRepository();
-      const dayMs = 24 * 60 * 60 * 1000;
-      const sortedByDate = [...sessions].sort((a, b) => a.date.localeCompare(b.date));
-      const oldFirst = sortedByDate[0]!.date;
-      const newFirst = restartDate;
-      const delta = Math.round(
-        (new Date(newFirst + 'T00:00:00').getTime() - new Date(oldFirst + 'T00:00:00').getTime()) / dayMs,
-      );
-      for (const sn of sessions) {
-        const d = new Date(sn.date + 'T00:00:00');
-        d.setDate(d.getDate() + delta);
-        const newIso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const newDow = d.getDay() as 0|1|2|3|4|5|6;
-        await repo.upsertSession({
-          ...sn,
-          date: newIso,
-          dayOfWeek: newDow,
-          completed: false,
-          startedAt: undefined,
-          completedAt: undefined,
-        });
-      }
-      const sortedMicros = [...micros].sort((a, b) => a.weekNumber - b.weekNumber);
-      for (let i = 0; i < sortedMicros.length; i++) {
-        await repo.upsertMicrocycle({ ...sortedMicros[i]!, status: i === 0 ? 'active' : 'draft' });
-      }
-      await repo.upsertMesocycle({ ...meso, weekIndex: 0, status: 'active' });
-      await repo.upsertMacrocycle({ ...macro, startDate: newFirst });
-      setRestartSheet(false);
-      setRefreshTick((n) => n + 1);
-    } finally {
-      setRestartSaving(false);
-    }
-  };
 
   // Reschedule a missed session onto a different (usually empty) date —
   // updates the session's date + dayOfWeek in place.
@@ -318,70 +274,16 @@ export default function PlanPage() {
         </div>
       </div>
 
-      {/* ----- Change training plan sheet ----- */}
-      {changeSheet && (
-        <div className="fixed inset-0 z-40 bg-black/60 flex items-end" onClick={() => setChangeSheet(false)}>
-          <div className="mx-auto max-w-md w-full bg-bg-card rounded-t-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="px-4 py-3 border-b border-ink-line flex items-center justify-between">
-              <div className="min-w-0">
-                <div className="section-head">CHANGE TRAINING PLAN</div>
-                <div className="text-sm font-medium truncate mt-0.5">{macro.name}</div>
-              </div>
-              <button type="button" onClick={() => setChangeSheet(false)} className="w-9 h-9 rounded-md border border-ink-line text-ink-dim hover:text-ink" aria-label="Close">{'✕'}</button>
-            </div>
-            <div className="px-4 py-4 space-y-2 pb-8">
-              <Button block size="lg" onClick={() => { setChangeSheet(false); router.push(`/plan/meso/${meso.id}`); }}>
-                Explore current plan
-              </Button>
-              <Button block variant="ghost" size="lg" onClick={() => { setChangeSheet(false); router.push('/plan/templates'); }}>
-                Switch to another program
-              </Button>
-              <Button block variant="ghost" size="lg" onClick={() => { setChangeSheet(false); setWizardOpen(true); }}>
-                Build a custom plan
-              </Button>
-              <Button block variant="ghost" size="lg" onClick={() => { setChangeSheet(false); setRestartDate(todayIso()); setRestartSheet(true); }}>
-                Restart from a new date…
-              </Button>
-              <p className="text-xs text-ink-mute text-center pt-2">
-                Switching or building starts a fresh training plan. Restart keeps the same program but moves it to a new start date and clears logged work.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <ChangePlanSheet
+        open={changeSheet}
+        macro={macro}
+        meso={meso}
+        micros={micros}
+        sessions={sessions}
+        onClose={() => setChangeSheet(false)}
+        onChanged={() => setRefreshTick((n) => n + 1)}
+      />
 
-      {restartSheet && (
-        <div className="fixed inset-0 z-40 bg-black/60 flex items-end" onClick={() => { if (!restartSaving) setRestartSheet(false); }}>
-          <div className="mx-auto max-w-md w-full bg-bg-card rounded-t-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="px-4 py-3 border-b border-ink-line flex items-center justify-between">
-              <div className="section-head">RESTART PROGRAM</div>
-              <button type="button" onClick={() => setRestartSheet(false)} disabled={restartSaving} className="w-9 h-9 rounded-md border border-ink-line text-ink-dim hover:text-ink disabled:opacity-40" aria-label="Close">✕</button>
-            </div>
-            <div className="px-4 py-4 space-y-3 pb-8">
-              <p className="text-sm text-ink-dim">
-                Pick a new start date. Every workout in this program will shift so the first one
-                lands on the date you choose, and any logged sets get cleared. Use this if you
-                set up the program early and want to restart on the day you actually begin.
-              </p>
-              <label className="block">
-                <span className="section-head mb-1 block">New start date</span>
-                <input
-                  type="date"
-                  value={restartDate}
-                  onChange={(e) => setRestartDate(e.target.value)}
-                  className="w-full h-11 px-3 rounded-lg bg-bg-input border border-ink-line text-ink text-sm font-medium"
-                />
-              </label>
-              <div className="flex gap-2 pt-1">
-                <Button variant="ghost" block onClick={() => setRestartSheet(false)} disabled={restartSaving}>Cancel</Button>
-                <Button variant="danger" block onClick={doRestart} disabled={restartSaving || !restartDate}>
-                  {restartSaving ? 'Restarting…' : 'Restart program'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {addDay && !cardioOpen && !adHocOpen && !moveSheet && (
         <div className="fixed inset-0 z-40 bg-black/60 flex items-end" onClick={() => setAddDay(null)}>

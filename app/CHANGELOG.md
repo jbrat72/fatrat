@@ -8,6 +8,24 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.60.1 — 2026-05-26
+
+- Change Training Plan sheet restructured. Dropped "Explore current plan"
+  and "Build a custom plan" (the Switch path leads to Templates, which now
+  has its own Create Custom flows for both programs and single workouts).
+  The sheet now offers three actions, in order:
+    1. Cancel this plan (danger) — archives the active macro + meso
+    2. Restart from a new date… — the existing shift-dates flow
+    3. Cancel and switch plans — archive + route to /plan/templates
+  Logic extracted into a new ChangePlanSheet component shared by /plan and
+  the meso detail page.
+- Today's programmed session card now shows an "Open" button at the top
+  right (in line with WEEK n DAY n) that routes to /plan/meso/{mesoId}.
+  Ad-hoc workouts (no microcycleId) get no Open button — they don't have
+  a program to open.
+- /plan/meso/[mesoId] gains a "Change" button next to its "< Plan" back
+  button at the top, opening the same ChangePlanSheet.
+
 ## v0.60.0 — 2026-05-26
 
 - Plan page: two new program-management actions.

@@ -95,7 +95,7 @@ export default function TodayPage() {
         {session && (
           <Card>
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 {session.microcycleId ? (
                   <>
                     <div className="text-lg font-semibold leading-tight">
@@ -112,6 +112,11 @@ export default function TodayPage() {
                 )}
                 <div className="text-xs text-ink-dim mt-1">{formatLongDate(session.date)}</div>
               </div>
+              {session.microcycleId && meso?.id && (
+                <Link href={`/plan/meso/${meso.id}`} className="shrink-0">
+                  <Button variant="ghost" size="sm">Open</Button>
+                </Link>
+              )}
               {session.completed && (
                 <div className="shrink-0">
                   <span className="inline-flex items-center gap-1.5 text-ok text-[11px] tracking-wider2 font-semibold uppercase">
