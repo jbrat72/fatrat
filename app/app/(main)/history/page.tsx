@@ -207,6 +207,7 @@ export default function HistoryPage() {
           <WeekCalendar
             key={selectedMesoId ?? 'none'}
             micros={micros}
+            isCurrent={selectedMesoId === currentMesoId && currentMesoId != null}
             sessions={sessions}
             todayIso={todayIso()}
             mode={terminologyMode(user)}

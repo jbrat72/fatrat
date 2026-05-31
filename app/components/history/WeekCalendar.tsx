@@ -26,6 +26,10 @@ interface Props {
    * 'expandable' — one week with a toggle that expands to the whole plan.
    */
   variant?: Variant;
+  /** Is the block being viewed the user's currently active program?
+   *  When false (e.g. an archived block in History), suppress
+   *  'This week' / today indicators so it doesn't look current. */
+  isCurrent?: boolean;
 }
 
 const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -66,7 +70,7 @@ function intensityLabel(mode: UserMode, rir: number | undefined): string | null 
 type CellState = 'completed' | 'skipped' | 'planned' | 'rest';
 
 export function WeekCalendar(props: Props) {
-  const { micros, sessions, todayIso, mode, totalWeeks, onSelectSession, onSelectDay } = props;
+  const { micros, sessions, todayIso, mode, totalWeeks, onSelectSession, onSelectDay, isCurrent = true } = props;
   const variant: Variant = props.variant ?? 'paged';
   // Normalised week-start weekday (0–6); defaults to Monday.
   const weekStartsOn = (((props.weekStartsOn ?? 1) % 7) + 7) % 7;
@@ -343,7 +347,7 @@ export function WeekCalendar(props: Props) {
       </div>
       <div className="text-xs text-ink-mute tnum mt-0.5">
         {rangeLabel || 'No dates for this week'}
-        {isCurrentWeek && <span className="text-accent"> · This week</span>}
+        {isCurrent && isCurrentWeek && <span className="text-accent"> · This week</span>}
       </div>
 
       <div className="flex items-center gap-1.5 mt-3">

@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.60.5 — 2026-05-26
+
+- Fix: History's WeekCalendar still showed the "· This week" badge on
+  archived blocks when today's date happened to fall inside the visible
+  week's range. WeekCalendar gained an isCurrent prop (defaults true so
+  the Plan page is unchanged); History passes false unless the meso being
+  viewed is the user's currentMesoId. Archived blocks no longer get the
+  "This week" indicator.
+
 ## v0.60.4 — 2026-05-26
 
 - Fix: after cancelling a plan, History still labeled the archived meso as
