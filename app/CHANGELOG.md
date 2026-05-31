@@ -8,6 +8,16 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.60.4 — 2026-05-26
+
+- Fix: after cancelling a plan, History still labeled the archived meso as
+  "· current". Cause: the currentMesoId resolution chain ended with
+  `?? flat[0]`, so when there was no active macro and no active meso, it
+  defaulted to whatever meso happened to be first. Removed the flat[0]
+  fallback for currentMesoId (now null when nothing is active). The
+  initial-selection logic for the History dropdown still falls back so the
+  page renders something useful when there's no active plan.
+
 ## v0.60.3 — 2026-05-26
 
 - Fix: Today showed a random workout for users with no active plan. Cause:

@@ -72,14 +72,20 @@ export default function HistoryPage() {
       // Exactly one block is "current": the active mesocycle inside the active
       // macrocycle. A program can carry stale 'active' mesos in archived
       // macros, so we resolve through the active macro rather than trusting
-      // status alone — only this one is ever labelled "current".
+      // status alone — only this one is ever labelled "current". When neither
+      // resolves, currentMesoId stays null — we don't fall back to "whatever
+      // meso happens to be first", which would mislabel an archived plan as
+      // the current one after the user cancelled their program.
       const activeMacroIdx = macros.findIndex((m) => m.status === 'active');
       const current =
         (activeMacroIdx >= 0 ? mesosArr[activeMacroIdx]?.find((m) => m.status === 'active') : undefined)
         ?? flat.find((m) => m.status === 'active')
-        ?? flat[0];
+        ?? null;
       setCurrentMesoId(current?.id ?? null);
-      if (current && !selectedMesoId) setSelectedMesoId(current.id);
+      // For initial selection, fall back to the most recent meso so the
+      // History dropdown still defaults to something useful when there's no
+      // active plan.
+      if (!selectedMesoId) setSelectedMesoId((current ?? flat[0])?.id ?? null);
     };
     load();
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
