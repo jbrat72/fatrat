@@ -7,7 +7,7 @@
  */
 import type {
   MuscleGroup, ExerciseDefinition, EquipmentAccess, EquipmentType,
-  Macrocycle, Mesocycle, Microcycle, WorkoutSession, ExerciseEntry, SetEntry, SplitType, SetStyle,
+  Mesocycle, Microcycle, WorkoutSession, ExerciseEntry, SetEntry, SplitType, SetStyle,
   ProgramTemplate, TemplateWeek, TemplateExerciseSlot,
 } from '@/types';
 import { DEFAULT_LANDMARKS, type VolumeLandmarks } from '@/lib/periodization';
@@ -216,7 +216,6 @@ export interface CustomProgramInput {
 }
 
 export interface GeneratedProgram {
-  macrocycle: Macrocycle;
   mesocycle: Mesocycle;
   microcycles: Microcycle[];
   sessions: WorkoutSession[];
@@ -287,7 +286,6 @@ function materializeWeeks(input: CustomProgramInput): WeekMaterial[] {
 export function generateCustomProgram(input: CustomProgramInput): GeneratedProgram {
   const material = materializeWeeks(input);
   const periodized = input.programStyle !== 'traditional';
-  const macroId = uid('macro');
   const mesoId = uid('meso');
   const microcycles: Microcycle[] = [];
   const sessions: WorkoutSession[] = [];
@@ -388,7 +386,6 @@ export function generateCustomProgram(input: CustomProgramInput): GeneratedProgr
         userId: input.userId,
         microcycleId: microId,
         mesocycleId: mesoId,
-        macrocycleId: macroId,
         date: isoDate,
         dayOfWeek,
         completed: false,
@@ -413,9 +410,10 @@ export function generateCustomProgram(input: CustomProgramInput): GeneratedProgr
   const name = input.name.trim() || 'Custom program';
   const mesocycle: Mesocycle = {
     id: mesoId,
-    macrocycleId: macroId,
     userId: input.userId,
-    name: `${name} — Block 1`,
+    name,
+    goal: input.goal,
+    startDate: input.startDate,
     phaseType: 'hypertrophy',
     weeks: input.weeks,
     progressionScheme: periodized ? 'rir-based' : 'linear',
@@ -429,17 +427,8 @@ export function generateCustomProgram(input: CustomProgramInput): GeneratedProgr
     microcycleIds: microcycles.map((m) => m.id),
     muscleTiers: input.tiers,
   };
-  const macrocycle: Macrocycle = {
-    id: macroId,
-    userId: input.userId,
-    name,
-    goal: input.goal,
-    startDate: input.startDate,
-    status: 'active',
-    mesocycleIds: [mesoId],
-  };
 
-  return { macrocycle, mesocycle, microcycles, sessions };
+  return { mesocycle, microcycles, sessions };
 }
 
 /**

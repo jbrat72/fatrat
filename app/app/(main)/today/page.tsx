@@ -155,7 +155,6 @@ export default function TodayPage() {
         onSaved={() => setRefreshTick((n) => n + 1)}
         microcycleId={today?.microcycle?.id}
         mesocycleId={today?.mesocycle?.id}
-        macrocycleId={today?.macrocycle?.id}
       />
 
       <WorkoutPicker

@@ -35,7 +35,7 @@ describe('generateProgram', () => {
     });
     expect(out.microcycles).toHaveLength(4);
     expect(out.sessions).toHaveLength(12);
-    expect(out.macrocycle.status).toBe('active');
+    expect(out.mesocycle.status).toBe('active');
     expect(out.mesocycle.weeks).toBe(4);
   });
 

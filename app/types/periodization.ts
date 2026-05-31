@@ -1,5 +1,10 @@
 /**
- * Periodization hierarchy: Macrocycle -> Mesocycle -> Microcycle.
+ * Training-plan hierarchy: Mesocycle (training block) -> Microcycle (week).
+ *
+ * The `Macrocycle` wrapper was retired in v0.61 — every plan is now a single
+ * mesocycle, and the fields the UI used to read off macros (name, goal,
+ * startDate, targetDate, status) live directly on Mesocycle.
+ *
  * All effort always stored as RPE 1-10 internally regardless of mode.
  */
 import type { MuscleGroup } from './exercise';
@@ -29,22 +34,17 @@ export type SplitType =
 
 export type CycleStatus = 'active' | 'completed' | 'draft' | 'archived';
 
-export interface Macrocycle {
-  id: string;
-  userId: string;
-  name: string;
-  goal: string;             // e.g., "Off-season Hypertrophy"
-  startDate: string;        // ISO
-  targetDate?: string;      // ISO
-  status: CycleStatus;
-  mesocycleIds: string[];   // ordered
-}
-
 export interface Mesocycle {
   id: string;
-  macrocycleId: string;
   userId: string;
+  /** User-facing plan name (e.g. "Push/Pull/Legs"). */
   name: string;
+  /** Free-form training goal (e.g. "Off-season Hypertrophy"). Was Macrocycle.goal. */
+  goal: string;
+  /** ISO date the plan starts. Was Macrocycle.startDate. */
+  startDate: string;
+  /** Optional ISO target/completion date. Was Macrocycle.targetDate. */
+  targetDate?: string;
   phaseType: MesocyclePhaseType;
   weeks: number;             // typically 4-6
   progressionScheme: ProgressionScheme;

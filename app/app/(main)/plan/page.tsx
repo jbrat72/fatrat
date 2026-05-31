@@ -14,9 +14,9 @@ import { getRepository } from '@/lib/firestore';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
 import { todayIso } from '@/lib/ui/date';
 import { cn } from '@/lib/ui/cn';
-import { terminologyMode } from '@/lib/periodization';
+import { terminologyMode, effortShort } from '@/lib/periodization';
 import type {
-  Macrocycle, Mesocycle, Microcycle, WorkoutSession, UserMode, EffortRPE,
+  Mesocycle, Microcycle, WorkoutSession, UserMode,
 } from '@/types';
 
 const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -29,22 +29,6 @@ function intensityFromRIR(rir: number | undefined): string | null {
   return 'Peak';
 }
 
-function effortShort(mode: UserMode, rpe: EffortRPE): string {
-  if (mode === 'BASIC') {
-    if (rpe <= 6.5) return 'Easy';
-    if (rpe <= 8) return 'Just right';
-    return 'Hard';
-  }
-  if (mode === 'INTERMEDIATE') {
-    if (rpe <= 6.5) return 'Smooth';
-    if (rpe <= 7.5) return 'Solid';
-    if (rpe <= 8.5) return 'Tough';
-    if (rpe <= 9.5) return 'Grinding';
-    return 'Failed';
-  }
-  return `RPE ${rpe}`;
-}
-
 interface AddDayInfo {
   date: string;
   weekNumber: number;
@@ -53,7 +37,6 @@ interface AddDayInfo {
 
 export default function PlanPage() {
   const { user } = useUser();
-  const [macro, setMacro] = useState<Macrocycle | null>(null);
   const [meso, setMeso] = useState<Mesocycle | null>(null);
   const [micros, setMicros] = useState<Microcycle[]>([]);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
@@ -72,21 +55,16 @@ export default function PlanPage() {
     if (!user) return;
     const load = async () => {
       const repo = getRepository();
-      const m = await repo.getActiveMacrocycle(user.userId);
-      setMacro(m);
-      if (!m) { setMeso(null); setMicros([]); setSessions([]); return; }
-      const mesos = await repo.listMesocycles(m.id);
-      const active = mesos.find((x) => x.status === 'active') ?? mesos[0] ?? null;
+      const active = await repo.getActivePlan(user.userId);
       setMeso(active);
-      if (active) {
-        const ms = await repo.listMicrocycles(active.id);
-        ms.sort((a, b) => a.weekNumber - b.weekNumber);
-        setMicros(ms);
-        const ssArr = await Promise.all(ms.map((mi) => repo.listSessionsInMicrocycle(mi.id)));
-        setSessions(ssArr.flat());
-        const cur = ms.find((mi) => mi.status === 'active') ?? ms[0];
-        if (cur) setExpandedWeek(cur.id);
-      }
+      if (!active) { setMicros([]); setSessions([]); return; }
+      const ms = await repo.listMicrocycles(active.id);
+      ms.sort((a, b) => a.weekNumber - b.weekNumber);
+      setMicros(ms);
+      const ssArr = await Promise.all(ms.map((mi) => repo.listSessionsInMicrocycle(mi.id)));
+      setSessions(ssArr.flat());
+      const cur = ms.find((mi) => mi.status === 'active') ?? ms[0];
+      if (cur) setExpandedWeek(cur.id);
     };
     load();
   }, [user, refreshTick]);
@@ -106,7 +84,7 @@ export default function PlanPage() {
 
   if (!user) return null;
 
-  if (!macro || !meso) {
+  if (!meso) {
     return (
       <div>
         <PageTitle title="Plan" />
@@ -161,7 +139,7 @@ export default function PlanPage() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="section-head">CURRENT TRAINING PLAN</div>
-              <div className="text-lg font-medium truncate mt-0.5">{macro.name}</div>
+              <div className="text-lg font-medium truncate mt-0.5">{meso.name}</div>
               <div className="text-xs text-ink-dim mt-1 tnum">
                 Week {currentWk} of {totalWk}
                 {totalDays > 0 && <> {'·'} Day {dayNum} of {totalDays}</>}
@@ -177,7 +155,7 @@ export default function PlanPage() {
         <Card>
           <div className="section-head mb-3">TRAINING WEEKS</div>
           <WeekCalendar
-            key={macro.id}
+            key={meso.id}
             variant="expandable"
             micros={micros}
             sessions={sessions}
@@ -276,7 +254,6 @@ export default function PlanPage() {
 
       <ChangePlanSheet
         open={changeSheet}
-        macro={macro}
         meso={meso}
         micros={micros}
         sessions={sessions}
@@ -374,7 +351,6 @@ export default function PlanPage() {
           dateOverride={addDay.date}
           microcycleId={micros.find((m) => m.weekNumber === addDay.weekNumber)?.id}
           mesocycleId={meso.id}
-          macrocycleId={macro.id}
         />
       )}
 
@@ -386,7 +362,6 @@ export default function PlanPage() {
           onSaved={() => { setRefreshTick((n) => n + 1); setAddDay(null); setAdHocOpen(false); }}
           microcycleId={micros.find((m) => m.weekNumber === addDay.weekNumber)?.id}
           mesocycleId={meso.id}
-          macrocycleId={macro.id}
         />
       )}
 

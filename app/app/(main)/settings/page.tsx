@@ -51,20 +51,17 @@ export default function SettingsPage() {
   const doExport = async (fmt: 'json' | 'csv') => {
     setExporting(true);
     const repo = getRepository();
-    const [profile, macrocycles, sessions, bodyWeight] = await Promise.all([
+    const [profile, allMesos, sessions, bodyWeight] = await Promise.all([
       repo.getProfile(user.userId),
-      repo.listMacrocycles(user.userId),
+      repo.listMesocycles(user.userId),
       repo.listSessions(user.userId, { limit: 1000 }),
       repo.listBodyWeight(user.userId),
     ]);
-    const mesocyclePromises = macrocycles.map((m) => repo.listMesocycles(m.id));
-    const allMesos = (await Promise.all(mesocyclePromises)).flat();
     const microPromises = allMesos.map((m) => repo.listMicrocycles(m.id));
     const allMicros = (await Promise.all(microPromises)).flat();
 
     const bundle: ExportBundle = {
       profile: profile!,
-      macrocycles,
       mesocycles: allMesos,
       microcycles: allMicros,
       sessions,

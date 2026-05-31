@@ -109,7 +109,6 @@ export interface WorkoutSession {
   name?: string;
   microcycleId?: string;
   mesocycleId?: string;
-  macrocycleId?: string;
   date: string;            // ISO YYYY-MM-DD
   dayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = Sunday
   completed: boolean;

@@ -6,7 +6,7 @@ import { useUser } from '@/components/app';
 import { Button, Card, MuscleBadge, ModeChip, PageTitle, BackButton } from '@/components/ui';
 import { getRepository } from '@/lib/firestore';
 import { terminologyMode, usesAdvancedTerminology } from '@/lib/periodization';
-import type { Mesocycle, Microcycle, WorkoutSession, Macrocycle } from '@/types';
+import type { Mesocycle, Microcycle, WorkoutSession } from '@/types';
 import { ChangePlanSheet } from '@/components/plan/ChangePlanSheet';
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -18,7 +18,6 @@ export default function MesoDetailPage() {
   const [meso, setMeso] = useState<Mesocycle | null>(null);
   const [micros, setMicros] = useState<Microcycle[]>([]);
   const [sessionsByMicro, setSessionsByMicro] = useState<Record<string, WorkoutSession[]>>({});
-  const [macro, setMacro] = useState<Macrocycle | null>(null);
   const [changeOpen, setChangeOpen] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
 
@@ -29,8 +28,6 @@ export default function MesoDetailPage() {
       const m = await repo.getMesocycle(mesoId);
       setMeso(m);
       if (!m) return;
-      const macroDoc = await repo.getActiveMacrocycle(user.userId);
-      setMacro(macroDoc);
       const ms = await repo.listMicrocycles(m.id);
       setMicros(ms.sort((a, b) => a.weekNumber - b.weekNumber));
       const byMicro: Record<string, WorkoutSession[]> = {};
@@ -50,9 +47,7 @@ export default function MesoDetailPage() {
     <div>
       <div className="px-4 pt-4 flex items-center justify-between">
         <BackButton href="/plan" label="Plan" />
-        {macro && (
-          <Button variant="ghost" size="sm" onClick={() => setChangeOpen(true)}>Change</Button>
-        )}
+        <Button variant="ghost" size="sm" onClick={() => setChangeOpen(true)}>Change</Button>
       </div>
       <PageTitle title={meso.name} subtitle={meso.programStyle === 'traditional' ? `${meso.weeks}-week program` : `${meso.weeks}-week block · ${meso.phaseType}`} trailing={<ModeChip mode={user.mode} />} />
       <div className="px-4 space-y-3">
@@ -108,17 +103,14 @@ export default function MesoDetailPage() {
           <Button variant="ghost" onClick={() => router.push('/plan')}>← Back to Plan</Button>
         </div>
       </div>
-      {macro && meso && (
-        <ChangePlanSheet
-          open={changeOpen}
-          macro={macro}
-          meso={meso}
-          micros={micros}
-          sessions={Object.values(sessionsByMicro).flat()}
-          onClose={() => setChangeOpen(false)}
-          onChanged={() => setRefreshTick((n) => n + 1)}
-        />
-      )}
+      <ChangePlanSheet
+        open={changeOpen}
+        meso={meso}
+        micros={micros}
+        sessions={Object.values(sessionsByMicro).flat()}
+        onClose={() => setChangeOpen(false)}
+        onChanged={() => setRefreshTick((n) => n + 1)}
+      />
     </div>
   );
 }

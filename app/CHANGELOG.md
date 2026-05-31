@@ -8,6 +8,30 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.61.0 — 2026-05-31
+
+- B2 clarity audit — retired `Macrocycle` from the data model. The macro
+  wrapper was 1:1 with the meso since v0.22.0 and had become dead weight.
+  Promoted the fields the UI actually read (`name`, `goal`, `startDate`,
+  `targetDate`) directly onto `Mesocycle`. Dropped `Mesocycle.macrocycleId`
+  and `WorkoutSession.macrocycleId`. Sessions now reference meso/micro only.
+- New repository surface: `listMesocycles(userId)` and `getActivePlan(userId)`
+  replace `listMacrocycles` / `getActiveMacrocycle` / `listMesocycles(macroId)`.
+  Both repository impls (mock + firestore) updated. `ChangePlanSheet`,
+  `resolveToday`, `TemplateWizard`, `OnboardingWizard`, the Today, Plan,
+  History, Settings, plan/meso, plan/templates pages, plus the cardio/ad-hoc
+  modals all stop fetching or passing macrocycle data.
+- One-shot Firestore migration (`migrateMacrocyclesForUser`) runs on first
+  sign-in: copies each `users/{uid}/macrocycles/*`'s name/goal/startDate/
+  targetDate onto the matching meso, strips `macrocycleId` from every session,
+  sets `profile.migratedMacroDrop` so it never runs twice. The orphan
+  `macrocycles` subcollection is left in place; delete in the console after
+  migration. Mock-mode bumps `STORAGE_KEY` to `fatrat:mock:v5` to re-seed
+  cleanly — no localStorage migration needed in dev.
+- Consolidated the third copy of `effortShort(mode, rpe)` (Plan page) into
+  `lib/periodization/terminology.ts`. All three call sites now share one
+  implementation.
+
 ## v0.60.10 — 2026-05-31
 
 - B1 clarity audit — confined periodization vocabulary and prompts to

@@ -1,6 +1,6 @@
 /**
  * Program generator — turns a ProgramTemplate into a full set of records
- * (Macrocycle, Mesocycle, Microcycles, WorkoutSessions) for a user.
+ * (Mesocycle, Microcycles, WorkoutSessions) for a user.
  *
  * Pure function. Caller is responsible for persisting the result via the
  * DataRepository.
@@ -8,7 +8,6 @@
 import type {
   ProgramTemplate,
   UserProfile,
-  Macrocycle,
   Mesocycle,
   Microcycle,
   WorkoutSession,
@@ -42,7 +41,6 @@ export interface GenerateInput {
 }
 
 export interface GenerateOutput {
-  macrocycle: Macrocycle;
   mesocycle: Mesocycle;
   microcycles: Microcycle[];
   sessions: WorkoutSession[];
@@ -207,7 +205,6 @@ export function generateProgram(input: GenerateInput): GenerateOutput {
     return days;
   };
 
-  const macroId = uid('macro');
   const mesoId  = uid('meso');
 
   const microcycles: Microcycle[] = [];
@@ -272,7 +269,6 @@ export function generateProgram(input: GenerateInput): GenerateOutput {
         userId: user.userId,
         microcycleId: microId,
         mesocycleId: mesoId,
-        macrocycleId: macroId,
         date: isoDate,
         dayOfWeek: dowJs,
         completed: false,
@@ -297,9 +293,10 @@ export function generateProgram(input: GenerateInput): GenerateOutput {
 
   const mesocycle: Mesocycle = {
     id: mesoId,
-    macrocycleId: macroId,
     userId: user.userId,
-    name: `${template.name} — Block 1`,
+    name: template.name,
+    goal: user.primaryGoal,
+    startDate,
     phaseType: template.defaultPhase,
     weeks,
     progressionScheme: template.progressionScheme,
@@ -309,15 +306,5 @@ export function generateProgram(input: GenerateInput): GenerateOutput {
     muscleTiers: input.muscleTiers ?? template.muscleTiers,
   };
 
-  const macrocycle: Macrocycle = {
-    id: macroId,
-    userId: user.userId,
-    name: template.name,
-    goal: user.primaryGoal,
-    startDate,
-    status: 'active',
-    mesocycleIds: [mesoId],
-  };
-
-  return { macrocycle, mesocycle, microcycles, sessions };
+  return { mesocycle, microcycles, sessions };
 }

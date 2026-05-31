@@ -7,7 +7,7 @@ import { TemplateWizard } from '@/components/plan/TemplateWizard';
 import { SingleWorkoutWizard } from '@/components/plan/SingleWorkoutWizard';
 import { getRepository } from '@/lib/firestore';
 import { todayIso } from '@/lib/ui/date';
-import type { ProgramTemplate, ExerciseDefinition, Macrocycle, ExerciseEntry, SetEntry, WorkoutSession } from '@/types';
+import type { ProgramTemplate, ExerciseDefinition, Mesocycle, ExerciseEntry, SetEntry, WorkoutSession } from '@/types';
 
 export default function TemplateDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,7 +15,7 @@ export default function TemplateDetailPage() {
   const { user } = useUser();
   const [template, setTemplate] = useState<ProgramTemplate | null>(null);
   const [defs, setDefs] = useState<Record<string, ExerciseDefinition>>({});
-  const [activeMacro, setActiveMacro] = useState<Macrocycle | null>(null);
+  const [activePlan, setActivePlan] = useState<Mesocycle | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [modifyMode, setModifyMode] = useState(false);
@@ -25,17 +25,16 @@ export default function TemplateDetailPage() {
     if (!id || !user) return;
     const load = async () => {
       const repo = getRepository();
-      const [t, exercises, custom, macro] = await Promise.all([
+      const [t, exercises, custom, plan] = await Promise.all([
         repo.getTemplate(id),
         repo.listGlobalExercises(),
         repo.listUserExercises(user.userId),
-        repo.getActiveMacrocycle(user.userId),
+        repo.getActivePlan(user.userId),
       ]);
       setTemplate(t);
       const map: Record<string, ExerciseDefinition> = {};
       for (const e of [...custom, ...exercises]) map[e.id] = e;
-      setDefs(map);
-      setActiveMacro(macro);
+      setActivePlan(plan);
     };
     load();
   }, [id, user]);
@@ -84,14 +83,14 @@ export default function TemplateDetailPage() {
         startedAt: new Date().toISOString(),
         exercises: workoutEntries,
         cardio: existing?.cardio ?? [],
-        // Intentionally no microcycleId/mesocycleId/macrocycleId — this is
+        // Intentionally no microcycleId/mesocycleId — this is
         // an ad-hoc workout, not a programmed day.
       };
       await repo.upsertSession(session);
       router.push('/today/workout');
       return;
     }
-    if (activeMacro) setConfirmOpen(true);
+    if (activePlan) setConfirmOpen(true);
     else setWizardOpen(true);
   };
 
@@ -200,7 +199,7 @@ export default function TemplateDetailPage() {
             <div className="px-4 py-4 space-y-3 pb-8">
               <p className="text-sm text-ink-dim">
                 You&apos;re currently on{' '}
-                <span className="text-ink font-medium">{activeMacro?.name}</span>. Setting up this
+                <span className="text-ink font-medium">{activePlan?.name}</span>. Setting up this
                 template opens the plan builder — your current plan is replaced only if you
                 activate the new one at the end. You can also just save it as a template.
               </p>

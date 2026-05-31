@@ -6,6 +6,7 @@ import { getRepository } from '@/lib/firestore';
 import { getFirebaseAuth, isFirebaseEnabled } from '@/lib/firebase/client';
 import type { UserProfile } from '@/types';
 import { DEMO_USER_IDS } from '@/lib/firestore/seed/users';
+import { migrateMacrocyclesForUser } from '@/lib/firestore/migrations/dropMacrocycle';
 
 const ACTIVE_USER_KEY = 'fatrat:activeUser:v1';
 
@@ -36,7 +37,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const load = async (id: string) => {
     setLoading(true);
     const repo = getRepository();
-    const profile = await repo.getProfile(id);
+    let profile = await repo.getProfile(id);
+    // One-shot v0.61 migration — drop Macrocycle for real Firestore users.
+    // Mock mode does not need it (seed key bump re-seeds).
+    if (profile && isFirebaseEnabled() && !profile.migratedMacroDrop) {
+      profile = await migrateMacrocyclesForUser(profile);
+    }
     setUser(profile);
     setLoading(false);
   };

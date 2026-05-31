@@ -64,23 +64,14 @@ export default function HistoryPage() {
     if (!user) return;
     const load = async () => {
       const repo = getRepository();
-      const macros = await repo.listMacrocycles(user.userId);
-      const mesosArr = await Promise.all(macros.map((m) => repo.listMesocycles(m.id)));
-      const flat = mesosArr.flat();
+      const flat = await repo.listMesocycles(user.userId);
       setAllMesos([...flat].sort((a, b) => (b.weekIndex - a.weekIndex)));
 
-      // Exactly one block is "current": the active mesocycle inside the active
-      // macrocycle. A program can carry stale 'active' mesos in archived
-      // macros, so we resolve through the active macro rather than trusting
-      // status alone — only this one is ever labelled "current". When neither
-      // resolves, currentMesoId stays null — we don't fall back to "whatever
-      // meso happens to be first", which would mislabel an archived plan as
-      // the current one after the user cancelled their program.
-      const activeMacroIdx = macros.findIndex((m) => m.status === 'active');
-      const current =
-        (activeMacroIdx >= 0 ? mesosArr[activeMacroIdx]?.find((m) => m.status === 'active') : undefined)
-        ?? flat.find((m) => m.status === 'active')
-        ?? null;
+      // Exactly one block is "current": the user's active mesocycle. When
+      // there is no active plan currentMesoId stays null — we don't fall back
+      // to "whatever meso happens to be first", which would mislabel an
+      // archived plan as the current one after the user cancelled their program.
+      const current = flat.find((m) => m.status === 'active') ?? null;
       setCurrentMesoId(current?.id ?? null);
       // For initial selection, fall back to the most recent meso so the
       // History dropdown still defaults to something useful when there's no
@@ -334,7 +325,6 @@ export default function HistoryPage() {
           dateOverride={addDay.date}
           microcycleId={micros.find((m) => m.weekNumber === addDay.weekNumber)?.id}
           mesocycleId={selectedMesoId ?? undefined}
-          macrocycleId={selectedMeso?.macrocycleId}
         />
       )}
 
@@ -346,7 +336,6 @@ export default function HistoryPage() {
           onSaved={() => { setRefreshTick((n) => n + 1); setAddDay(null); setAdHocOpen(false); }}
           microcycleId={micros.find((m) => m.weekNumber === addDay.weekNumber)?.id}
           mesocycleId={selectedMesoId ?? undefined}
-          macrocycleId={selectedMeso?.macrocycleId}
         />
       )}
     </div>

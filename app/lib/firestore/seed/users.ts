@@ -1,6 +1,5 @@
 import type {
   UserProfile,
-  Macrocycle,
   Mesocycle,
   Microcycle,
   WorkoutSession,
@@ -50,20 +49,12 @@ const mollyProfile: UserProfile = {
   updatedAt: isoOffset(-1) + 'T08:00:00Z',
 };
 
-const mollyMacro: Macrocycle = {
-  id: 'molly-macro-1',
+const mollyMeso: Mesocycle = {
+  id: 'molly-meso-1',
   userId: MOLLY_ID,
   name: 'Stay In Shape',
   goal: 'maintain',
   startDate: isoOffset(-14),
-  status: 'active',
-  mesocycleIds: ['molly-meso-1'],
-};
-const mollyMeso: Mesocycle = {
-  id: 'molly-meso-1',
-  macrocycleId: 'molly-macro-1',
-  userId: MOLLY_ID,
-  name: 'Block 1',
   phaseType: 'hypertrophy',
   weeks: 6,
   progressionScheme: 'linear',
@@ -95,7 +86,7 @@ function mollyFullBody(date: string, dayOfWeek: 0|1|2|3|4|5|6, id: string, compl
       sets: [mkSet(0, rowW, 12, rpe), mkSet(1, rowW, 12, rpe), mkSet(2, rowW, 11, rpe)],
     },
   ];
-  return { id, userId: MOLLY_ID, microcycleId: 'molly-micro-1', mesocycleId: 'molly-meso-1', macrocycleId: 'molly-macro-1', date, dayOfWeek, completed, exercises, cardio: [] };
+  return { id, userId: MOLLY_ID, microcycleId: 'molly-micro-1', mesocycleId: 'molly-meso-1', date, dayOfWeek, completed, exercises, cardio: [] };
 }
 
 const mollySessions: WorkoutSession[] = [
@@ -139,20 +130,12 @@ const brianProfile: UserProfile = {
   updatedAt: isoOffset(-1) + 'T08:00:00Z',
 };
 
-const brianMacro: Macrocycle = {
-  id: 'brian-macro-1',
+const brianMeso: Mesocycle = {
+  id: 'brian-meso-1',
   userId: BRIAN_ID,
   name: 'Build Muscle — Spring',
   goal: 'build-muscle',
   startDate: isoOffset(-21),
-  status: 'active',
-  mesocycleIds: ['brian-meso-prev2','brian-meso-prev1','brian-meso-1'],
-};
-const brianMeso: Mesocycle = {
-  id: 'brian-meso-1',
-  macrocycleId: 'brian-macro-1',
-  userId: BRIAN_ID,
-  name: 'Training Block 1',
   phaseType: 'hypertrophy',
   weeks: 5,
   progressionScheme: 'rir-based',
@@ -183,7 +166,7 @@ function brianPush(date: string, dow: 0|1|2|3|4|5|6, id: string, microId: string
   const ohp = 45 + weekNum * 1.5 + weightBoost;
   const rpe = 7 + weekNum * 0.5;
   return {
-    id, userId: BRIAN_ID, microcycleId: microId, mesocycleId: mesoId, macrocycleId: 'brian-macro-1',
+    id, userId: BRIAN_ID, microcycleId: microId, mesocycleId: mesoId,
     date, dayOfWeek: dow, completed,
     exercises: [
       { exerciseId: 'bench-press-barbell', name: 'Barbell Bench Press', muscle: 'chest', prescribedSets: 3, prescribedRepsLow: 6, prescribedRepsHigh: 8,
@@ -229,7 +212,6 @@ const brianSessions: WorkoutSession[] = [];
     userId: BRIAN_ID,
     microcycleId: 'brian-micro-2',
     mesocycleId: 'brian-meso-1',
-    macrocycleId: 'brian-macro-1',
     date: isoOffset(off),
     dayOfWeek: dow(off),
     completed: true,
@@ -274,9 +256,10 @@ const BRIAN_PREV2_WEEK1_MON_OFFSET = BRIAN_PREV1_WEEK1_MON_OFFSET - brianPrev2We
 
 const brianMesoPrev1: Mesocycle = {
   id: 'brian-meso-prev1',
-  macrocycleId: 'brian-macro-1',
   userId: BRIAN_ID,
   name: 'Foundation',
+  goal: 'build-muscle',
+  startDate: isoOffset(BRIAN_PREV1_WEEK1_MON_OFFSET),
   phaseType: 'hypertrophy',
   weeks: brianPrev1Weeks,
   progressionScheme: 'rir-based',
@@ -286,9 +269,10 @@ const brianMesoPrev1: Mesocycle = {
 };
 const brianMesoPrev2: Mesocycle = {
   id: 'brian-meso-prev2',
-  macrocycleId: 'brian-macro-1',
   userId: BRIAN_ID,
   name: 'Strength Test',
+  goal: 'build-strength',
+  startDate: isoOffset(BRIAN_PREV2_WEEK1_MON_OFFSET),
   phaseType: 'strength',
   weeks: brianPrev2Weeks,
   progressionScheme: 'rir-based',
@@ -386,20 +370,12 @@ const zachProfile: UserProfile = {
   updatedAt: isoOffset(-1) + 'T08:00:00Z',
 };
 
-const zachMacro: Macrocycle = {
-  id: 'zach-macro-1',
+const zachMeso1: Mesocycle = {
+  id: 'zach-meso-1',
   userId: ZACH_ID,
   name: 'Off-season Hypertrophy',
   goal: 'build-muscle',
   startDate: isoOffset(-42),
-  status: 'active',
-  mesocycleIds: ['zach-meso-1','zach-meso-2'],
-};
-const zachMeso1: Mesocycle = {
-  id: 'zach-meso-1',
-  macrocycleId: 'zach-macro-1',
-  userId: ZACH_ID,
-  name: 'Hypertrophy 1',
   phaseType: 'hypertrophy',
   weeks: 5,
   progressionScheme: 'rir-based',
@@ -409,9 +385,10 @@ const zachMeso1: Mesocycle = {
 };
 const zachMeso2: Mesocycle = {
   id: 'zach-meso-2',
-  macrocycleId: 'zach-macro-1',
   userId: ZACH_ID,
-  name: 'Hypertrophy 2',
+  name: 'Off-season Hypertrophy II',
+  goal: 'build-muscle',
+  startDate: isoOffset(-7),
   phaseType: 'hypertrophy',
   weeks: 5,
   progressionScheme: 'rir-based',
@@ -431,7 +408,7 @@ function zachPull(date: string, dow: 0|1|2|3|4|5|6, id: string, microId: string,
   const curl = 14 + weekNum * 0.5;
   const rpe = 7 + weekNum * 0.5;
   return {
-    id, userId: ZACH_ID, microcycleId: microId, mesocycleId: 'zach-meso-1', macrocycleId: 'zach-macro-1',
+    id, userId: ZACH_ID, microcycleId: microId, mesocycleId: 'zach-meso-1',
     date, dayOfWeek: dow, completed,
     exercises: [
       { exerciseId: 'row-barbell', name: 'Barbell Row', muscle: 'back', prescribedSets: 4, prescribedRepsLow: 6, prescribedRepsHigh: 8, prescribedRIR: Math.max(0, 3 - (weekNum-1)),
@@ -476,7 +453,6 @@ const zachBW: BodyWeightEntry[] = [
 
 /* ============================================================ */
 export const DEMO_USERS: UserProfile[] = [mollyProfile, brianProfile, zachProfile];
-export const DEMO_MACROCYCLES: Macrocycle[] = [mollyMacro, brianMacro, zachMacro];
 export const DEMO_MESOCYCLES: Mesocycle[] = [mollyMeso, brianMesoPrev2, brianMesoPrev1, brianMeso, zachMeso1, zachMeso2];
 export const DEMO_MICROCYCLES: Microcycle[] = [...mollyMicros, ...brianPrev2Micros, ...brianPrev1Micros, ...brianMicros, ...zachMicros];
 export const DEMO_SESSIONS: WorkoutSession[] = [...mollySessions, ...brianPrev2Sessions, ...brianPrev1Sessions, ...brianSessions, ...zachSessions];

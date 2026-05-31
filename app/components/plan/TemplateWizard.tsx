@@ -656,19 +656,12 @@ export function TemplateWizard({ open, onClose, onSaved, initialTemplate, modify
     };
     try {
       if (mode === 'activate') {
-        // Archive any active program — and its mesocycles — so only the new
-        // block is ever "current".
-        const macros = await repo.listMacrocycles(user.userId);
-        for (const m of macros) {
-          if (m.status !== 'active') continue;
-          await repo.upsertMacrocycle({ ...m, status: 'archived' });
-          const mesos = await repo.listMesocycles(m.id);
-          for (const mz of mesos) {
-            if (mz.status === 'active') await repo.upsertMesocycle({ ...mz, status: 'archived' });
-          }
+        // Archive any active plan (Mesocycle) so only the new block is "current".
+        const mesos = await repo.listMesocycles(user.userId);
+        for (const mz of mesos) {
+          if (mz.status === 'active') await repo.upsertMesocycle({ ...mz, status: 'archived' });
         }
         const prog = generateCustomProgram(input);
-        await repo.upsertMacrocycle(prog.macrocycle);
         await repo.upsertMesocycle(prog.mesocycle);
         for (const mi of prog.microcycles) await repo.upsertMicrocycle(mi);
         for (const s of prog.sessions) await repo.upsertSession(s);

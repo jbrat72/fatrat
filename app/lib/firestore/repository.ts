@@ -2,14 +2,14 @@
  * DataRepository — the only interface the UI ever talks to for persistence.
  *
  * The mock implementation (./mock.ts) is in-memory + localStorage-backed.
- * The Firebase implementation (added later) will satisfy the same interface.
+ * The Firebase implementation (./firestoreRepository.ts) satisfies the same
+ * interface.
  *
  * Keep this file free of Firestore imports so /lib/firestore can be swapped wholesale.
  */
 import type {
   UserProfile,
   BodyWeightEntry,
-  Macrocycle,
   Mesocycle,
   Microcycle,
   WorkoutSession,
@@ -28,12 +28,11 @@ export interface DataRepository {
   listBodyWeight(userId: string): Promise<BodyWeightEntry[]>;
   addBodyWeight(userId: string, entry: BodyWeightEntry): Promise<void>;
 
-  /* ---------- Macro / Meso / Micro ---------- */
-  listMacrocycles(userId: string): Promise<Macrocycle[]>;
-  getActiveMacrocycle(userId: string): Promise<Macrocycle | null>;
-  upsertMacrocycle(m: Macrocycle): Promise<Macrocycle>;
-
-  listMesocycles(macroId: string): Promise<Mesocycle[]>;
+  /* ---------- Plans (Mesocycle) / Microcycles ---------- */
+  /** All training plans (mesos) the user has ever created. */
+  listMesocycles(userId: string): Promise<Mesocycle[]>;
+  /** The user's currently-active training plan, or null. */
+  getActivePlan(userId: string): Promise<Mesocycle | null>;
   getMesocycle(mesoId: string): Promise<Mesocycle | null>;
   upsertMesocycle(m: Mesocycle): Promise<Mesocycle>;
 

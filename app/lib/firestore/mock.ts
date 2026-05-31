@@ -10,7 +10,6 @@ import type {
 import type {
   UserProfile,
   BodyWeightEntry,
-  Macrocycle,
   Mesocycle,
   Microcycle,
   WorkoutSession,
@@ -22,22 +21,20 @@ import {
   GLOBAL_EXERCISES,
   GLOBAL_TEMPLATES,
   DEMO_USERS,
-  DEMO_MACROCYCLES,
   DEMO_MESOCYCLES,
   DEMO_MICROCYCLES,
   DEMO_SESSIONS,
   DEMO_BODYWEIGHT,
 } from './seed';
 
-// Bump this when the demo seed changes so existing stores re-seed. v4 ships
-// the multi-block demo history (prior training blocks) the progression chart
-// needs — older v3 stores were seeded before that history existed.
-const STORAGE_KEY = 'fatrat:mock:v4';
+// Bump this when the demo seed changes so existing stores re-seed. v5 ships
+// the post-Macrocycle data model — mesos now own goal/startDate/targetDate
+// directly and sessions no longer carry macrocycleId.
+const STORAGE_KEY = 'fatrat:mock:v5';
 
 interface Store {
   users: Record<string, UserProfile>;
   bodyWeight: Record<string, BodyWeightEntry[]>;
-  macrocycles: Record<string, Macrocycle>;
   mesocycles: Record<string, Mesocycle>;
   microcycles: Record<string, Microcycle>;
   sessions: Record<string, WorkoutSession>;
@@ -50,7 +47,6 @@ function seedStore(): Store {
   const store: Store = {
     users: {},
     bodyWeight: {},
-    macrocycles: {},
     mesocycles: {},
     microcycles: {},
     sessions: {},
@@ -60,7 +56,6 @@ function seedStore(): Store {
   };
   for (const u of DEMO_USERS) store.users[u.userId] = u;
   for (const [uid, entries] of Object.entries(DEMO_BODYWEIGHT)) store.bodyWeight[uid] = entries;
-  for (const m of DEMO_MACROCYCLES) store.macrocycles[m.id] = m;
   for (const m of DEMO_MESOCYCLES) store.mesocycles[m.id] = m;
   for (const m of DEMO_MICROCYCLES) store.microcycles[m.id] = m;
   for (const s of DEMO_SESSIONS) store.sessions[s.id] = s;
@@ -133,28 +128,17 @@ export function mockRepository(): DataRepository {
       persist();
     },
 
-    /* ----- Macro ----- */
-    async listMacrocycles(userId) {
-      return Object.values(store().macrocycles)
+    /* ----- Plans (Meso) ----- */
+    async listMesocycles(userId) {
+      return Object.values(store().mesocycles)
         .filter((m) => m.userId === userId)
         .map(clone);
     },
-    async getActiveMacrocycle(userId) {
+    async getActivePlan(userId) {
       return clone(
-        Object.values(store().macrocycles)
+        Object.values(store().mesocycles)
           .find((m) => m.userId === userId && m.status === 'active') ?? null,
       );
-    },
-    async upsertMacrocycle(m) {
-      store().macrocycles[m.id] = clone(m); persist();
-      return clone(m);
-    },
-
-    /* ----- Meso ----- */
-    async listMesocycles(macroId) {
-      return Object.values(store().mesocycles)
-        .filter((m) => m.macrocycleId === macroId)
-        .map(clone);
     },
     async getMesocycle(mesoId) {
       return clone(store().mesocycles[mesoId] ?? null);

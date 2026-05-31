@@ -5,8 +5,7 @@
  *   exercises/{id}                           — global library, read-only for users
  *   users/{uid}                              — profile doc
  *   users/{uid}/bodyWeight/{date}            — body weight entries, doc id = ISO date
- *   users/{uid}/macrocycles/{macroId}
- *   users/{uid}/mesocycles/{mesoId}
+ *   users/{uid}/mesocycles/{mesoId}          — training plans (Macrocycle retired v0.61)
  *   users/{uid}/microcycles/{microId}
  *   users/{uid}/sessions/{sessionId}
  *   users/{uid}/customExercises/{exId}       — user-created custom exercises
@@ -18,14 +17,14 @@
  * Firebase Auth's currentUser.uid. Throws if no user is signed in.
  */
 import {
-  getFirestore, collection, collectionGroup, doc, getDoc, getDocs,
+  getFirestore, collection, doc, getDoc, getDocs,
   setDoc, query, where, orderBy, limit as limitFn, type Firestore,
 } from 'firebase/firestore';
 import { getApps } from 'firebase/app';
 import { getFirebaseAuth } from '@/lib/firebase/client';
 import type { DataRepository } from './repository';
 import type {
-  UserProfile, BodyWeightEntry, Macrocycle, Mesocycle, Microcycle,
+  UserProfile, BodyWeightEntry, Mesocycle, Microcycle,
   WorkoutSession, ExerciseDefinition, UserExercisePrefs, ProgramTemplate,
 } from '@/types';
 import { GLOBAL_EXERCISES, GLOBAL_TEMPLATES } from './seed';
@@ -91,27 +90,15 @@ export function firestoreRepository(): DataRepository {
       await setDoc(subDoc(userId, 'bodyWeight', entry.date), stripUndefined(entry));
     },
 
-    /* ---- Macrocycles ---- */
-    async listMacrocycles(userId) {
-      const snap = await getDocs(subCol(userId, 'macrocycles'));
-      return snap.docs.map((d) => d.data() as Macrocycle);
-    },
-    async getActiveMacrocycle(userId) {
-      const q = query(subCol(userId, 'macrocycles'), where('status', '==', 'active'), limitFn(1));
-      const snap = await getDocs(q);
-      return snap.empty ? null : (snap.docs[0]!.data() as Macrocycle);
-    },
-    async upsertMacrocycle(m) {
-      await setDoc(subDoc(m.userId, 'macrocycles', m.id), stripUndefined(m));
-      return m;
-    },
-
-    /* ---- Mesocycles ---- */
-    async listMesocycles(macroId) {
-      const uid = currentUid();
-      const q = query(subCol(uid, 'mesocycles'), where('macrocycleId', '==', macroId));
-      const snap = await getDocs(q);
+    /* ---- Mesocycles (training plans) ---- */
+    async listMesocycles(userId) {
+      const snap = await getDocs(subCol(userId, 'mesocycles'));
       return snap.docs.map((d) => d.data() as Mesocycle);
+    },
+    async getActivePlan(userId) {
+      const q = query(subCol(userId, 'mesocycles'), where('status', '==', 'active'), limitFn(1));
+      const snap = await getDocs(q);
+      return snap.empty ? null : (snap.docs[0]!.data() as Mesocycle);
     },
     async getMesocycle(mesoId) {
       const uid = currentUid();

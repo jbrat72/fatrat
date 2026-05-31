@@ -4,7 +4,6 @@
  */
 import type {
   UserProfile,
-  Macrocycle,
   Mesocycle,
   Microcycle,
   WorkoutSession,
@@ -13,7 +12,6 @@ import type {
 
 export interface ExportBundle {
   profile: UserProfile;
-  macrocycles: Macrocycle[];
   mesocycles: Mesocycle[];
   microcycles: Microcycle[];
   sessions: WorkoutSession[];

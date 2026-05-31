@@ -32,10 +32,7 @@ export function ExerciseHistorySheet({ exerciseId, open, onClose }: Props) {
     const load = async () => {
       const repo = getRepository();
       const sessions = await repo.listSessions(user.userId, { limit: 100 });
-      const meso = (await repo.getActiveMacrocycle(user.userId))?.id
-        ? await repo.listMesocycles((await repo.getActiveMacrocycle(user.userId))!.id)
-        : [];
-      const active = meso.find((m) => m.status === 'active');
+      const active = await repo.getActivePlan(user.userId);
       setMesoName(active?.name);
 
       // For each session that contains the exercise, group sets.

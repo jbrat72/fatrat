@@ -4,11 +4,11 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui';
 import { getRepository } from '@/lib/firestore';
 import { todayIso } from '@/lib/ui/date';
-import type { Macrocycle, Mesocycle, Microcycle, WorkoutSession } from '@/types';
+import type { Mesocycle, Microcycle, WorkoutSession } from '@/types';
 
 interface Props {
   open: boolean;
-  macro: Macrocycle;
+  /** The active training plan (post-Macrocycle, the meso IS the plan). */
   meso: Mesocycle;
   micros: Microcycle[];
   sessions: WorkoutSession[];
@@ -19,12 +19,12 @@ interface Props {
 
 /**
  * Shared sheet for managing the current training plan. Three actions:
- *   1. Cancel this plan — archives the active macro + meso.
+ *   1. Cancel this plan — archives the active mesocycle.
  *   2. Restart from a new date — shifts every session's date by a delta and
  *      clears completion so the program effectively starts on the new date.
  *   3. Cancel and switch — cancel + navigate to /plan/templates.
  */
-export function ChangePlanSheet({ open, macro, meso, micros, sessions, onClose, onChanged }: Props) {
+export function ChangePlanSheet({ open, meso, micros, sessions, onClose, onChanged }: Props) {
   const router = useRouter();
   const [restartSheet, setRestartSheet] = useState(false);
   const [restartDate, setRestartDate] = useState(todayIso());
@@ -43,7 +43,6 @@ export function ChangePlanSheet({ open, macro, meso, micros, sessions, onClose, 
         try { await repo.deleteSession(sn.id); } catch { /* keep going */ }
       }
     }
-    await repo.upsertMacrocycle({ ...macro, status: 'archived' });
     await repo.upsertMesocycle({ ...meso, status: 'archived' });
   };
 
@@ -101,8 +100,7 @@ export function ChangePlanSheet({ open, macro, meso, micros, sessions, onClose, 
       for (let i = 0; i < sortedMicros.length; i++) {
         await repo.upsertMicrocycle({ ...sortedMicros[i]!, status: i === 0 ? 'active' : 'draft' });
       }
-      await repo.upsertMesocycle({ ...meso, weekIndex: 0, status: 'active' });
-      await repo.upsertMacrocycle({ ...macro, startDate: newFirst });
+      await repo.upsertMesocycle({ ...meso, weekIndex: 0, status: 'active', startDate: newFirst });
       setRestartSheet(false);
       onChanged();
       onClose();
@@ -154,7 +152,7 @@ export function ChangePlanSheet({ open, macro, meso, micros, sessions, onClose, 
         <div className="px-4 py-3 border-b border-ink-line flex items-center justify-between">
           <div>
             <div className="section-head">CHANGE TRAINING PLAN</div>
-            <div className="text-base font-semibold mt-1 truncate">{macro.name}</div>
+            <div className="text-base font-semibold mt-1 truncate">{meso.name}</div>
           </div>
           <button type="button" onClick={onClose} disabled={cancelSaving} className="w-9 h-9 rounded-md border border-ink-line text-ink-dim hover:text-ink disabled:opacity-40" aria-label="Close">✕</button>
         </div>

@@ -91,6 +91,8 @@ export interface UserProfile {
    * INTERMEDIATE/ADVANCED users; absent or false means plain language.
    */
   advancedTerminology?: boolean;
+  /** Set true once the v0.61 Macrocycle-retirement migration has run for this user. */
+  migratedMacroDrop?: boolean;
   createdAt: string; // ISO
   updatedAt: string; // ISO
 }

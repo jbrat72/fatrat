@@ -180,7 +180,6 @@ export function OnboardingWizard() {
         const exerciseLibrary = await repo.listGlobalExercises();
         const today = todayIso();
         const out = generateProgram({ template: tpl, user: profile, startDate: today, exerciseLibrary, weeks: 4 });
-        await repo.upsertMacrocycle(out.macrocycle);
         await repo.upsertMesocycle(out.mesocycle);
         for (const m of out.microcycles) await repo.upsertMicrocycle(m);
         for (const ss of out.sessions) await repo.upsertSession(ss);

@@ -6,7 +6,7 @@ function micro(id: string, weekNumber: number, status: Microcycle['status']): Mi
   return { id, mesocycleId: 'meso1', userId: 'u', weekNumber, splitType: 'PPL', status, sessionIds: [] };
 }
 function meso(id: string, weeks: number, weekIndex: number): Mesocycle {
-  return { id, macrocycleId: 'macro1', userId: 'u', name: 'M', phaseType: 'hypertrophy', weeks, progressionScheme: 'rir-based', weekIndex, status: 'active', microcycleIds: [] };
+  return { id, userId: 'u', name: 'M', goal: 'build-muscle', startDate: '2026-05-01', phaseType: 'hypertrophy', weeks, progressionScheme: 'rir-based', weekIndex, status: 'active', microcycleIds: [] };
 }
 function session(id: string, completed: boolean): WorkoutSession {
   return { id, userId: 'u', date: '2026-05-01', dayOfWeek: 1, completed, exercises: [], cardio: [] };
