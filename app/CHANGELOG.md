@@ -8,6 +8,14 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.60.2 — 2026-05-26
+
+- TemplateWizard's Modify Day modal: Core was missing from the "Add a
+  muscle" pill list (TEMPLATE_MUSCLES intentionally excludes it because
+  Core has its own card on the Week Layout step). Added Core as an
+  explicit option so you can give a specific day extra core slots on top
+  of the baseline.
+
 ## v0.60.1 — 2026-05-26
 
 - Change Training Plan sheet restructured. Dropped "Explore current plan"

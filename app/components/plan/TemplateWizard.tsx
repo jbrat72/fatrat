@@ -1640,7 +1640,7 @@ export function TemplateWizard({ open, onClose, onSaved, initialTemplate, modify
               <div>
                 <div className="section-head mb-2">Add a muscle</div>
                 <div className="flex flex-wrap gap-1.5">
-                  {TEMPLATE_MUSCLES.map((m) => (
+                  {[...TEMPLATE_MUSCLES, 'core' as MuscleGroup].map((m) => (
                     <button
                       key={m}
                       type="button"
