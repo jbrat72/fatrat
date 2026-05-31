@@ -196,9 +196,13 @@ export function WeekCalendar(props: Props) {
     if (session) {
       if (session.completed && (cellDate == null || cellDate <= todayIso)) return 'completed';
       if (cellDate != null && cellDate < todayIso) return 'skipped';
+      // Future / today non-completed: only "planned" if the block is current.
+      // For archived blocks, future planned-but-not-done sessions render as
+      // rest so the calendar doesn't lie about upcoming work.
+      if (!isCurrent) return 'rest';
       return 'planned';
     }
-    if (scheduledDows.has(dow)) return 'planned';
+    if (scheduledDows.has(dow) && isCurrent) return 'planned';
     return 'rest';
   }
 
@@ -211,13 +215,20 @@ export function WeekCalendar(props: Props) {
     return arr;
   }
 
-  function caption(session: WorkoutSession | null, dow: number): string {
-    if (session) {
-      if (session.exercises.length > 0) return 'Lift';
-      if (session.cardio.length > 0) return 'Cardio';
-      return 'Logged';
+  function caption(session: WorkoutSession | null, cellDate: string | null, dow: number): string {
+    const state = cellState(session, cellDate, dow);
+    if (state === 'completed') {
+      if (session?.exercises.length) return 'Lift';
+      if (session?.cardio.length) return 'Cardio';
+      return 'Done';
     }
-    return scheduledDows.has(dow) ? 'Planned' : 'Rest';
+    if (state === 'skipped') return 'Skip';
+    if (state === 'planned') {
+      if (session?.exercises.length) return 'Lift';
+      if (session?.cardio.length) return 'Cardio';
+      return 'Planned';
+    }
+    return 'Rest';
   }
 
   // One day tile (a button). Today is marked with a red circle around the number.
@@ -374,7 +385,7 @@ export function WeekCalendar(props: Props) {
                 </div>
                 {dayTile(week, col)}
                 <div className={cn('text-2xs text-center mt-1 truncate', session ? 'text-ink-dim' : 'text-ink-mute')}>
-                  {caption(session, dow)}
+                  {caption(session, startOfWeek ? addDays(startOfWeek, col) : null, dow)}
                 </div>
               </div>
             );

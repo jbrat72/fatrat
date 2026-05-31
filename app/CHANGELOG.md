@@ -8,6 +8,19 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.60.6 — 2026-05-26
+
+- Fix: History showed future "Lift" / "Planned" cells on archived blocks —
+  cancelled programs still looked like they had upcoming workouts because
+  WeekCalendar's cellState/caption ignored whether the block being viewed
+  is current. Both now gate the 'planned' state behind isCurrent:
+- Future / today non-completed sessions on an archived block render as
+  rest (cross-hatch) instead of planned/Lift.
+- Empty cells inferred-as-scheduled (via scheduledDows) on an archived
+  block render as rest instead of Planned.
+- Completed (green) and skipped (orange) still show as before — the actual
+  logged history is preserved.
+
 ## v0.60.5 — 2026-05-26
 
 - Fix: History's WeekCalendar still showed the "· This week" badge on
