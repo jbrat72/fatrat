@@ -380,12 +380,13 @@ export function generateCustomProgram(input: CustomProgramInput): GeneratedProgr
           k += 1;
         }
       }
-      const sessionId = uid('session');
+      const sessionId = uid('day');
       sessions.push({
         id: sessionId,
         userId: input.userId,
         microcycleId: microId,
         mesocycleId: mesoId,
+        planName: input.name.trim() || 'Custom program',
         date: isoDate,
         dayOfWeek,
         completed: false,

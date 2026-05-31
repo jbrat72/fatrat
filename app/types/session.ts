@@ -109,6 +109,10 @@ export interface WorkoutSession {
   name?: string;
   microcycleId?: string;
   mesocycleId?: string;
+  /** Denormalized name of the parent training plan (mesocycle.name). Set on
+   *  programmed sessions so each day doc in Firestore is self-describing
+   *  without chasing the meso. UI still reads the live meso when rendering. */
+  planName?: string;
   date: string;            // ISO YYYY-MM-DD
   dayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = Sunday
   completed: boolean;

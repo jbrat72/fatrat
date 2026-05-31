@@ -325,6 +325,7 @@ export default function HistoryPage() {
           dateOverride={addDay.date}
           microcycleId={micros.find((m) => m.weekNumber === addDay.weekNumber)?.id}
           mesocycleId={selectedMesoId ?? undefined}
+          planName={selectedMeso?.name}
         />
       )}
 
@@ -336,6 +337,7 @@ export default function HistoryPage() {
           onSaved={() => { setRefreshTick((n) => n + 1); setAddDay(null); setAdHocOpen(false); }}
           microcycleId={micros.find((m) => m.weekNumber === addDay.weekNumber)?.id}
           mesocycleId={selectedMesoId ?? undefined}
+          planName={selectedMeso?.name}
         />
       )}
     </div>

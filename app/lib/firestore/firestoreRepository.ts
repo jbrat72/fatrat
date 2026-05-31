@@ -7,7 +7,7 @@
  *   users/{uid}/bodyWeight/{date}            — body weight entries, doc id = ISO date
  *   users/{uid}/mesocycles/{mesoId}          — training plans (Macrocycle retired v0.61)
  *   users/{uid}/microcycles/{microId}
- *   users/{uid}/sessions/{sessionId}
+ *   users/{uid}/days/{dayId}             — logged workout sessions (renamed v0.62)
  *   users/{uid}/customExercises/{exId}       — user-created custom exercises
  *   users/{uid}/templates/{templateId}       — user-saved custom templates
  *   users/{uid}/exercisePrefs/main           — single doc: favorites + hidden
@@ -130,8 +130,8 @@ export function firestoreRepository(): DataRepository {
     /* ---- Sessions ---- */
     async listSessions(userId, opts) {
       const q = opts?.limit
-        ? query(subCol(userId, 'sessions'), orderBy('date', 'desc'), limitFn(opts.limit))
-        : query(subCol(userId, 'sessions'), orderBy('date', 'desc'));
+        ? query(subCol(userId, 'days'), orderBy('date', 'desc'), limitFn(opts.limit))
+        : query(subCol(userId, 'days'), orderBy('date', 'desc'));
       const snap = await getDocs(q);
       return snap.docs.map((d) => d.data() as WorkoutSession);
     },
@@ -140,7 +140,7 @@ export function firestoreRepository(): DataRepository {
       // Firestore would require a composite index for where + orderBy on
       // different fields. Sort client-side instead — session counts per
       // micro are tiny (3-6), and this skips an index roundtrip.
-      const q = query(subCol(uid, 'sessions'), where('microcycleId', '==', microId));
+      const q = query(subCol(uid, 'days'), where('microcycleId', '==', microId));
       const snap = await getDocs(q);
       const out = snap.docs.map((d) => d.data() as WorkoutSession);
       out.sort((a, b) => a.date.localeCompare(b.date));
@@ -148,20 +148,20 @@ export function firestoreRepository(): DataRepository {
     },
     async getSession(sessionId) {
       const uid = currentUid();
-      const snap = await getDoc(subDoc(uid, 'sessions', sessionId));
+      const snap = await getDoc(subDoc(uid, 'days', sessionId));
       return snap.exists() ? (snap.data() as WorkoutSession) : null;
     },
     async upsertSession(s) {
-      await setDoc(subDoc(s.userId, 'sessions', s.id), stripUndefined(s));
+      await setDoc(subDoc(s.userId, 'days', s.id), stripUndefined(s));
       return s;
     },
     async deleteSession(sessionId) {
       const { deleteDoc } = await import('firebase/firestore');
       const uid = currentUid();
-      await deleteDoc(subDoc(uid, 'sessions', sessionId));
+      await deleteDoc(subDoc(uid, 'days', sessionId));
     },
     async getTodaySession(userId, isoDate) {
-      const q = query(subCol(userId, 'sessions'), where('date', '==', isoDate), limitFn(1));
+      const q = query(subCol(userId, 'days'), where('date', '==', isoDate), limitFn(1));
       const snap = await getDocs(q);
       return snap.empty ? null : (snap.docs[0]!.data() as WorkoutSession);
     },

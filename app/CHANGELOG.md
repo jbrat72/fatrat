@@ -8,6 +8,27 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.62.0 — 2026-05-31
+
+- B3 clarity audit — Firestore sessions are now navigable. Renamed the
+  `users/{uid}/sessions` subcollection to `users/{uid}/days` and denormalized
+  `planName` (mesocycle.name) onto each day doc. Browsing the console no
+  longer means staring at random slugs — each row carries its plan name and
+  date directly. UI behavior is unchanged; it still reads the live meso
+  when rendering.
+- New session ID prefix `day-` for newly generated sessions (template
+  generator + custom-program generator). Existing IDs are kept as-is by
+  the migration for round-trip safety.
+- `WorkoutSession.planName?: string` added. Generators set it. The
+  CardioLogModal and AdHocWorkoutModal accept an optional `planName` prop,
+  set by the Today, Plan, and History pages from the meso in scope, so
+  ad-hoc sessions attached to a plan get the same denorm.
+- One-shot Firestore migration (`migrateSessionsToDaysForUser`) runs on
+  sign-in after the Macrocycle migration: copies every doc from `sessions/*`
+  to `days/*` with `planName` filled. Gated by `profile.migratedSessionsToDays`
+  so it never runs twice. The orphan `sessions` subcollection is left for
+  manual cleanup in the console.
+
 ## v0.61.0 — 2026-05-31
 
 - B2 clarity audit — retired `Macrocycle` from the data model. The macro

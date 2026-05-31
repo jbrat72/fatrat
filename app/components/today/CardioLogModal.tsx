@@ -18,6 +18,8 @@ interface Props {
   dateOverride?: string;
   microcycleId?: string;
   mesocycleId?: string;
+  /** Denormalized parent plan name (Mesocycle.name). */
+  planName?: string;
 }
 
 const ACTIVITIES: { value: CardioActivity; label: string }[] = [
@@ -42,7 +44,7 @@ function inputModeFor(a: CardioActivity): InputMode {
 }
 
 export function CardioLogModal({
-  open, onClose, onSaved, dateOverride, microcycleId, mesocycleId,
+  open, onClose, onSaved, dateOverride, microcycleId, mesocycleId, planName,
 }: Props) {
   const { user } = useUser();
   const [activity, setActivity] = useState<CardioActivity>('treadmill');
@@ -157,6 +159,7 @@ export function CardioLogModal({
         completedAt: new Date().toISOString(),
         microcycleId,
         mesocycleId,
+        planName,
       };
     } else {
       session = {
@@ -164,6 +167,7 @@ export function CardioLogModal({
         cardio: [...session.cardio, entry],
         microcycleId: session.microcycleId ?? microcycleId,
         mesocycleId: session.mesocycleId ?? mesocycleId,
+        planName: session.planName ?? planName,
       };
     }
     await repo.upsertSession(session);

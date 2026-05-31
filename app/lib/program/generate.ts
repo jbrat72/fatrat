@@ -221,7 +221,7 @@ export function generateProgram(input: GenerateInput): GenerateOutput {
 
     for (let d = 0; d < daysPerWeek; d++) {
       const templateDay = templateDays[d]!;
-      const sessionId = uid('session');
+      const sessionId = uid('day');
       const isoDate = addDays(startDate, week * 7 + (dayOff[d] ?? d));
       const dowJs = new Date(isoDate + 'T00:00:00').getDay() as 0|1|2|3|4|5|6;
 
@@ -269,6 +269,7 @@ export function generateProgram(input: GenerateInput): GenerateOutput {
         userId: user.userId,
         microcycleId: microId,
         mesocycleId: mesoId,
+        planName: template.name,
         date: isoDate,
         dayOfWeek: dowJs,
         completed: false,

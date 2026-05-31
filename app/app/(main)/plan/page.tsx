@@ -351,6 +351,7 @@ export default function PlanPage() {
           dateOverride={addDay.date}
           microcycleId={micros.find((m) => m.weekNumber === addDay.weekNumber)?.id}
           mesocycleId={meso.id}
+          planName={meso.name}
         />
       )}
 
@@ -362,6 +363,7 @@ export default function PlanPage() {
           onSaved={() => { setRefreshTick((n) => n + 1); setAddDay(null); setAdHocOpen(false); }}
           microcycleId={micros.find((m) => m.weekNumber === addDay.weekNumber)?.id}
           mesocycleId={meso.id}
+          planName={meso.name}
         />
       )}
 

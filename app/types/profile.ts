@@ -93,6 +93,8 @@ export interface UserProfile {
   advancedTerminology?: boolean;
   /** Set true once the v0.61 Macrocycle-retirement migration has run for this user. */
   migratedMacroDrop?: boolean;
+  /** Set true once the v0.62 sessions→days relabel migration has run for this user. */
+  migratedSessionsToDays?: boolean;
   createdAt: string; // ISO
   updatedAt: string; // ISO
 }

@@ -13,6 +13,8 @@ interface Props {
   date: string;
   microcycleId?: string;
   mesocycleId?: string;
+  /** Denormalized parent plan name (Mesocycle.name). */
+  planName?: string;
   /** When set, the modal opens pre-populated with these exercises (one entry
    *  per slot, sets blanked but with prescribed reps/time copied). */
   initialExercises?: ExerciseEntry[];
@@ -35,7 +37,7 @@ function blankSets(count: number): SetEntry[] {
  * for that date if one already exists).
  */
 export function AdHocWorkoutModal({
-  open, date, microcycleId, mesocycleId, initialExercises, sourceLabel, onClose, onSaved,
+  open, date, microcycleId, mesocycleId, planName, initialExercises, sourceLabel, onClose, onSaved,
 }: Props) {
   const { user } = useUser();
   const [library, setLibrary] = useState<ExerciseDefinition[]>([]);
@@ -156,6 +158,7 @@ export function AdHocWorkoutModal({
         exercises: [...existing.exercises, ...exercises],
         microcycleId: existing.microcycleId ?? microcycleId,
         mesocycleId: existing.mesocycleId ?? mesocycleId,
+        planName: existing.planName ?? planName,
       };
     } else {
       session = {
@@ -169,6 +172,7 @@ export function AdHocWorkoutModal({
         cardio: [],
         microcycleId,
         mesocycleId,
+        planName,
       };
     }
 
