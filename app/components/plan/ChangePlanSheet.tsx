@@ -15,6 +15,9 @@ interface Props {
   onClose: () => void;
   /** Called after any destructive action so the caller can refetch. */
   onChanged: () => void;
+  /** Called when the user picks "Edit this plan". The caller closes this
+   *  sheet and opens the TemplateWizard pre-populated with the active plan. */
+  onEdit?: () => void;
 }
 
 /**
@@ -24,7 +27,7 @@ interface Props {
  *      clears completion so the program effectively starts on the new date.
  *   3. Cancel and switch — cancel + navigate to /plan/templates.
  */
-export function ChangePlanSheet({ open, meso, micros, sessions, onClose, onChanged }: Props) {
+export function ChangePlanSheet({ open, meso, micros, sessions, onClose, onChanged, onEdit }: Props) {
   const router = useRouter();
   const [restartSheet, setRestartSheet] = useState(false);
   const [restartDate, setRestartDate] = useState(todayIso());
@@ -157,6 +160,11 @@ export function ChangePlanSheet({ open, meso, micros, sessions, onClose, onChang
           <button type="button" onClick={onClose} disabled={cancelSaving} className="w-9 h-9 rounded-md border border-ink-line text-ink-dim hover:text-ink disabled:opacity-40" aria-label="Close">✕</button>
         </div>
         <div className="px-4 py-4 space-y-2 pb-8">
+          {onEdit && (
+            <Button block size="lg" onClick={onEdit} disabled={cancelSaving}>
+              Edit this plan
+            </Button>
+          )}
           <Button block variant="danger" size="lg" onClick={doCancel} disabled={cancelSaving}>
             {cancelSaving ? 'Cancelling…' : 'Cancel this plan'}
           </Button>

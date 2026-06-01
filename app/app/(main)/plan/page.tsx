@@ -5,6 +5,7 @@ import { useUser } from '@/components/app';
 import { PageTitle, Card, Button, ModeChip, MuscleBadge } from '@/components/ui';
 import { VolumeDashboard } from '@/components/plan/VolumeDashboard';
 import { TemplateWizard } from '@/components/plan/TemplateWizard';
+import { mesocycleToTemplate } from '@/lib/program/mesoToTemplate';
 import { ChangePlanSheet } from '@/components/plan/ChangePlanSheet';
 import { WeekCalendar, CalendarLegend } from '@/components/history';
 import { CardioLogModal } from '@/components/today';
@@ -46,6 +47,9 @@ export default function PlanPage() {
   const [cardioOpen, setCardioOpen] = useState(false);
   const [adHocOpen, setAdHocOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  // When set, the wizard opens pre-populated with the user's current plan
+  // ("Edit this plan" path from the Change Plan sheet).
+  const [editTemplate, setEditTemplate] = useState<ReturnType<typeof mesocycleToTemplate> | null>(null);
   const [changeSheet, setChangeSheet] = useState(false);
   const [moveSheet, setMoveSheet] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -259,6 +263,14 @@ export default function PlanPage() {
         sessions={sessions}
         onClose={() => setChangeSheet(false)}
         onChanged={() => setRefreshTick((n) => n + 1)}
+        onEdit={() => {
+          // Build a template snapshot of the current plan and hand it to the
+          // wizard. Saving via "Make it active" archives the current plan
+          // and starts a fresh one — same flow as Cancel + start a new plan.
+          setEditTemplate(mesocycleToTemplate(meso, micros, sessions));
+          setChangeSheet(false);
+          setWizardOpen(true);
+        }}
       />
 
 
@@ -369,8 +381,9 @@ export default function PlanPage() {
 
       <TemplateWizard
         open={wizardOpen}
-        onClose={() => setWizardOpen(false)}
-        onSaved={() => setRefreshTick((n) => n + 1)}
+        onClose={() => { setWizardOpen(false); setEditTemplate(null); }}
+        initialTemplate={editTemplate}
+        onSaved={() => { setRefreshTick((n) => n + 1); setEditTemplate(null); }}
       />
     </div>
   );

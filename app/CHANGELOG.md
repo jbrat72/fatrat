@@ -8,6 +8,20 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.62.1 — 2026-05-31
+
+- Change Plan sheet — added an "Edit this plan" action above "Cancel this
+  plan". Tapping it closes the sheet and opens the Template Wizard
+  pre-populated with the current plan's name, goal, weeks, days per week,
+  split, tiers, set styles, and week-1 exercise layout. New helper
+  `mesocycleToTemplate` (lib/program/mesoToTemplate.ts) synthesizes a
+  single-week ProgramTemplate from the live meso + first-week sessions —
+  the wizard already knows how to seed from `initialTemplate`, so no
+  changes inside the wizard itself. Saving via "Make it active" archives
+  the current plan and starts a fresh one — same flow as Cancel + start a
+  new plan from a template. Available on the main Plan page; the Meso
+  detail page's Change sheet does not yet wire it (next pass if you want it).
+
 ## v0.62.0 — 2026-05-31
 
 - B3 clarity audit — Firestore sessions are now navigable. Renamed the

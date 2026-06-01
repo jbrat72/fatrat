@@ -4,3 +4,4 @@ export * from './templateLayout';
 export * from './templateProgram';
 export * from './startingWeights';
 export * from './structuredLayout';
+export * from './mesoToTemplate';
