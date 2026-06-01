@@ -496,8 +496,19 @@ function WeekSessionRow({
               </div>
               <ul className="mt-2 space-y-1">
                 {ex.sets.map((s, idx) => {
-                  const display = kgToDisplay(s.weightKg, units);
                   const completed = s.completed;
+                  const metric = ex.metric ?? 'weight-reps';
+                  const display = kgToDisplay(s.weightKg, units);
+                  let body: React.ReactNode;
+                  if (metric === 'time') {
+                    body = <>{s.timeSec ?? (completed ? '—' : '?')}s</>;
+                  } else if (metric === 'weight-time') {
+                    body = <>{display != null ? `${display} ${wLabel}` : '—'} {'×'} {s.timeSec ?? (completed ? '—' : '?')}s</>;
+                  } else if (metric === 'reps') {
+                    body = <>{'×'} {s.reps ?? (completed ? '—' : '?')}</>;
+                  } else {
+                    body = <>{display != null ? `${display} ${wLabel}` : '—'} {'×'} {s.reps ?? (completed ? '—' : '?')}</>;
+                  }
                   return (
                     <li
                       key={idx}
@@ -516,7 +527,7 @@ function WeekSessionRow({
                       </span>
                       <span className="font-medium">Set {idx + 1}</span>
                       <span className="flex-1 numeric truncate">
-                        {display != null ? `${display} ${wLabel}` : '—'} {'×'} {s.reps ?? (completed ? '—' : '?')}
+                        {body}
                         {completed && s.rpe != null && (
                           <span className="text-ink-mute"> {'·'} {effortShort(mode, s.rpe)}</span>
                         )}
@@ -530,6 +541,7 @@ function WeekSessionRow({
               )}
             </div>
           ))}
+
 
           {session.cardio.length > 0 && (
             <div className="rounded-md border border-ink-line bg-bg-card p-2.5">

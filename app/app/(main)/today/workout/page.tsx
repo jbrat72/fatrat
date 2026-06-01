@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { Button } from '@/components/ui';
-import { ExerciseCard, RestTimer, ExerciseHistorySheet, SwapExerciseModal, SessionFeedbackModal, SorenessCheckIn } from '@/components/workout';
+import { ExerciseCard, RestTimer, ExerciseTimer, ExerciseHistorySheet, SwapExerciseModal, SessionFeedbackModal, SorenessCheckIn } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
 import { resolveToday } from '@/lib/session/resolveToday';
 import { hydrateFromHistory } from '@/lib/session/hydrateFromHistory';
@@ -27,6 +27,9 @@ export default function WorkoutPage() {
   const [activeExerciseIdx, setActiveExerciseIdx] = useState<number>(0);
   const [activeSetIdx, setActiveSetIdx] = useState<number | null>(0);
   const [restSec, setRestSec] = useState(0);
+  // Exercise-timer overlay (time-based sets). 0 = closed.
+  const [exerciseTimerSec, setExerciseTimerSec] = useState(0);
+  const [exerciseTimerLabel, setExerciseTimerLabel] = useState<string | null>(null);
   const [exerciseDefs, setExerciseDefs] = useState<Record<string, ExerciseDefinition>>({});
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [swapFor, setSwapFor] = useState<number | null>(null);
@@ -424,6 +427,11 @@ export default function WorkoutPage() {
         onShowHistory={() => setHistoryFor(ex.exerciseId)}
         onSwap={() => setSwapFor(i)}
         onSkipSet={(s) => skipSet(i, s)}
+        onStartTimer={(setIdx) => {
+          const target = ex.sets[setIdx]?.timeSec ?? ex.prescribedTimeLow ?? 30;
+          setExerciseTimerLabel(ex.name);
+          setExerciseTimerSec(target);
+        }}
       />
     );
   };
@@ -486,7 +494,14 @@ export default function WorkoutPage() {
         )}
       </div>
 
-      <RestTimer seconds={restSec} onDismiss={() => setRestSec(0)} compact />
+      <RestTimer seconds={restSec} onDismiss={() => setRestSec(0)} compact soundsEnabled={user?.soundsEnabled !== false} />
+
+      <ExerciseTimer
+        seconds={exerciseTimerSec}
+        label={exerciseTimerLabel ?? undefined}
+        onDismiss={() => { setExerciseTimerSec(0); setExerciseTimerLabel(null); }}
+        soundsEnabled={user?.soundsEnabled !== false}
+      />
 
       <SorenessCheckIn
         key={sorenessMuscle ?? 'none'}

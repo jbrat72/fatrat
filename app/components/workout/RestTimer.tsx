@@ -1,12 +1,15 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/ui/cn';
+import { doubleBeep } from '@/lib/ui/beep';
 
 interface Props {
   /** Auto-start with this many seconds whenever it changes. 0 hides the timer. */
   seconds: number;
   onDismiss?: () => void;
   compact?: boolean;
+  /** When true, play a double-beep when the timer reaches zero. */
+  soundsEnabled?: boolean;
 }
 
 function fmt(s: number): string {
@@ -15,15 +18,17 @@ function fmt(s: number): string {
   return `${m}:${r.toString().padStart(2, '0')}`;
 }
 
-export function RestTimer({ seconds, onDismiss, compact }: Props) {
+export function RestTimer({ seconds, onDismiss, compact, soundsEnabled = true }: Props) {
   const [remaining, setRemaining] = useState(seconds);
   const total = useRef(seconds);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const beepedRef = useRef(false);
 
   useEffect(() => {
     setRemaining(seconds);
     total.current = seconds;
+    beepedRef.current = false;
   }, [seconds]);
 
   // Tick down once per second while remaining > 0.
@@ -37,13 +42,19 @@ export function RestTimer({ seconds, onDismiss, compact }: Props) {
   }, [remaining > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-dismiss when timer reaches 0 — quick "done" flash, then hide.
+  // Also fire the double-beep once (guarded by beepedRef so a re-render
+  // mid-flash doesn't replay it).
   useEffect(() => {
     if (dismissTimer.current) { clearTimeout(dismissTimer.current); dismissTimer.current = null; }
     if (seconds > 0 && remaining === 0) {
+      if (!beepedRef.current) {
+        beepedRef.current = true;
+        doubleBeep(soundsEnabled);
+      }
       dismissTimer.current = setTimeout(() => onDismiss?.(), 600);
     }
     return () => { if (dismissTimer.current) clearTimeout(dismissTimer.current); };
-  }, [remaining, seconds, onDismiss]);
+  }, [remaining, seconds, onDismiss, soundsEnabled]);
 
   if (seconds <= 0) return null;
   const pct = total.current > 0 ? (1 - remaining / total.current) * 100 : 0;

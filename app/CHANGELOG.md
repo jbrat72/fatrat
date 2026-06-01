@@ -8,6 +8,27 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.64.0 — 2026-05-31
+
+- Plan page now renders set entries based on the exercise's `metric`. Time
+  exercises (planks, hangs) show `Xs`; reps-only exercises (pull-ups,
+  push-ups) show `× N`; weight-time shows `weight × Ns`; weight-reps stays
+  unchanged. The prescription header on each exercise row also branches on
+  metric so it reads "8–12 reps" for rep exercises and "30–60s" for time
+  exercises, instead of always saying "reps".
+- New exercise countdown timer for time-based sets. SetLoggerRow shows a
+  "▶ Start timer" button under the time input on active rows. Tapping opens
+  a full-width overlay (`ExerciseTimer`) that counts down from the set's
+  current value (or `prescribedTimeLow`, fallback 30s), with ±10s and
+  Stop/Done. On zero it plays a double-beep and waits for the user to
+  dismiss.
+- Rest timer also now plays the same double-beep when it reaches zero.
+- New `lib/ui/beep.ts` helper — Web Audio sine pulses, two 150ms beeps
+  ~30ms apart. Silently skipped when the browser can't create an
+  AudioContext or the user disabled sounds.
+- New profile field `soundsEnabled` (default on; set false to mute). New
+  Settings card with an On/Off pill — sits between MODE and UNITS.
+
 ## v0.63.1 — 2026-05-31
 
 - INTERMEDIATE effort picker — renamed "Smooth" → "Easy" and "Grinding" →

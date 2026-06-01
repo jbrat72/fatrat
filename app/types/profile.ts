@@ -91,6 +91,9 @@ export interface UserProfile {
    * INTERMEDIATE/ADVANCED users; absent or false means plain language.
    */
   advancedTerminology?: boolean;
+  /** Play a double-beep when the rest / exercise timer hits zero. Default on
+   *  (undefined === enabled); set false in Settings to mute. */
+  soundsEnabled?: boolean;
   /** Set true once the v0.61 Macrocycle-retirement migration has run for this user. */
   migratedMacroDrop?: boolean;
   /** Set true once the v0.62 sessions→days relabel migration has run for this user. */

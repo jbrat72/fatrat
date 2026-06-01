@@ -22,12 +22,14 @@ interface Props {
   onSkipSet?: (i: number) => void;
   onRemove?: () => void;
   onShowHistory?: () => void;
+  /** Called when the user taps Start timer on a time-based set. */
+  onStartTimer?: (setIdx: number) => void;
 }
 
 export function ExerciseCard({
   exercise, exerciseIndex, mode, units, activeSetIndex, disabled,
   onActivateSet, onUpdateSet, onLogSet, onUnlockSet, onAddSet,
-  onSwap, onSkip, onSkipSet, onRemove, onShowHistory,
+  onSwap, onSkip, onSkipSet, onRemove, onShowHistory, onStartTimer,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const loggedCount = exercise.sets.filter((s) => s.completed && s.setType !== 'skip').length;
@@ -124,6 +126,7 @@ export function ExerciseCard({
             onLog={() => onLogSet(i)}
             onUnlock={() => onUnlockSet(i)}
             onSkip={onSkipSet ? () => onSkipSet(i) : undefined}
+            onStartTimer={onStartTimer ? () => onStartTimer(i) : undefined}
           />
         ))}
       </div>

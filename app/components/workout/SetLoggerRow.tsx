@@ -22,10 +22,13 @@ interface Props {
   onLog: () => void;
   onUnlock?: () => void;
   onSkip?: () => void;
+  /** Called when the user taps "Start timer" on a time-based set. The parent
+   *  opens the countdown overlay with the set's current/prescribed time. */
+  onStartTimer?: () => void;
 }
 
 export function SetLoggerRow({
-  set, index, mode, units, metric = 'weight-reps', state, disabled, onActivate, onChange, onLog, onUnlock, onSkip,
+  set, index, mode, units, metric = 'weight-reps', state, disabled, onActivate, onChange, onLog, onUnlock, onSkip, onStartTimer,
 }: Props) {
   const [logError, setLogError] = useState<string | null>(null);
   const isHard = set.rpe != null && set.rpe >= 9;
@@ -142,6 +145,16 @@ export function SetLoggerRow({
               disabled={state !== 'active' || disabled}
               ariaLabel={`Set ${index + 1} time`}
             />
+            {state === 'active' && onStartTimer && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onStartTimer(); }}
+                disabled={disabled}
+                className="mt-1.5 w-full h-8 rounded-md bg-accent/10 border border-accent/40 text-accent text-xs font-semibold active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+              >
+                ▶ Start timer
+              </button>
+            )}
           </div>
         )}
 

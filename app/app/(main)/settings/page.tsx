@@ -48,6 +48,11 @@ export default function SettingsPage() {
     await refresh();
   };
 
+  const setSoundsEnabled = async (soundsEnabled: boolean) => {
+    await getRepository().upsertProfile({ ...user, soundsEnabled, updatedAt: new Date().toISOString() });
+    await refresh();
+  };
+
   const doExport = async (fmt: 'json' | 'csv') => {
     setExporting(true);
     const repo = getRepository();
@@ -99,6 +104,17 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+        </Card>
+
+        <Card>
+          <div className="section-head mb-2">SOUNDS</div>
+          <p className="text-xs text-ink-dim mb-2">
+            Double-beep when the rest timer or exercise timer reaches zero.
+          </p>
+          <div className="flex gap-2">
+            <ChoicePill value="on" label="On" selected={user.soundsEnabled !== false} onSelect={() => setSoundsEnabled(true)} />
+            <ChoicePill value="off" label="Off" selected={user.soundsEnabled === false} onSelect={() => setSoundsEnabled(false)} />
+          </div>
         </Card>
 
         <Card>

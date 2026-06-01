@@ -2,6 +2,7 @@ export * from './EffortPicker';
 export * from './SetLoggerRow';
 export * from './ExerciseCard';
 export * from './RestTimer';
+export * from './ExerciseTimer';
 export * from './ExerciseHistorySheet';
 export * from './SwapExerciseModal';
 export * from './SessionFeedbackModal';
