@@ -16,8 +16,10 @@ interface Props {
   ariaLabel?: string;
 }
 
-/** Tap-to-edit numeric input. Closed: compact box. Open: expanded editor
- *  with +/- on the right (long-press fast-scrolls). Sized so numbers fit. */
+/** Tap-to-edit numeric input. Closed: compact box. Open: an oversized
+ *  floating editor that overlays its origin — big +/- buttons and a visible
+ *  Done button so mobile users have an obvious commit affordance (the
+ *  numeric keypad's Enter is hidden when the user is only using +/-). */
 const LONG_PRESS_MS = 280;
 const ACCEL_TICK_MS = 60;
 
@@ -72,8 +74,7 @@ export function InlineNumber({
   };
   // Pointer events unify touch + mouse and fire once per interaction. The
   // previous mouseDown + touchStart pair could both fire on mobile (synthetic
-  // mouse event after touch) — that bumped the value by 2 per tap, which
-  // surfaced as "the reps +/- jumps by 2".
+  // mouse event after touch) — that bumped the value by 2 per tap.
   const pressStart = (e: React.PointerEvent, dir: 1 | -1) => {
     e.stopPropagation(); e.preventDefault();
     bump(dir);
@@ -87,34 +88,41 @@ export function InlineNumber({
 
   return (
     <div ref={wrapRef} className={cn('relative w-full', className)}>
-      {!open ? (
-        <button
-          type="button"
-          aria-label={ariaLabel}
-          disabled={disabled}
-          onClick={(e) => { e.stopPropagation(); setOpen(true); }}
-          className={cn(
-            'w-full h-11 px-2 rounded-lg bg-bg-input border border-ink-line',
-            'text-sm font-semibold text-center numeric',
-            'transition active:scale-[0.98] hover:border-ink-dim',
-            'disabled:opacity-50 disabled:pointer-events-none',
-            value == null && 'text-ink-mute font-normal',
-          )}
-        >
-          {fmt(value)}
-          {unit && value != null && <span className="text-ink-mute text-[10px] font-normal ml-1">{unit}</span>}
-        </button>
-      ) : (
-        /* Open: expands in place; smaller font + slim +/- to leave more room for digits */
+      {/* Closed-state button is always rendered so the row keeps its height
+          even when the editor floats above. Hidden visually while open. */}
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={(e) => { e.stopPropagation(); if (!disabled) setOpen(true); }}
+        className={cn(
+          'w-full h-11 px-2 rounded-lg bg-bg-input border border-ink-line',
+          'text-sm font-semibold text-center numeric',
+          'transition active:scale-[0.98] hover:border-ink-dim',
+          'disabled:opacity-50 disabled:pointer-events-none',
+          value == null && 'text-ink-mute font-normal',
+          open && 'invisible',
+        )}
+      >
+        {fmt(value)}
+        {unit && value != null && <span className="text-ink-mute text-[10px] font-normal ml-1">{unit}</span>}
+      </button>
+
+      {open && (
+        /* Open: floats above the closed button, extends wider for big touch targets. */
         <div
           onClick={(e) => e.stopPropagation()}
-          className="w-full rounded-xl bg-bg-elev border-2 border-accent shadow-glow p-1.5"
+          className={cn(
+            'absolute z-40 top-0 left-1/2 -translate-x-1/2',
+            'w-[160%] min-w-[180px]',
+            'rounded-xl bg-bg-elev border-2 border-accent shadow-glow p-2',
+          )}
         >
-          <div className="flex items-stretch gap-1">
+          <div className="flex items-stretch gap-2">
             <input
               ref={inputRef}
               inputMode="decimal"
-              className="flex-1 min-w-0 h-12 px-1 text-center text-base font-semibold numeric bg-bg-input border border-ink-line rounded-md outline-none focus:border-accent"
+              className="flex-1 min-w-0 h-16 px-2 text-center text-xl font-semibold numeric bg-bg-input border border-ink-line rounded-md outline-none focus:border-accent"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -124,13 +132,13 @@ export function InlineNumber({
                 if (e.key === 'ArrowDown') { e.preventDefault(); bump(-1); }
               }}
             />
-            <div className="flex flex-col gap-0.5 w-7 flex-none">
+            <div className="flex flex-col gap-1 w-12 flex-none">
               <button type="button" aria-label="Increase"
                 onPointerDown={(e) => pressStart(e, 1)}
                 onPointerUp={pressEnd}
                 onPointerLeave={pressEnd}
                 onPointerCancel={pressEnd}
-                className="flex-1 rounded-md bg-bg-input border border-ink-line text-ink text-sm font-semibold active:scale-95">
+                className="flex-1 rounded-md bg-bg-input border border-ink-line text-ink text-xl font-bold active:scale-95 select-none">
                 +
               </button>
               <button type="button" aria-label="Decrease"
@@ -138,12 +146,23 @@ export function InlineNumber({
                 onPointerUp={pressEnd}
                 onPointerLeave={pressEnd}
                 onPointerCancel={pressEnd}
-                className="flex-1 rounded-md bg-bg-input border border-ink-line text-ink text-sm font-semibold active:scale-95">
+                className="flex-1 rounded-md bg-bg-input border border-ink-line text-ink text-xl font-bold active:scale-95 select-none">
                 −
               </button>
             </div>
           </div>
-          {unit && <div className="text-[9px] text-ink-mute tracking-wider2 mt-1 text-center uppercase">{unit} · enter to confirm</div>}
+          <div className="mt-2 flex items-center gap-2">
+            {unit && (
+              <div className="text-[10px] text-ink-mute tracking-wider2 uppercase flex-1">{unit}</div>
+            )}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); commit(); }}
+              className="px-4 h-9 rounded-md bg-accent text-white text-sm font-semibold active:scale-95"
+            >
+              Done
+            </button>
+          </div>
         </div>
       )}
     </div>

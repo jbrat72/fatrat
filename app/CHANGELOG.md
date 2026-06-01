@@ -8,6 +8,16 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.62.6 — 2026-05-31
+
+- InlineNumber editor (the inline weight/reps/time inputs) — when open it
+  now floats above the row at 160% width with a much larger input field
+  (h-16 vs h-12), wider +/- buttons (w-12 vs w-7), and a visible "Done"
+  button. The "Enter to confirm" caption is gone — Done replaces it for
+  mobile users who only use the +/- buttons and never see a keyboard. Row
+  layout no longer shifts when a cell opens (the closed button stays
+  rendered as a height-preserving spacer; the editor overlays it).
+
 ## v0.62.5 — 2026-05-31
 
 - "Make it active" in the Template Wizard now also saves the program as a
