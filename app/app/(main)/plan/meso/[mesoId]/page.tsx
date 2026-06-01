@@ -8,6 +8,8 @@ import { getRepository } from '@/lib/firestore';
 import { terminologyMode, usesAdvancedTerminology } from '@/lib/periodization';
 import type { Mesocycle, Microcycle, WorkoutSession } from '@/types';
 import { ChangePlanSheet } from '@/components/plan/ChangePlanSheet';
+import { TemplateWizard } from '@/components/plan/TemplateWizard';
+import { mesocycleToTemplate } from '@/lib/program/mesoToTemplate';
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -19,6 +21,10 @@ export default function MesoDetailPage() {
   const [micros, setMicros] = useState<Microcycle[]>([]);
   const [sessionsByMicro, setSessionsByMicro] = useState<Record<string, WorkoutSession[]>>({});
   const [changeOpen, setChangeOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  // When set, the wizard opens pre-populated with the user's current plan
+  // ("Edit this plan" path from the Change Plan sheet).
+  const [editTemplate, setEditTemplate] = useState<ReturnType<typeof mesocycleToTemplate> | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
@@ -110,6 +116,20 @@ export default function MesoDetailPage() {
         sessions={Object.values(sessionsByMicro).flat()}
         onClose={() => setChangeOpen(false)}
         onChanged={() => setRefreshTick((n) => n + 1)}
+        onEdit={() => {
+          // Build a template snapshot of the current plan and hand it to the
+          // wizard. Saving via "Make it active" archives the current plan
+          // and starts a fresh one.
+          setEditTemplate(mesocycleToTemplate(meso, micros, Object.values(sessionsByMicro).flat()));
+          setChangeOpen(false);
+          setWizardOpen(true);
+        }}
+      />
+      <TemplateWizard
+        open={wizardOpen}
+        onClose={() => { setWizardOpen(false); setEditTemplate(null); }}
+        initialTemplate={editTemplate}
+        onSaved={() => { setRefreshTick((n) => n + 1); setEditTemplate(null); }}
       />
     </div>
   );

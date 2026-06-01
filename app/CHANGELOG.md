@@ -8,6 +8,13 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.62.2 — 2026-05-31
+
+- Wired "Edit this plan" on the Meso detail page's Change Plan sheet —
+  Today → Open → Change now shows it too. Same flow as the main Plan page:
+  builds a single-week ProgramTemplate from the live meso and opens the
+  Template Wizard pre-populated.
+
 ## v0.62.1 — 2026-05-31
 
 - Change Plan sheet — added an "Edit this plan" action above "Cancel this
