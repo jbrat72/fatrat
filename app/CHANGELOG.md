@@ -8,6 +8,26 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.63.0 — 2026-05-31
+
+- Today page now supports multiple sessions per day. If a workout is
+  finished, adding another ad-hoc workout (or starting a single-workout
+  template) creates a *new* session instead of overwriting the completed
+  one. Today renders every session on today's date — pending ones first
+  (with their normal exercise list), completed ones below with the green
+  Done badge linking to the post-workout summary.
+- New repository method `listSessionsOnDate(userId, isoDate)` — returns
+  every session for a date. Mock + Firestore impls. `resolveToday` now
+  returns `{ session, todaySessions, ... }`; `session` is the primary
+  target for the header button, `todaySessions` is the full list the UI
+  iterates.
+- Save flows updated to only reuse an existing session's id when that
+  session is still incomplete — picker (today/page), AdHoc workout modal,
+  and the template-detail single-workout start. Completed sessions are
+  never replaced.
+- Minor version bump because the resolveToday shape changed and the Today
+  page rendering model is now a list, not a single card.
+
 ## v0.62.6 — 2026-05-31
 
 - InlineNumber editor (the inline weight/reps/time inputs) — when open it

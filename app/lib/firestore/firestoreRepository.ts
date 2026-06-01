@@ -165,6 +165,13 @@ export function firestoreRepository(): DataRepository {
       const snap = await getDocs(q);
       return snap.empty ? null : (snap.docs[0]!.data() as WorkoutSession);
     },
+    async listSessionsOnDate(userId, isoDate) {
+      const q = query(subCol(userId, 'days'), where('date', '==', isoDate));
+      const snap = await getDocs(q);
+      const out = snap.docs.map((d) => d.data() as WorkoutSession);
+      out.sort((a, b) => (a.startedAt ?? '').localeCompare(b.startedAt ?? ''));
+      return out;
+    },
 
     /* ---- Exercise library ---- */
     async listGlobalExercises() {

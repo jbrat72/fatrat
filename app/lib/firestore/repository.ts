@@ -42,6 +42,8 @@ export interface DataRepository {
 
   /* ---------- Sessions ---------- */
   listSessions(userId: string, opts?: { limit?: number }): Promise<WorkoutSession[]>;
+  /** Every session whose `date` matches `isoDate` for the given user. */
+  listSessionsOnDate(userId: string, isoDate: string): Promise<WorkoutSession[]>;
   listSessionsInMicrocycle(microId: string): Promise<WorkoutSession[]>;
   getSession(sessionId: string): Promise<WorkoutSession | null>;
   upsertSession(s: WorkoutSession): Promise<WorkoutSession>;

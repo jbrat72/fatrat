@@ -147,22 +147,27 @@ export function AdHocWorkoutModal({
     if (exercises.length === 0) { setSaving(false); return; }
 
     const dow = new Date(date + 'T00:00:00').getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6;
-    const existing = await repo.getTodaySession(user.userId, date);
+    // Only merge into an existing session if it's still pending — merging
+    // into a completed session would silently bury the new ad-hoc work
+    // inside the already-done card. Completed days get a fresh session so
+    // Today shows both workouts as distinct cards.
+    const todays = await repo.listSessionsOnDate(user.userId, date);
+    const mergeInto = todays.find((s) => !s.completed) ?? null;
 
     let session: WorkoutSession;
-    if (existing) {
+    if (mergeInto) {
       session = {
-        ...existing,
+        ...mergeInto,
         completed: true,
-        completedAt: existing.completedAt ?? new Date().toISOString(),
-        exercises: [...existing.exercises, ...exercises],
-        microcycleId: existing.microcycleId ?? microcycleId,
-        mesocycleId: existing.mesocycleId ?? mesocycleId,
-        planName: existing.planName ?? planName,
+        completedAt: mergeInto.completedAt ?? new Date().toISOString(),
+        exercises: [...mergeInto.exercises, ...exercises],
+        microcycleId: mergeInto.microcycleId ?? microcycleId,
+        mesocycleId: mergeInto.mesocycleId ?? mesocycleId,
+        planName: mergeInto.planName ?? planName,
       };
     } else {
       session = {
-        id: 'adhoc-' + Math.random().toString(36).slice(2, 9),
+        id: 'day-' + Math.random().toString(36).slice(2, 9),
         userId: user.userId,
         date,
         dayOfWeek: dow,
@@ -349,7 +354,6 @@ export function AdHocWorkoutModal({
 
           <div className="flex gap-2 pt-1">
             <Button variant="ghost" onClick={onClose}>Cancel</Button>
-            <div className="flex-1" />
             <Button onClick={save} disabled={!hasContent || saving}>
               {saving ? 'Saving…' : 'Save workout'}
             </Button>

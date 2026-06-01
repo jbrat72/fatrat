@@ -175,6 +175,12 @@ export function mockRepository(): DataRepository {
         .sort((a, b) => a.date.localeCompare(b.date))
         .map(clone);
     },
+    async listSessionsOnDate(userId, isoDate) {
+      return Object.values(store().sessions)
+        .filter((s) => s.userId === userId && s.date === isoDate)
+        .sort((a, b) => (a.startedAt ?? '').localeCompare(b.startedAt ?? ''))
+        .map(clone);
+    },
     async getSession(sessionId) {
       return clone(store().sessions[sessionId] ?? null);
     },

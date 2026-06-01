@@ -71,10 +71,14 @@ export default function TemplateDetailPage() {
       if (!user) return;
       const repo = getRepository();
       const date = todayIso();
-      const existing = await repo.getTodaySession(user.userId, date);
+      // Reuse an existing INCOMPLETE today session (avoids stacking empty
+      // drafts on re-pick); otherwise start a fresh session so a completed
+      // workout earlier today doesn't get overwritten.
+      const todays = await repo.listSessionsOnDate(user.userId, date);
+      const reuse = todays.find((s) => !s.completed) ?? null;
       const dow = new Date(date + 'T00:00:00').getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6;
       const session: WorkoutSession = {
-        id: existing?.id ?? ('workout-' + Math.random().toString(36).slice(2, 9)),
+        id: reuse?.id ?? ('day-' + Math.random().toString(36).slice(2, 9)),
         userId: user.userId,
         name: template.name,
         date,
@@ -82,7 +86,7 @@ export default function TemplateDetailPage() {
         completed: false,
         startedAt: new Date().toISOString(),
         exercises: workoutEntries,
-        cardio: existing?.cardio ?? [],
+        cardio: reuse?.cardio ?? [],
         // Intentionally no microcycleId/mesocycleId — this is
         // an ad-hoc workout, not a programmed day.
       };
@@ -222,7 +226,6 @@ export default function TemplateDetailPage() {
           onSaved={(mode) => router.push(mode === 'activate' ? '/today' : '/plan/templates')}
         />
       )}
-
       {/* Workout wizard — only for workout-kind templates, in Modify mode */}
       {isWorkout && (
         <SingleWorkoutWizard
