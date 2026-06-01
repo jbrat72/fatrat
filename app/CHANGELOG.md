@@ -8,6 +8,17 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.62.5 — 2026-05-31
+
+- "Make it active" in the Template Wizard now also saves the program as a
+  custom template — it shows up in Browse templates afterwards alongside the
+  active plan (e.g. "Summer Workout, by Brian"). Previously the activate path
+  only persisted the mesocycle and the user had to hit "Save as a template"
+  separately to make the program reusable. When `modifyTemplateId` is set
+  (Edit-an-existing-template flow), it overwrites that template instead of
+  creating a duplicate. Helper copy under the save buttons updated to
+  reflect the new behavior.
+
 ## v0.62.4 — 2026-05-31
 
 - Three workout tweaks:

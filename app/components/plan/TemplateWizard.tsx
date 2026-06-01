@@ -679,6 +679,12 @@ export function TemplateWizard({ open, onClose, onSaved, initialTemplate, modify
         await repo.upsertMesocycle(prog.mesocycle);
         for (const mi of prog.microcycles) await repo.upsertMicrocycle(mi);
         for (const s of prog.sessions) await repo.upsertSession(s);
+        // Also save the program as a custom template so the user can find it
+        // in the Templates library afterwards (e.g. "Summer Workout, by Brian").
+        // If a `modifyTemplateId` was provided, overwrite that template;
+        // otherwise create a new entry.
+        const builtTpl = buildCustomTemplate(input);
+        await repo.upsertTemplate(modifyTemplateId ? { ...builtTpl, id: modifyTemplateId } : builtTpl);
       } else {
         const built = buildCustomTemplate(input);
         await repo.upsertTemplate(modifyTemplateId ? { ...built, id: modifyTemplateId } : built);
@@ -1742,10 +1748,10 @@ export function TemplateWizard({ open, onClose, onSaved, initialTemplate, modify
                 {modifyTemplateId ? 'Save changes' : 'Save as a template'}
               </Button>
               <p className="text-xs text-ink-mute text-center pt-2">
-                &ldquo;Make it active&rdquo; starts this program now and archives your current one.
+                &ldquo;Make it active&rdquo; starts this program now, archives your current one, and adds it to Browse templates.
                 {modifyTemplateId
                   ? ' “Save changes” updates this template — your active program is untouched.'
-                  : ' “Save as a template” adds it to Browse templates to start later.'}
+                  : ' “Save as a template” just adds it to Browse templates to start later.'}
               </p>
             </div>
           </div>
