@@ -8,6 +8,14 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.64.1 — 2026-05-31
+
+- Plan page: the *expanded* per-exercise card inside a week row also now
+  branches on `metric` for the prescription header. Time exercises (Plank,
+  Side Plank) read "1 × 30–60s" instead of "1 × ?–? reps". The outer
+  session card was fixed in v0.64.0; this fix covers the inner expanded
+  view that the screenshot showed.
+
 ## v0.64.0 — 2026-05-31
 
 - Plan page now renders set entries based on the exercise's `metric`. Time

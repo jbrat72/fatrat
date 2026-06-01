@@ -489,7 +489,13 @@ function WeekSessionRow({
                   <MuscleBadge muscle={ex.muscle} />
                   <div className="font-medium text-sm mt-1 truncate">{ex.name}</div>
                   <div className="text-[11px] text-ink-dim mt-0.5">
-                    {ex.sets.length} {'×'} {ex.prescribedRepsLow ?? '?'}{'–'}{ex.prescribedRepsHigh ?? '?'} reps
+                    {ex.sets.length} {'×'} {(() => {
+                      const m = ex.metric ?? 'weight-reps';
+                      if (m === 'time' || m === 'weight-time') {
+                        return `${ex.prescribedTimeLow ?? '?'}–${ex.prescribedTimeHigh ?? '?'}s`;
+                      }
+                      return `${ex.prescribedRepsLow ?? '?'}–${ex.prescribedRepsHigh ?? '?'} reps`;
+                    })()}
                     {mode === 'ADVANCED' && ex.prescribedRIR != null && ` · ${ex.prescribedRIR} RIR`}
                   </div>
                 </div>
