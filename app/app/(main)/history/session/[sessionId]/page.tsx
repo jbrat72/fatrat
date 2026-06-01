@@ -56,6 +56,7 @@ export default function SessionSummaryPage() {
     const have = new Set((session.feedback?.perMuscle ?? []).map((p) => p.muscle));
     const worked = new Set<MuscleGroup>();
     for (const ex of session.exercises) {
+      if (ex.muscle === 'core') continue; // core never gets feedback
       if (ex.sets.some((s) => s.completed)) worked.add(ex.muscle);
     }
     return [...worked].filter((m) => !have.has(m));

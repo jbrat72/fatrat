@@ -204,7 +204,7 @@ export default function WorkoutPage() {
     const updatedSets = ex.sets.map((s, j) => {
       if (j === setIdx) return committed;
       if (j === nextSetIdx && nextRaw && !nextRaw.completed && ex.setStyle !== 'pyramid' && nextRaw.setType !== 'drop') {
-        return nudgeNextSet(committed, ex.prescribedRepsLow, ex.prescribedRepsHigh, ex.prescribedRIR, nextRaw, user?.units ?? 'metric');
+        return nudgeNextSet(committed, ex.prescribedRepsLow, ex.prescribedRepsHigh, ex.prescribedRIR, nextRaw, user?.units ?? 'metric', micro?.targetRIR);
       }
       return s;
     });
@@ -218,8 +218,11 @@ export default function WorkoutPage() {
     // Per-muscle feedback: if this set finished the muscle group, ask for it.
     // Pump/volume/pain feedback only drives the periodization model — ad-hoc
     // and traditional sessions don't use it, so we don't prompt for it there.
+    // Core is excluded — it's a noise-prone signal (everything trains it
+    // incidentally) and Brian doesn't want to be asked.
     const justMuscle = ex.muscle;
     if (
+      justMuscle !== 'core' &&
       isPeriodizedSession(next, meso) &&
       muscleFinished(next, justMuscle) &&
       !next.feedback?.perMuscle.some((p) => p.muscle === justMuscle) &&
@@ -595,10 +598,12 @@ function muscleFinished(session: WorkoutSession, muscle: MuscleGroup): boolean {
   return anyCompleted;
 }
 
-/** Muscles with at least one completed set this session. */
+/** Muscles with at least one completed set this session.
+ *  Core is intentionally excluded — feedback prompts skip it. */
 function workedMuscles(session: WorkoutSession): MuscleGroup[] {
   const seen = new Set<MuscleGroup>();
   for (const ex of session.exercises) {
+    if (ex.muscle === 'core') continue;
     if (ex.sets.some((s) => s.completed)) seen.add(ex.muscle);
   }
   return [...seen];

@@ -70,8 +70,13 @@ export function InlineNumber({
     onChange(next);
     setDraft(String(next));
   };
-  const pressStart = (e: React.MouseEvent | React.TouchEvent, dir: 1 | -1) => {
-    e.stopPropagation(); e.preventDefault(); bump(dir);
+  // Pointer events unify touch + mouse and fire once per interaction. The
+  // previous mouseDown + touchStart pair could both fire on mobile (synthetic
+  // mouse event after touch) — that bumped the value by 2 per tap, which
+  // surfaced as "the reps +/- jumps by 2".
+  const pressStart = (e: React.PointerEvent, dir: 1 | -1) => {
+    e.stopPropagation(); e.preventDefault();
+    bump(dir);
     longPressRef.current = setTimeout(() => { tickRef.current = setInterval(() => bump(dir), ACCEL_TICK_MS); }, LONG_PRESS_MS);
   };
   const pressEnd = () => {
@@ -121,14 +126,18 @@ export function InlineNumber({
             />
             <div className="flex flex-col gap-0.5 w-7 flex-none">
               <button type="button" aria-label="Increase"
-                onMouseDown={(e) => pressStart(e, 1)} onMouseUp={pressEnd} onMouseLeave={pressEnd}
-                onTouchStart={(e) => pressStart(e, 1)} onTouchEnd={pressEnd}
+                onPointerDown={(e) => pressStart(e, 1)}
+                onPointerUp={pressEnd}
+                onPointerLeave={pressEnd}
+                onPointerCancel={pressEnd}
                 className="flex-1 rounded-md bg-bg-input border border-ink-line text-ink text-sm font-semibold active:scale-95">
                 +
               </button>
               <button type="button" aria-label="Decrease"
-                onMouseDown={(e) => pressStart(e, -1)} onMouseUp={pressEnd} onMouseLeave={pressEnd}
-                onTouchStart={(e) => pressStart(e, -1)} onTouchEnd={pressEnd}
+                onPointerDown={(e) => pressStart(e, -1)}
+                onPointerUp={pressEnd}
+                onPointerLeave={pressEnd}
+                onPointerCancel={pressEnd}
                 className="flex-1 rounded-md bg-bg-input border border-ink-line text-ink text-sm font-semibold active:scale-95">
                 −
               </button>

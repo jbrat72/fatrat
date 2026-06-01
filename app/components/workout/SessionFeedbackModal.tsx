@@ -29,9 +29,10 @@ interface Props {
 export function SessionFeedbackModal({ open, session, muscles, existing, onCancel, onSave }: Props) {
   const targetMuscles = useMemo<MuscleGroup[]>(() => {
     if (!session) return [];
-    if (muscles) return muscles;
+    if (muscles) return muscles.filter((m) => m !== 'core');
     const seen = new Set<MuscleGroup>();
     for (const ex of session.exercises) {
+      if (ex.muscle === 'core') continue; // core never gets pump/volume/joint-pain feedback
       if (ex.sets.some((s) => s.completed)) seen.add(ex.muscle);
     }
     return [...seen];

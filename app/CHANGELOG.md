@@ -8,6 +8,24 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.62.4 — 2026-05-31
+
+- Three workout tweaks:
+  - Core no longer gets a per-muscle feedback (pump/volume/joint-pain)
+    prompt. It's incidentally trained on most days and the signal is noise.
+    Filtered out at the trigger site (today/workout), in the post-workout
+    "Add feedback" card (history/session), and defensively inside
+    `SessionFeedbackModal` itself.
+  - Reps +/- on the set logger was bumping by 2 on touch devices —
+    `onTouchStart` and the synthetic `onMouseDown` both fired. Swapped
+    `InlineNumber` to pointer events (`onPointerDown` / `onPointerUp` /
+    `onPointerLeave` / `onPointerCancel`); one event per interaction.
+  - On easy weeks (microcycle `targetRIR >= 2`), `nudgeNextSet` now holds
+    weight steady regardless of how the prior set felt. Those weeks are
+    supposed to be easy — nudging the bar up just because the user had
+    reps in the tank defeats the point. Hard weeks (RIR <= 1) and
+    ad-hoc sessions still get the full nudge behavior.
+
 ## v0.62.3 — 2026-05-31
 
 - Edit this plan — wizard now actually opens with the saved plan's values.

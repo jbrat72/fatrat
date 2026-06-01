@@ -51,6 +51,11 @@ export function nudgeNextSet(
   prescribedRIR: number | undefined,
   nextRaw: SetEntry,
   units: Units = 'metric',
+  /** The active microcycle's target RIR. Used to skip weight adjustments on
+   *  "easy" weeks (RIR >= 2) — those sets are supposed to be easy, so the
+   *  nudge holds weight steady regardless of how the prior set felt. Hard
+   *  weeks (RIR <= 1, or no RIR known) get the full nudge behavior. */
+  microTargetRIR?: number,
 ): SetEntry {
   if (!just.completed || just.weightKg == null) return nextRaw;
   if (nextRaw.completed) return nextRaw; // never overwrite a locked set
@@ -61,6 +66,15 @@ export function nudgeNextSet(
   const low = prescribedRepsLow;
   const targetRpe = prescribedRIR != null ? Math.max(1, Math.min(10, 10 - prescribedRIR)) : null;
   const { small, big } = plateKgFor(units, just.weightKg);
+
+  // "Easy week" — the user is on a high-RIR week and is meant to leave reps
+  // in the tank. Hold weight steady regardless of how the set felt. Reps
+  // also stay as-is. (Ad-hoc / no-RIR contexts fall through to the full
+  // nudge behavior — only an explicit easy-week signal disables it.)
+  const isEasyWeek = microTargetRIR != null && microTargetRIR >= 2;
+  if (isEasyWeek) {
+    return { ...nextRaw, weightKg: roundToDisplay(just.weightKg, units), reps: nextRaw.reps };
+  }
 
   let nextWeight = just.weightKg;
   let nextReps = nextRaw.reps;
