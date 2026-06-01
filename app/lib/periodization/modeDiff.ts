@@ -17,7 +17,7 @@ const FEATURE_BY_MODE: Record<UserMode, string[]> = {
     'Quiet easy weeks every 5–6 weeks',
   ],
   INTERMEDIATE: [
-    '5-button effort scale (Smooth / Solid / Tough / Grinding / Failed)',
+    '5-button effort scale (Easy / Solid / Tough / Hard / Failed)',
     'Training-block (mesocycle) view',
     'Simple weight-over-time line charts',
     'Weekly volume traffic-light grid',

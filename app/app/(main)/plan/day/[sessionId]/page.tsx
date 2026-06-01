@@ -6,28 +6,11 @@ import { useUser } from '@/components/app';
 import { Button, Card, MuscleBadge, PageTitle, BackButton } from '@/components/ui';
 import { getRepository } from '@/lib/firestore';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
-import { terminologyMode, usesAdvancedTerminology } from '@/lib/periodization';
-import type { WorkoutSession, Mesocycle, Microcycle, UserMode, EffortRPE } from '@/types';
+import { terminologyMode, usesAdvancedTerminology, effortShort } from '@/lib/periodization';
+import type { WorkoutSession, Mesocycle, Microcycle } from '@/types';
 import { todayIso } from '@/lib/ui/date';
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-
-/** Map RPE to a short readable effort label per user mode. */
-function effortShort(mode: UserMode, rpe: EffortRPE): string {
-  if (mode === 'BASIC') {
-    if (rpe <= 6.5) return 'Easy';
-    if (rpe <= 8)   return 'Just right';
-    return 'Hard';
-  }
-  if (mode === 'INTERMEDIATE') {
-    if (rpe <= 6.5) return 'Smooth';
-    if (rpe <= 7.5) return 'Solid';
-    if (rpe <= 8.5) return 'Tough';
-    if (rpe <= 9.5) return 'Grinding';
-    return 'Failed';
-  }
-  return `RPE ${rpe}`;
-}
 
 export default function DayDetailPage() {
   const { sessionId } = useParams<{ sessionId: string }>();

@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.63.1 — 2026-05-31
+
+- INTERMEDIATE effort picker — renamed "Smooth" → "Easy" and "Grinding" →
+  "Hard" so the endpoints match the BASIC scale (Easy / Just Right / Hard).
+  Underlying RPE values unchanged; historical sets render with the new
+  labels. Doc comments and the mode-diff description updated. Also folded
+  the fourth `effortShort` copy (in plan/day) into the shared
+  `lib/periodization/terminology.ts` helper.
+
 ## v0.63.0 — 2026-05-31
 
 - Today page now supports multiple sessions per day. If a workout is

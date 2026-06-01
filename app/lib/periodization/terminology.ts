@@ -61,7 +61,7 @@ export function isPeriodizedSession(
 /**
  * Per-set effort label, terminology-aware.
  *   BASIC        → Easy / Just right / Hard
- *   INTERMEDIATE → Smooth / Solid / Tough / Grinding / Failed
+ *   INTERMEDIATE → Easy / Solid / Tough / Hard / Failed
  *   ADVANCED     → `RPE X` (raw number)
  *
  * Single source of truth — used by the workout summary, the day-detail sheet,
@@ -74,10 +74,10 @@ export function effortShort(mode: UserMode, rpe: EffortRPE): string {
     return 'Hard';
   }
   if (mode === 'INTERMEDIATE') {
-    if (rpe <= 6.5) return 'Smooth';
+    if (rpe <= 6.5) return 'Easy';
     if (rpe <= 7.5) return 'Solid';
     if (rpe <= 8.5) return 'Tough';
-    if (rpe <= 9.5) return 'Grinding';
+    if (rpe <= 9.5) return 'Hard';
     return 'Failed';
   }
   return `RPE ${rpe}`;

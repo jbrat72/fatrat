@@ -20,7 +20,7 @@ interface Props {
 /**
  * Mode-aware effort picker.
  *   BASIC        → 3 buttons: Easy / Just Right / Hard          (RPE 6 / 7.5 / 9)
- *   INTERMEDIATE → 5 buttons: Smooth / Solid / Tough / Grinding / Failed
+ *   INTERMEDIATE → 5 buttons: Easy / Solid / Tough / Hard / Failed
  *   ADVANCED     → RPE pills 6,7,8,9,10 + half-steps, with RIR readout
  *
  * Always writes the underlying numeric RPE. The same value rendered in BASIC
@@ -53,10 +53,10 @@ export function EffortPicker({ mode, value, onChange, className, compact }: Prop
 
   if (mode === 'INTERMEDIATE') {
     const feels = [
-      { key: 'smooth', label: 'Smooth' },
+      { key: 'smooth', label: 'Easy' },
       { key: 'solid', label: 'Solid' },
       { key: 'tough', label: 'Tough' },
-      { key: 'grinding', label: 'Grinding' },
+      { key: 'grinding', label: 'Hard' },
       { key: 'failed', label: 'Failed' },
     ] as const;
     return (
