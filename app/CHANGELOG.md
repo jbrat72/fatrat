@@ -8,6 +8,19 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.62.3 — 2026-05-31
+
+- Edit this plan — wizard now actually opens with the saved plan's values.
+  Two fixes: (1) `mesocycleToTemplate` emits an array of length
+  `meso.weeks` (only week 0 carries content) so the wizard's
+  `clamp(t.weeks.length, 3, 8)` lands on the real plan duration instead of
+  defaulting to 3. (2) Each slot now carries `startingWeightKg` from the
+  first set of the matching session, and the wizard's seed effect converts
+  it to display units and writes it into `weightEdits.weight` — the
+  starting-weights step opens pre-filled. Reps, time, RIR, tiers, set
+  styles, rest seconds, program style, split, days/week all already
+  carried over; weeks and weights now do too.
+
 ## v0.62.2 — 2026-05-31
 
 - Wired "Edit this plan" on the Meso detail page's Change Plan sheet —

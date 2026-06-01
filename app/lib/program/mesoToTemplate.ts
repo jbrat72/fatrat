@@ -6,10 +6,15 @@
  * already knows how to pre-populate from a ProgramTemplate via the
  * `initialTemplate` prop, so we synthesize one from the live plan.
  *
- * The Template Wizard reads `weeks[0]` only when seeding state, so we emit a
- * single-week template populated from the meso's first microcycle. Saving
- * via the wizard's "Make it active" path archives the current plan and
- * generates a fresh program — same flow as Cancel + start a new plan.
+ * The Template Wizard reads `weeks[0]` for the exercise/day layout and
+ * `weeks.length` for the week count. We emit an array of length `meso.weeks`
+ * so the wizard opens at the correct duration; only week 0 carries
+ * populated days. Per-exercise `startingWeightKg` is sourced from the first
+ * logged/prescribed set in the first week so the wizard can pre-fill the
+ * starting-weights step with what the user already has.
+ *
+ * Saving via the wizard's "Make it active" path archives the current plan
+ * and generates a fresh program — same flow as Cancel + start a new plan.
  *
  * Pure function. No Firestore, no React.
  */
@@ -20,9 +25,12 @@ import type {
 } from '@/types';
 
 /**
- * Build a single-week ProgramTemplate from a Mesocycle + its Microcycles +
- * the WorkoutSessions belonging to those Microcycles. Picks week 1 (the
- * lowest weekNumber) as the structural source.
+ * Build a multi-week ProgramTemplate snapshot from a Mesocycle + its
+ * Microcycles + the WorkoutSessions belonging to those Microcycles. The
+ * structural source is week 1 (the lowest weekNumber).
+ *
+ * `meso.weeks` empty placeholder weeks follow week 0 so the wizard's week
+ * count clamps correctly to the original plan length.
  */
 export function mesocycleToTemplate(
   meso: Mesocycle,
@@ -48,16 +56,28 @@ export function mesocycleToTemplate(
       timeLow: ex.prescribedTimeLow,
       timeHigh: ex.prescribedTimeHigh,
       startingRIR: ex.prescribedRIR,
+      // The first set's weight is what the user prescribed/logged for this
+      // exercise — surface it so the wizard's starting-weights step opens
+      // pre-filled. (Stored in kg; the wizard converts to display units.)
+      startingWeightKg: ex.sets[0]?.weightKg,
     })),
   }));
 
-  const week: TemplateWeek = { weekIndex: 0, days };
+  // Emit one entry per week so the wizard's `clamp(t.weeks.length, 3, 8)`
+  // lands on the original meso length. Only week 0 carries content — the
+  // wizard never reads weeks[1..] for layout, only the count.
+  const totalWeeks = Math.max(1, meso.weeks);
+  const weeks: TemplateWeek[] = Array.from({ length: totalWeeks }, (_, i) =>
+    i === 0
+      ? { weekIndex: 0, days }
+      : { weekIndex: i, days: [] },
+  );
+
   const daysPerWeek = Math.max(2, days.length || 3);
   const split: SplitType = firstMicro?.splitType ?? 'custom';
 
   return {
-    // `id` is irrelevant — the wizard only reads it for change detection in
-    // its initRef. A stable per-meso id keeps the effect from re-firing.
+    // Stable per-meso id keeps the wizard's seed effect from re-firing.
     id: `meso-edit-${meso.id}`,
     name: meso.name,
     description: meso.goal ?? 'Editing your current plan',
@@ -72,6 +92,6 @@ export function mesocycleToTemplate(
     createdBy: undefined,
     muscleTiers: meso.muscleTiers,
     restSeconds: meso.restSeconds,
-    weeks: [week],
+    weeks,
   };
 }

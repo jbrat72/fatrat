@@ -275,7 +275,9 @@ export function TemplateWizard({ open, onClose, onSaved, initialTemplate, modify
     const trained: MuscleGroup[] = [];
     let coreDays = 0;
     let coreSlotsMax = 0;
-    const seedWeightEdits: Record<string, { repsLow?: number; repsHigh?: number; timeLow?: number; timeHigh?: number }> = {};
+    const seedUnits = user.units;
+    const seedInc = seedUnits === 'imperial' ? 5 : 2.5;
+    const seedWeightEdits: Record<string, { weight?: number; repsLow?: number; repsHigh?: number; timeLow?: number; timeHigh?: number }> = {};
     const rawDays = day0s.map((day) => {
       let coreOnDay = 0;
       const slots = day.exercises.map((slot) => {
@@ -283,7 +285,19 @@ export function TemplateWizard({ open, onClose, onSaved, initialTemplate, modify
         const muscle: MuscleGroup = def?.primaryMuscle ?? 'core';
         if (muscle === 'core') coreOnDay += 1;
         else if (!trained.includes(muscle)) trained.push(muscle);
-        seedWeightEdits[slot.exerciseId] = { repsLow: slot.repsLow, repsHigh: slot.repsHigh, timeLow: slot.timeLow, timeHigh: slot.timeHigh };
+        // Surface the slot's starting weight (kg) into the wizard's display
+        // units so the starting-weights step opens pre-filled with the
+        // user's existing prescription.
+        const seedWeightDisplay = slot.startingWeightKg != null
+          ? Math.round(((kgToDisplay(slot.startingWeightKg, seedUnits) ?? 0)) / seedInc) * seedInc
+          : undefined;
+        seedWeightEdits[slot.exerciseId] = {
+          weight: seedWeightDisplay,
+          repsLow: slot.repsLow,
+          repsHigh: slot.repsHigh,
+          timeLow: slot.timeLow,
+          timeHigh: slot.timeHigh,
+        };
         return { muscle, exerciseId: slot.exerciseId, exerciseName: def?.name ?? slot.exerciseId };
       });
       if (coreOnDay > 0) { coreDays += 1; coreSlotsMax = Math.max(coreSlotsMax, coreOnDay); }
