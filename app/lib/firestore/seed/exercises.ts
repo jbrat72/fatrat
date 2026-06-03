@@ -136,7 +136,7 @@ export const GLOBAL_EXERCISES: ExerciseDefinition[] = [
   { id: 'ab-wheel', name: 'Ab Wheel Rollout', primaryMuscle: 'core', equipment: 'bodyweight', patterns: ['isolation'], metric: 'reps' },
   { id: 'cable-crunch', name: 'Cable Crunch', primaryMuscle: 'core', equipment: 'cable', patterns: ['isolation'] },
   { id: 'pallof-press', name: 'Pallof Press', primaryMuscle: 'core', equipment: 'cable', patterns: ['isolation'] },
-  { id: 'russian-twist', name: 'Russian Twist', primaryMuscle: 'core', equipment: 'bodyweight', patterns: ['isolation'], metric: 'reps' },
+  { id: 'russian-twist', name: 'Russian Twist', primaryMuscle: 'core', equipment: 'bodyweight', patterns: ['isolation'], metric: 'weight-reps' },
   { id: 'bicycle-crunch', name: 'Bicycle Crunch', primaryMuscle: 'core', equipment: 'bodyweight', patterns: ['isolation'], metric: 'reps' },
   { id: 'dead-bug', name: 'Dead Bug', primaryMuscle: 'core', equipment: 'bodyweight', patterns: ['isolation'], metric: 'reps' },
   { id: 'decline-situp', name: 'Decline Sit-up', primaryMuscle: 'core', equipment: 'bodyweight', patterns: ['isolation'], metric: 'reps' },

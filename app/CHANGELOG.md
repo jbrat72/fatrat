@@ -8,6 +8,12 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.64.5 — 2026-05-31
+
+- Russian Twist exercise definition: metric changed from 'reps' to
+  'weight-reps' so the workout logger shows weight + reps. Russian twists
+  are commonly weighted with a plate or dumbbell.
+
 ## v0.64.4 — 2026-05-31
 
 - InlineNumber open editor now expands toward the screen interior on tap.
