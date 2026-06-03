@@ -172,19 +172,8 @@ export function OnboardingWizard() {
     const repo = getRepository();
     await repo.upsertProfile(profile);
     await setActiveUserId(userId);
-    // Auto-generate a program from the recommended template, so the user lands on a real Today.
-    try {
-      const templateId = recommendTemplateId({ mode: profile.mode, primaryGoal: profile.primaryGoal, daysPerWeek: profile.daysPerWeek });
-      const tpl = await repo.getTemplate(templateId);
-      if (tpl) {
-        const exerciseLibrary = await repo.listGlobalExercises();
-        const today = todayIso();
-        const out = generateProgram({ template: tpl, user: profile, startDate: today, exerciseLibrary, weeks: 4 });
-        await repo.upsertMesocycle(out.mesocycle);
-        for (const m of out.microcycles) await repo.upsertMicrocycle(m);
-        for (const ss of out.sessions) await repo.upsertSession(ss);
-      }
-    } catch {}
+    // No auto-generated plan — new users land on Today with no active program
+    // and choose a template explicitly (or build a custom one in the wizard).
     await refresh();
     router.push('/today');
   };

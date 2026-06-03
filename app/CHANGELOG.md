@@ -8,6 +8,28 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.64.2 — 2026-05-31
+
+- ExerciseCard now prefers the live exercise definition's `metric` over the
+  saved `exercise.metric`. Existing sessions whose denormalized metric is
+  stale (e.g. Reverse Fly persisted as 'reps' from an earlier seed) now
+  render correctly — Reverse Fly shows weight + reps because the def says
+  'weight-reps'.
+- Cardio logged from Today no longer auto-attaches to the active plan.
+  Dropped the `microcycleId` / `mesocycleId` / `planName` props from the
+  Today page's CardioLogModal — cardio on a rest day shows as a standalone
+  "Cardio · 40 min" card instead of "Week 1 Day 2 · Summer Workout".
+- CardioLogModal layout: treadmill mode now packs Duration / Speed / Incline
+  into a single 3-col row. The derived-stat panel (calculated distance /
+  speed / pace) and AVG HEART RATE sit side-by-side in a 2-col row.
+- InlineNumber editor no longer expands past the parent cell width — the
+  popup that opens on tap stays within the viewport instead of going
+  off-screen on cells near the edge. Input + buttons inside stay larger
+  than the closed state.
+- New users no longer get an auto-generated starter program from
+  onboarding. The wizard saves the profile and routes to Today; the user
+  picks a template from /plan/templates (or builds one) when they're ready.
+
 ## v0.64.1 — 2026-05-31
 
 - Plan page: the *expanded* per-exercise card inside a week row also now

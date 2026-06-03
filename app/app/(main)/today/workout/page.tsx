@@ -417,6 +417,7 @@ export default function WorkoutPage() {
         exerciseIndex={i}
         mode={terminologyMode(user)}
         units={user.units}
+        liveMetric={exerciseDefs[ex.exerciseId]?.metric}
         activeSetIndex={activeExerciseIdx === i ? activeSetIdx : null}
         disabled={isResting}
         onActivateSet={(s) => activateSet(i, s)}

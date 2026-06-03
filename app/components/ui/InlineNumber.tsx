@@ -113,8 +113,7 @@ export function InlineNumber({
         <div
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            'absolute z-40 top-0 left-1/2 -translate-x-1/2',
-            'w-[160%] min-w-[180px]',
+            'absolute z-40 top-0 left-0 right-0',
             'rounded-xl bg-bg-elev border-2 border-accent shadow-glow p-2',
           )}
         >

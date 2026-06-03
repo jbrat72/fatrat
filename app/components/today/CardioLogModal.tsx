@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useUser } from '@/components/app';
 import { Button, ChoicePill, InlineNumber } from '@/components/ui';
+import { cn } from '@/lib/ui/cn';
 import { getRepository } from '@/lib/firestore';
 import {
   kmToDisplayDistance, displayDistanceToKm,
@@ -197,7 +198,7 @@ export function CardioLogModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn('grid gap-3', mode === 'treadmill' ? 'grid-cols-3' : 'grid-cols-2')}>
             <div>
               <div className="section-head mb-2">DURATION</div>
               <InlineNumber value={duration} onChange={setDuration} step={5} decimals={0} unit="min" ariaLabel="Duration" />
@@ -231,38 +232,40 @@ export function CardioLogModal({
             )}
           </div>
 
-          {(mode === 'treadmill' || mode === 'distance') && (
-            <div className="rounded-lg border border-ink-line bg-bg-elev/40 px-3 py-2 text-xs text-ink-dim space-y-1 tnum">
-              {mode === 'treadmill' && derivedDistanceDisp != null && (
-                <div className="flex justify-between">
-                  <span>Distance (calculated)</span>
-                  <span className="font-medium text-ink">{derivedDistanceDisp.toFixed(2)} {distanceLabel(units)}</span>
-                </div>
-              )}
-              {mode === 'distance' && derivedSpeedDisp != null && (
-                <div className="flex justify-between">
-                  <span>Avg speed</span>
-                  <span className="font-medium text-ink">{derivedSpeedDisp.toFixed(1)} {speedLabel(units)}</span>
-                </div>
-              )}
-              {mode === 'distance' && derivedPaceMinPerDispUnit != null && (
-                <div className="flex justify-between">
-                  <span>Pace</span>
-                  <span className="font-medium text-ink">{formatPace(derivedPaceMinPerDispUnit)} {paceLabel(units)}</span>
-                </div>
-              )}
-              {mode === 'treadmill' && derivedDistanceDisp == null && (
-                <div className="text-ink-mute">Enter duration + speed and we&apos;ll compute the distance.</div>
-              )}
-              {mode === 'distance' && (derivedSpeedDisp == null || derivedPaceMinPerDispUnit == null) && (
-                <div className="text-ink-mute">Enter duration + distance for speed and pace.</div>
-              )}
-            </div>
-          )}
+          <div className={cn('grid gap-3', (mode === 'treadmill' || mode === 'distance') ? 'grid-cols-2' : 'grid-cols-1')}>
+            {(mode === 'treadmill' || mode === 'distance') && (
+              <div className="rounded-lg border border-ink-line bg-bg-elev/40 px-3 py-2 text-[11px] text-ink-dim space-y-1 tnum self-end">
+                {mode === 'treadmill' && derivedDistanceDisp != null && (
+                  <div className="flex justify-between">
+                    <span>Distance</span>
+                    <span className="font-medium text-ink">{derivedDistanceDisp.toFixed(2)} {distanceLabel(units)}</span>
+                  </div>
+                )}
+                {mode === 'distance' && derivedSpeedDisp != null && (
+                  <div className="flex justify-between">
+                    <span>Avg speed</span>
+                    <span className="font-medium text-ink">{derivedSpeedDisp.toFixed(1)} {speedLabel(units)}</span>
+                  </div>
+                )}
+                {mode === 'distance' && derivedPaceMinPerDispUnit != null && (
+                  <div className="flex justify-between">
+                    <span>Pace</span>
+                    <span className="font-medium text-ink">{formatPace(derivedPaceMinPerDispUnit)} {paceLabel(units)}</span>
+                  </div>
+                )}
+                {mode === 'treadmill' && derivedDistanceDisp == null && (
+                  <div className="text-ink-mute">Enter duration + speed.</div>
+                )}
+                {mode === 'distance' && (derivedSpeedDisp == null || derivedPaceMinPerDispUnit == null) && (
+                  <div className="text-ink-mute">Enter duration + distance.</div>
+                )}
+              </div>
+            )}
 
-          <div>
-            <div className="section-head mb-2">AVG HEART RATE</div>
-            <InlineNumber value={hr} onChange={setHr} step={1} decimals={0} unit="bpm" ariaLabel="Heart rate" />
+            <div>
+              <div className="section-head mb-2">AVG HEART RATE</div>
+              <InlineNumber value={hr} onChange={setHr} step={1} decimals={0} unit="bpm" ariaLabel="Heart rate" />
+            </div>
           </div>
 
           <div>

@@ -10,6 +10,10 @@ interface Props {
   exerciseIndex: number;
   mode: UserMode;
   units: Units;
+  /** Live metric from the exercise definition. Overrides the saved
+   *  exercise.metric so a stale denormalized value (e.g. 'reps' on what is
+   *  now a 'weight-reps' lift) doesn't keep showing the wrong input. */
+  liveMetric?: ExerciseEntry['metric'];
   activeSetIndex: number | null;
   disabled?: boolean;
   onActivateSet: (i: number) => void;
@@ -27,7 +31,7 @@ interface Props {
 }
 
 export function ExerciseCard({
-  exercise, exerciseIndex, mode, units, activeSetIndex, disabled,
+  exercise, exerciseIndex, mode, units, liveMetric, activeSetIndex, disabled,
   onActivateSet, onUpdateSet, onLogSet, onUnlockSet, onAddSet,
   onSwap, onSkip, onSkipSet, onRemove, onShowHistory, onStartTimer,
 }: Props) {
@@ -120,7 +124,7 @@ export function ExerciseCard({
             units={units}
             state={stateFor(i, set)}
             disabled={disabled}
-            metric={exercise.metric}
+            metric={liveMetric ?? exercise.metric}
             onActivate={() => onActivateSet(i)}
             onChange={(next) => onUpdateSet(i, next)}
             onLog={() => onLogSet(i)}

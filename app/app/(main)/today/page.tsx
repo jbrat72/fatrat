@@ -123,9 +123,6 @@ export default function TodayPage() {
         open={cardioOpen}
         onClose={() => setCardioOpen(false)}
         onSaved={() => setRefreshTick((n) => n + 1)}
-        microcycleId={today?.microcycle?.id}
-        mesocycleId={today?.mesocycle?.id}
-        planName={today?.mesocycle?.name}
       />
 
       <WorkoutPicker
