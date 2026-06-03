@@ -8,6 +8,20 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.65.1 — 2026-05-31
+
+- Edit-set capability extended to the Plan day detail page
+  (`/plan/day/[sessionId]`). The original v0.65.0 only added Edit to
+  `/history/session/[sessionId]` — Brian reached completed workouts via
+  Plan → expand week → Open full day and found no button there.
+- Extracted `EditableSetTable` to `components/workout/` so both pages
+  share the same metric-aware editor. The Plan day page's "History"
+  button now sits next to an "Edit" link; tapping Edit opens the per-set
+  editor (weight / reps / time), with Save / Cancel at the bottom of the
+  exercise card. Skipped sets stay marked Skipped.
+- Same single-exercise-at-a-time constraint applies — opening Edit on one
+  exercise disables Edit on the others until you Save or Cancel.
+
 ## v0.65.0 — 2026-05-31
 
 - History session detail page (`/history/session/[sessionId]`) — each

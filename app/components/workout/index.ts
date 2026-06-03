@@ -8,3 +8,4 @@ export * from './SwapExerciseModal';
 export * from './SessionFeedbackModal';
 export * from './AdHocWorkoutModal';
 export * from './SorenessCheckIn';
+export * from './EditableSetTable';

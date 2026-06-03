@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { Button, Card, MuscleBadge, PageTitle, BackButton } from '@/components/ui';
+import { EditableSetTable } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
 import { terminologyMode, usesAdvancedTerminology, effortShort } from '@/lib/periodization';
-import type { WorkoutSession, Mesocycle, Microcycle } from '@/types';
+import type { WorkoutSession, Mesocycle, Microcycle, ExerciseEntry, SetEntry } from '@/types';
 import { todayIso } from '@/lib/ui/date';
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -19,6 +20,10 @@ export default function DayDetailPage() {
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [meso, setMeso] = useState<Mesocycle | null>(null);
   const [micro, setMicro] = useState<Microcycle | null>(null);
+  /** Exercise index currently in edit mode, or null. */
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const [draftSets, setDraftSets] = useState<SetEntry[]>([]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!user || !sessionId) return;
@@ -42,6 +47,28 @@ export default function DayDetailPage() {
 
   const setsTotal = session.exercises.reduce((a, e) => a + e.sets.length, 0);
   const setsDone = session.exercises.reduce((a, e) => a + e.sets.filter((s) => s.completed).length, 0);
+
+  const startEdit = (idx: number) => {
+    const ex = session.exercises[idx];
+    if (!ex) return;
+    setDraftSets(ex.sets.map((s) => ({ ...s })));
+    setEditIdx(idx);
+  };
+  const cancelEdit = () => { setEditIdx(null); setDraftSets([]); };
+  const saveEdit = async () => {
+    if (editIdx == null || saving) return;
+    setSaving(true);
+    const repo = getRepository();
+    const exercises: ExerciseEntry[] = session.exercises.map((ex, i) => (
+      i === editIdx ? { ...ex, sets: draftSets } : ex
+    ));
+    const updated = { ...session, exercises };
+    await repo.upsertSession(updated);
+    setSession(updated);
+    setEditIdx(null);
+    setDraftSets([]);
+    setSaving(false);
+  };
 
   return (
     <div className="pb-24">
@@ -75,57 +102,119 @@ export default function DayDetailPage() {
           )}
         </Card>
 
-        {session.exercises.map((ex, i) => (
-          <Card key={i} className="p-0 overflow-visible">
-            <div className="px-4 pt-3 pb-2 flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <MuscleBadge muscle={ex.muscle} />
-                <div className="font-medium text-base mt-2 truncate">{ex.name}</div>
-                <div className="text-xs text-ink-dim mt-0.5">
-                  {ex.sets.length} × {ex.prescribedRepsLow ?? '?'}–{ex.prescribedRepsHigh ?? '?'} reps
-                  {usesAdvancedTerminology(user) && ex.prescribedRIR != null && ` · ${ex.prescribedRIR} RIR`}
+        {session.exercises.map((ex, i) => {
+          const m = ex.metric ?? 'weight-reps';
+          const isEditing = editIdx === i;
+          return (
+            <Card key={i} className="p-0 overflow-visible">
+              <div className="px-4 pt-3 pb-2 flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <MuscleBadge muscle={ex.muscle} />
+                  <div className="font-medium text-base mt-2 truncate">{ex.name}</div>
+                  <div className="text-xs text-ink-dim mt-0.5">
+                    {ex.sets.length} × {(() => {
+                      if (m === 'time' || m === 'weight-time') {
+                        return `${ex.prescribedTimeLow ?? '?'}–${ex.prescribedTimeHigh ?? '?'}s`;
+                      }
+                      return `${ex.prescribedRepsLow ?? '?'}–${ex.prescribedRepsHigh ?? '?'} reps`;
+                    })()}
+                    {usesAdvancedTerminology(user) && ex.prescribedRIR != null && ` · ${ex.prescribedRIR} RIR`}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {isEditing ? (
+                    <span className="text-[10px] tracking-wider2 font-semibold text-accent uppercase">Editing</span>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(i)}
+                        className="text-xs text-accent font-medium disabled:opacity-40 px-2 h-8"
+                        disabled={editIdx != null}
+                      >
+                        Edit
+                      </button>
+                      <Link href={`/history/exercise/${ex.exerciseId}`}>
+                        <Button variant="ghost" size="sm">History</Button>
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
-              <Link href={`/history/exercise/${ex.exerciseId}`}>
-                <Button variant="ghost" size="sm">History</Button>
-              </Link>
-            </div>
 
-            <ul className="px-3 pb-3 space-y-1.5">
-              {ex.sets.map((s, idx) => {
-                const display = kgToDisplay(s.weightKg, units);
-                if (s.completed) {
-                  return (
-                    <li key={idx} className="rounded-lg border border-ink-line bg-bg-card px-3 py-2 flex items-center gap-3">
-                      <span className="w-5 h-5 rounded-full bg-ok/20 text-ok flex items-center justify-center text-[10px] flex-none">✓</span>
-                      <span className="text-sm font-medium">Set {idx + 1}</span>
-                      <span className="flex-1 text-sm text-ink-dim numeric truncate">
-                        {display ?? '—'} {wLabel} × {s.reps ?? '—'}
-                        {s.rpe != null && (
-                          <span className={`text-ink-mute`}> · {effortShort(terminologyMode(user), s.rpe)}</span>
-                        )}
-                      </span>
-                    </li>
-                  );
-                }
-                // Not yet completed — show the prescription preview
-                return (
-                  <li key={idx} className="rounded-lg border border-ink-line bg-bg-card/60 px-3 py-2 flex items-center gap-3">
-                    <span className="w-5 h-5 rounded-full border border-ink-line flex-none" />
-                    <span className="text-sm text-ink-mute">Set {idx + 1}</span>
-                    <span className="flex-1 text-sm text-ink-dim numeric truncate">
-                      {display != null ? `${display} ${wLabel} × ${s.reps ?? '?'}` : 'Upcoming'}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+              {isEditing ? (
+                <>
+                  <div className="px-3 pb-2">
+                    <EditableSetTable
+                      sets={draftSets}
+                      metric={m}
+                      units={units}
+                      onChange={setDraftSets}
+                    />
+                  </div>
+                  <div className="px-3 pb-3 flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>Cancel</Button>
+                    <Button size="sm" onClick={saveEdit} disabled={saving}>
+                      {saving ? 'Saving…' : 'Save'}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <ul className="px-3 pb-3 space-y-1.5">
+                  {ex.sets.map((s, idx) => {
+                    const display = kgToDisplay(s.weightKg, units);
+                    if (s.completed) {
+                      let body: React.ReactNode;
+                      if (s.setType === 'skip') {
+                        body = <span className="text-ink-mute">Skipped</span>;
+                      } else if (m === 'time') {
+                        body = <>{s.timeSec ?? '—'}s</>;
+                      } else if (m === 'weight-time') {
+                        body = <>{display ?? '—'} {wLabel} × {s.timeSec ?? '—'}s</>;
+                      } else if (m === 'reps') {
+                        body = <>× {s.reps ?? '—'}</>;
+                      } else {
+                        body = <>{display ?? '—'} {wLabel} × {s.reps ?? '—'}</>;
+                      }
+                      return (
+                        <li key={idx} className="rounded-lg border border-ink-line bg-bg-card px-3 py-2 flex items-center gap-3">
+                          <span className="w-5 h-5 rounded-full bg-ok/20 text-ok flex items-center justify-center text-[10px] flex-none">✓</span>
+                          <span className="text-sm font-medium">Set {idx + 1}</span>
+                          <span className="flex-1 text-sm text-ink-dim numeric truncate">
+                            {body}
+                            {s.setType !== 'skip' && s.rpe != null && (
+                              <span className={`text-ink-mute`}> · {effortShort(terminologyMode(user), s.rpe)}</span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    }
+                    // Not yet completed — show the prescription preview.
+                    let upcoming: React.ReactNode = 'Upcoming';
+                    if (m === 'time' || m === 'weight-time') {
+                      if (s.timeSec != null) upcoming = `${m === 'weight-time' && display != null ? display + ' ' + wLabel + ' × ' : ''}${s.timeSec}s`;
+                    } else if (m === 'reps') {
+                      if (s.reps != null) upcoming = `× ${s.reps}`;
+                    } else if (display != null) {
+                      upcoming = `${display} ${wLabel} × ${s.reps ?? '?'}`;
+                    }
+                    return (
+                      <li key={idx} className="rounded-lg border border-ink-line bg-bg-card/60 px-3 py-2 flex items-center gap-3">
+                        <span className="w-5 h-5 rounded-full border border-ink-line flex-none" />
+                        <span className="text-sm text-ink-mute">Set {idx + 1}</span>
+                        <span className="flex-1 text-sm text-ink-dim numeric truncate">{upcoming}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
 
-            {ex.notes && (
-              <div className="px-4 pb-3 text-xs text-ink-dim italic">&ldquo;{ex.notes}&rdquo;</div>
-            )}
-          </Card>
-        ))}
+              {!isEditing && ex.notes && (
+                <div className="px-4 pb-3 text-xs text-ink-dim italic">&ldquo;{ex.notes}&rdquo;</div>
+              )}
+            </Card>
+          );
+        })}
 
         {session.cardio.length > 0 && (
           <Card>
