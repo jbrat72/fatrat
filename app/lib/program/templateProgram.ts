@@ -261,13 +261,18 @@ function materializeWeeks(input: CustomProgramInput): WeekMaterial[] {
       }
       const cursor = new Map<MuscleGroup, number>();
       const cap = input.maxSetsPerExercise;
+      // Per-muscle minimum sets per slot. Core's volume model lands at 1 set
+      // per slot for low-volume tiers, which is too sparse for a real ab
+      // exercise (1 set of planks isn't a workout). Floor it at 3.
+      const minSetsForMuscle = (muscle: MuscleGroup) => (muscle === 'core' ? 3 : 1);
       setCounts = trainingDays.map((day) =>
         day.map((slot) => {
           const arr = queue.get(slot.muscle) ?? [];
           const i = cursor.get(slot.muscle) ?? 0;
           cursor.set(slot.muscle, i + 1);
-          const n = arr[i] ?? 1;
-          return cap != null ? Math.min(n, cap) : n;
+          const raw = arr[i] ?? 1;
+          const floored = Math.max(raw, minSetsForMuscle(slot.muscle));
+          return cap != null ? Math.min(floored, cap) : floored;
         }),
       );
     }

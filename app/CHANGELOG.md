@@ -8,6 +8,19 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.64.3 — 2026-05-31
+
+- Inverted Row exercise definition: metric changed from 'reps' to
+  'weight-reps'. Inverted rows are commonly loaded with a vest or backpack;
+  the workout logger now shows weight + reps so users can record what they
+  added on top of bodyweight.
+- Wizard-generated plans floor `core` exercises at 3 sets per slot.
+  Core's volume model lands at 1 set per slot for low-volume tiers, which
+  produced "1 × 60s" planks — too sparse for a real ab block. Other
+  muscles keep their existing volume model. Global core-specific templates
+  in the seed library already prescribed 3 sets, so this change brings
+  wizard-built plans into line.
+
 ## v0.64.2 — 2026-05-31
 
 - ExerciseCard now prefers the live exercise definition's `metric` over the

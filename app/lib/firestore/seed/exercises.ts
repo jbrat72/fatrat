@@ -27,7 +27,7 @@ export const GLOBAL_EXERCISES: ExerciseDefinition[] = [
   { id: 'rack-pull', name: 'Rack Pull', primaryMuscle: 'back', secondaryMuscles: ['hamstrings','glutes'], equipment: 'barbell', patterns: ['compound','hinge','pull'] },
   { id: 'pull-up', name: 'Pull-up', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'bodyweight', patterns: ['compound','pull'], metric: 'reps' },
   { id: 'chin-up', name: 'Chin-up', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'bodyweight', patterns: ['compound','pull'], metric: 'reps' },
-  { id: 'inverted-row', name: 'Inverted Row', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'bodyweight', patterns: ['compound','pull'], metric: 'reps' },
+  { id: 'inverted-row', name: 'Inverted Row', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'bodyweight', patterns: ['compound','pull'], metric: 'weight-reps' },
   { id: 'lat-pulldown', name: 'Lat Pulldown', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'cable', patterns: ['compound','pull'] },
   { id: 'pulldown-machine', name: 'Machine Pulldown', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'machine', patterns: ['compound','pull'] },
   { id: 'straight-arm-pulldown', name: 'Straight-Arm Pulldown', primaryMuscle: 'back', equipment: 'cable', patterns: ['isolation','pull'] },
