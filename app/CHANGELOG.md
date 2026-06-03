@@ -8,6 +8,20 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.65.0 — 2026-05-31
+
+- History session detail page (`/history/session/[sessionId]`) — each
+  exercise card now has an "Edit" button next to "Details". Tapping it
+  switches that exercise's set rows into a metric-aware editor: weight /
+  reps / time InlineNumbers per set, one set per row. Save persists the
+  edited sets back to the WorkoutSession via `upsertSession`; Cancel
+  discards the draft. Only one exercise can be in edit mode at a time
+  (the others' Edit buttons disable while one is open).
+- Skipped sets stay marked Skipped and are not editable.
+- New `EditableSetTable` helper component in the same file. The editor
+  uses the existing `InlineNumber` from `components/ui`, so the smart
+  popup expansion from v0.64.4 carries over.
+
 ## v0.64.5 — 2026-05-31
 
 - Russian Twist exercise definition: metric changed from 'reps' to

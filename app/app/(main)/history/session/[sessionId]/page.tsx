@@ -3,13 +3,13 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
-import { Button, Card, MuscleBadge, PageTitle, BackButton } from '@/components/ui';
+import { Button, Card, MuscleBadge, PageTitle, BackButton, InlineNumber } from '@/components/ui';
 import { SessionFeedbackModal } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
-import { kgToDisplay, weightLabel } from '@/lib/ui/units';
+import { kgToDisplay, displayToKg, weightLabel } from '@/lib/ui/units';
 import { PUMP_LABEL, VOLUME_LABEL, PAIN_LABEL } from '@/lib/ui/feedback';
 import { terminologyMode, effortShort, isPeriodizedSession } from '@/lib/periodization';
-import type { WorkoutSession, Mesocycle, Microcycle, SessionFeedback, MuscleGroup } from '@/types';
+import type { WorkoutSession, Mesocycle, Microcycle, SessionFeedback, MuscleGroup, ExerciseEntry, SetEntry } from '@/types';
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -21,6 +21,11 @@ export default function SessionSummaryPage() {
   const [meso, setMeso] = useState<Mesocycle | null>(null);
   const [micro, setMicro] = useState<Microcycle | null>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  /** Exercise index currently in edit mode, or null. */
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  /** Draft sets for the exercise being edited. */
+  const [draftSets, setDraftSets] = useState<SetEntry[]>([]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!user || !sessionId) return;
@@ -72,6 +77,30 @@ export default function SessionSummaryPage() {
     setFeedbackOpen(false);
   };
 
+  const startEdit = (idx: number) => {
+    const ex = session.exercises[idx];
+    if (!ex) return;
+    // Edit every set, including non-completed ones, so the user can
+    // re-enter missed data after the fact.
+    setDraftSets(ex.sets.map((s) => ({ ...s })));
+    setEditIdx(idx);
+  };
+  const cancelEdit = () => { setEditIdx(null); setDraftSets([]); };
+  const saveEdit = async () => {
+    if (editIdx == null || saving) return;
+    setSaving(true);
+    const repo = getRepository();
+    const exercises: ExerciseEntry[] = session.exercises.map((ex, i) => (
+      i === editIdx ? { ...ex, sets: draftSets } : ex
+    ));
+    const updated = { ...session, exercises };
+    await repo.upsertSession(updated);
+    setSession(updated);
+    setEditIdx(null);
+    setDraftSets([]);
+    setSaving(false);
+  };
+
   const units = user.units;
   const dayName = DAYS[session.dayOfWeek];
 
@@ -116,36 +145,71 @@ export default function SessionSummaryPage() {
           <ul className="space-y-3">
             {session.exercises.map((ex, i) => {
               const fb = session.feedback?.perMuscle.find((p) => p.muscle === ex.muscle);
+              const m = ex.metric ?? 'weight-reps';
+              const isEditing = editIdx === i;
               return (
                 <li key={i}>
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="text-sm font-medium truncate">{ex.name}</div>
-                    <Link href={`/history/exercise/${ex.exerciseId}`} className="text-xs text-accent">Details</Link>
+                  <div className="flex items-center justify-between mb-1 gap-2">
+                    <div className="text-sm font-medium truncate flex-1">{ex.name}</div>
+                    {isEditing ? (
+                      <span className="text-[10px] tracking-wider2 font-semibold text-accent uppercase">Editing</span>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(i)}
+                          className="text-xs text-accent font-medium"
+                          disabled={editIdx != null}
+                        >
+                          Edit
+                        </button>
+                        <Link href={`/history/exercise/${ex.exerciseId}`} className="text-xs text-accent">Details</Link>
+                      </div>
+                    )}
                   </div>
-                  <ul className="text-xs text-ink-dim space-y-0.5">
-                    {ex.sets.filter((s) => s.completed).map((s, j) => {
-                      const m = ex.metric ?? 'weight-reps';
-                      let body: React.ReactNode;
-                      if (s.setType === 'skip') {
-                        body = <span className="text-ink-mute">Skipped</span>;
-                      } else if (m === 'time') {
-                        body = <>{s.timeSec ?? '—'}s</>;
-                      } else if (m === 'weight-time') {
-                        body = <>{kgToDisplay(s.weightKg, units) ?? '—'} {weightLabel(units)} × {s.timeSec ?? '—'}s</>;
-                      } else if (m === 'reps') {
-                        body = <>× {s.reps ?? '—'}</>;
-                      } else {
-                        body = <>{kgToDisplay(s.weightKg, units) ?? '—'} {weightLabel(units)} × {s.reps ?? '—'}</>;
-                      }
-                      return (
-                        <li key={j} className="tnum">
-                          {j + 1}: {body}
-                          {s.setType !== 'skip' && s.rpe != null && <span className="text-ink-mute"> · {effortShort(terminologyMode(user), s.rpe)}</span>}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  {fb && (
+
+                  {isEditing ? (
+                    <EditableSetTable
+                      sets={draftSets}
+                      metric={m}
+                      units={units}
+                      onChange={setDraftSets}
+                    />
+                  ) : (
+                    <ul className="text-xs text-ink-dim space-y-0.5">
+                      {ex.sets.filter((s) => s.completed).map((s, j) => {
+                        let body: React.ReactNode;
+                        if (s.setType === 'skip') {
+                          body = <span className="text-ink-mute">Skipped</span>;
+                        } else if (m === 'time') {
+                          body = <>{s.timeSec ?? '—'}s</>;
+                        } else if (m === 'weight-time') {
+                          body = <>{kgToDisplay(s.weightKg, units) ?? '—'} {weightLabel(units)} × {s.timeSec ?? '—'}s</>;
+                        } else if (m === 'reps') {
+                          body = <>× {s.reps ?? '—'}</>;
+                        } else {
+                          body = <>{kgToDisplay(s.weightKg, units) ?? '—'} {weightLabel(units)} × {s.reps ?? '—'}</>;
+                        }
+                        return (
+                          <li key={j} className="tnum">
+                            {j + 1}: {body}
+                            {s.setType !== 'skip' && s.rpe != null && <span className="text-ink-mute"> · {effortShort(terminologyMode(user), s.rpe)}</span>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+
+                  {isEditing && (
+                    <div className="mt-2 flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>Cancel</Button>
+                      <Button size="sm" onClick={saveEdit} disabled={saving}>
+                        {saving ? 'Saving…' : 'Save'}
+                      </Button>
+                    </div>
+                  )}
+
+                  {!isEditing && fb && (
                     <div className="mt-1.5 pt-1.5 border-t border-ink-line flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-mute">
                       <span>Pump <span className="text-ink-dim">{PUMP_LABEL[fb.pump]}</span></span>
                       <span>Volume <span className="text-ink-dim">{VOLUME_LABEL[fb.volume]}</span></span>
@@ -183,6 +247,86 @@ export default function SessionSummaryPage() {
         onCancel={() => setFeedbackOpen(false)}
         onSave={saveFeedback}
       />
+    </div>
+  );
+}
+
+/** Per-exercise editor: one row per set with weight/reps/time InlineNumbers
+ *  appropriate to the exercise's metric. Skipped sets stay skipped. */
+function EditableSetTable({
+  sets, metric, units, onChange,
+}: {
+  sets: SetEntry[];
+  metric: NonNullable<ExerciseEntry['metric']>;
+  units: 'imperial' | 'metric';
+  onChange: (next: SetEntry[]) => void;
+}) {
+  const showWeight = metric === 'weight-reps' || metric === 'weight-time';
+  const showReps   = metric === 'weight-reps' || metric === 'reps';
+  const showTime   = metric === 'time' || metric === 'weight-time';
+  const wLabel = weightLabel(units);
+  const wStep = units === 'imperial' ? 5 : 2.5;
+  const updateAt = (idx: number, patch: Partial<SetEntry>) => {
+    onChange(sets.map((s, j) => (j === idx ? { ...s, ...patch } : s)));
+  };
+  return (
+    <div className="mt-1 space-y-2">
+      {sets.map((s, idx) => {
+        if (s.setType === 'skip') {
+          return (
+            <div key={idx} className="rounded-md border border-ink-line bg-bg-card/50 px-2 py-1.5 text-xs text-ink-mute flex items-center justify-between">
+              <span>Set {idx + 1}</span>
+              <span>Skipped</span>
+            </div>
+          );
+        }
+        return (
+          <div key={idx} className="rounded-md border border-ink-line bg-bg-card/50 px-2 py-2">
+            <div className="text-[10px] tracking-wider2 font-semibold text-ink-mute mb-1">SET {idx + 1}</div>
+            <div className="grid gap-2" style={{ gridTemplateColumns: [showWeight ? '1fr' : '', showReps ? '1fr' : '', showTime ? '1fr' : ''].filter(Boolean).join(' ') }}>
+              {showWeight && (
+                <div>
+                  <div className="text-[10px] tracking-wider2 text-ink-mute mb-1">WEIGHT</div>
+                  <InlineNumber
+                    value={kgToDisplay(s.weightKg, units)}
+                    onChange={(n) => updateAt(idx, { weightKg: displayToKg(n, units) })}
+                    step={wStep}
+                    decimals={1}
+                    unit={wLabel}
+                    ariaLabel={`Set ${idx + 1} weight`}
+                  />
+                </div>
+              )}
+              {showReps && (
+                <div>
+                  <div className="text-[10px] tracking-wider2 text-ink-mute mb-1">REPS</div>
+                  <InlineNumber
+                    value={s.reps}
+                    onChange={(n) => updateAt(idx, { reps: n })}
+                    step={1}
+                    decimals={0}
+                    ariaLabel={`Set ${idx + 1} reps`}
+                  />
+                </div>
+              )}
+              {showTime && (
+                <div>
+                  <div className="text-[10px] tracking-wider2 text-ink-mute mb-1">TIME</div>
+                  <InlineNumber
+                    value={s.timeSec}
+                    onChange={(n) => updateAt(idx, { timeSec: n })}
+                    step={5}
+                    min={1}
+                    decimals={0}
+                    unit="s"
+                    ariaLabel={`Set ${idx + 1} time`}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
