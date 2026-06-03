@@ -8,6 +8,18 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.64.4 — 2026-05-31
+
+- InlineNumber open editor now expands toward the screen interior on tap.
+  Cells on the left half of the viewport anchor their left edge and grow
+  to the right (target ~260 px wide, clamped to the viewport with 8 px
+  margin); cells on the right half anchor their right edge and grow to
+  the left; cells already spanning at least 75% of the viewport stay matched
+  to the cell width. Brian's narrow REPS column on the set-logger row now
+  expands into the LOG column instead of staying squished.
+- Position is computed on open via getBoundingClientRect — no resize listener,
+  no reflow churn.
+
 ## v0.64.3 — 2026-05-31
 
 - Inverted Row exercise definition: metric changed from 'reps' to

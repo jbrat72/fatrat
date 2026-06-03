@@ -19,9 +19,16 @@ interface Props {
 /** Tap-to-edit numeric input. Closed: compact box. Open: an oversized
  *  floating editor that overlays its origin — big +/- buttons and a visible
  *  Done button so mobile users have an obvious commit affordance (the
- *  numeric keypad's Enter is hidden when the user is only using +/-). */
+ *  numeric keypad's Enter is hidden when the user is only using +/-).
+ *
+ *  The open editor grows toward the screen's interior so the value stays
+ *  visible: a cell on the left half anchors its left edge and grows right;
+ *  a cell on the right half anchors its right edge and grows left; a cell
+ *  already spanning most of the screen stays its current width. */
 const LONG_PRESS_MS = 280;
 const ACCEL_TICK_MS = 60;
+/** Px the popup tries to expand to, when not viewport-constrained. */
+const TARGET_POPUP_WIDTH = 260;
 
 export function InlineNumber({
   value, onChange, step = 1, min = 0, max,
@@ -30,6 +37,8 @@ export function InlineNumber({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<string>(value == null ? '' : String(value));
+  /** Inline style for the open popup, computed from the cell's screen position. */
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -45,6 +54,39 @@ export function InlineNumber({
     document.addEventListener('pointerdown', onDown, true);
     return () => document.removeEventListener('pointerdown', onDown, true);
   }, [open, draft]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Compute the popup position the moment it opens. Anchor on whichever
+  // side has more room and target ~260 px width; if the cell is already at
+  // least 75% of viewport width, stay matched to the cell.
+  useLayoutEffect(() => {
+    if (!open) { setPopupStyle({}); return; }
+    const el = wrapRef.current;
+    if (!el || typeof window === 'undefined') return;
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const cellWidth = rect.width;
+    const margin = 8;            // breathing room from the viewport edge
+    const wide = cellWidth >= vw * 0.75;
+    if (wide) {
+      // Full-width row — don't stretch. Match the cell.
+      setPopupStyle({ left: 0, right: 0 });
+      return;
+    }
+    const targetWidth = Math.min(TARGET_POPUP_WIDTH, vw - margin * 2);
+    const cellCenterX = rect.left + cellWidth / 2;
+    if (cellCenterX <= vw / 2) {
+      // Left half — anchor the left edge, grow to the right.
+      const maxWidth = vw - rect.left - margin;
+      const width = Math.min(targetWidth, maxWidth);
+      // Negative `right` so it can grow past the cell's right edge.
+      setPopupStyle({ left: 0, width });
+    } else {
+      // Right half — anchor the right edge, grow to the left.
+      const maxWidth = rect.right - margin;
+      const width = Math.min(targetWidth, maxWidth);
+      setPopupStyle({ right: 0, width });
+    }
+  }, [open]);
 
   const clamp = (n: number) => {
     let v = n;
@@ -109,11 +151,13 @@ export function InlineNumber({
       </button>
 
       {open && (
-        /* Open: floats above the closed button, extends wider for big touch targets. */
+        /* Open: floats above the closed button. Sized by `popupStyle` so it
+           grows toward screen interior and never goes off-screen. */
         <div
           onClick={(e) => e.stopPropagation()}
+          style={popupStyle}
           className={cn(
-            'absolute z-40 top-0 left-0 right-0',
+            'absolute z-40 top-0',
             'rounded-xl bg-bg-elev border-2 border-accent shadow-glow p-2',
           )}
         >
