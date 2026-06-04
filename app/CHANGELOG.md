@@ -8,6 +8,17 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.66.1 — 2026-05-31
+
+- "Pull this workout into today" now actually shows. The v0.66.0 condition
+  was too narrow — it only fired when `state === 'pending'` (next session
+  in the active micro) AND today had no session at all, so off-days with
+  a completed cardio entry, or the end of a week, hid the button.
+  Replaced with a separate search across all the user's sessions that
+  finds the earliest pending session dated strictly after today (any
+  micro). The "UP NEXT" card with the pull button shows whenever nothing
+  is pending for today and a future scheduled workout exists.
+
 ## v0.66.0 — 2026-05-31
 
 - Skip-ahead: pull a future scheduled workout into today on off-days.

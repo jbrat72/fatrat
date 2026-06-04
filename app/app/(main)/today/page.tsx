@@ -23,10 +23,29 @@ export default function TodayPage() {
   const [cardioOpen, setCardioOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
+  /** The earliest pending session dated strictly after today, anywhere in
+   *  the user's plan — used to offer "pull this workout into today" when
+   *  nothing is pending for today. Null when there's nothing scheduled later. */
+  const [nextPending, setNextPending] = useState<WorkoutSession | null>(null);
 
   useEffect(() => {
     if (!user) return;
     resolveToday(getRepository(), user.userId, todayIso()).then(setToday);
+  }, [user, refreshTick]);
+
+  // Find the earliest pending session dated strictly after today. Searches
+  // across the user's full session list (not just the active micro) so the
+  // pull-ahead button still appears at the end of a week.
+  useEffect(() => {
+    if (!user) { setNextPending(null); return; }
+    (async () => {
+      const all = await getRepository().listSessions(user.userId, { limit: 200 });
+      const today = todayIso();
+      const future = all
+        .filter((s) => !s.completed && s.date > today && s.mesocycleId != null)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      setNextPending(future[0] ?? null);
+    })();
   }, [user, refreshTick]);
 
   // Work out which training day of the week the primary session is (1st, 2nd…).
@@ -124,23 +143,22 @@ export default function TodayPage() {
             />
           ))}
 
-        {/* A pending session scheduled later in the active micro (no session
-            on today's date but there's one waiting). Show it as a preview and
-            offer to pull it forward to today. */}
-        {todaySessions.length === 0 && session && (
-          <>
-            <SessionCard session={session} isPrimary meso={meso ?? null} micro={micro ?? null} dayOrdinal={dayOrdinal} />
-            <Card>
-              <p className="text-xs text-ink-dim mb-2">
-                Next scheduled workout is on {formatLongDate(session.date)}. If
-                you can't train then, pull it into today — its original day
-                becomes an off-day.
-              </p>
-              <Button block onClick={() => pullSessionToToday(session)}>
-                Pull this workout into today
-              </Button>
-            </Card>
-          </>
+        {/* Skip-ahead: nothing pending for today, but a future workout is
+            scheduled. Offer to pull it into today. */}
+        {!startable && nextPending && (
+          <Card>
+            <div className="section-head mb-1">UP NEXT</div>
+            <p className="text-sm text-ink-dim mb-2">
+              {meso?.name ? `${meso.name} · ` : ''}{formatLongDate(nextPending.date)}
+            </p>
+            <p className="text-xs text-ink-dim mb-3">
+              Can't train then? Pull it into today — its original day becomes
+              an off-day.
+            </p>
+            <Button block onClick={() => pullSessionToToday(nextPending)}>
+              Pull this workout into today
+            </Button>
+          </Card>
         )}
       </div>
 
