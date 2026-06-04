@@ -37,6 +37,20 @@ export default function DayDetailPage() {
     load();
   }, [user, sessionId]);
 
+  /**
+   * Pull a future scheduled session into today. Reschedules in place so the
+   * original date becomes an off-day and Today picks the session up.
+   */
+  const pullToToday = async () => {
+    if (!session) return;
+    const repo = getRepository();
+    const date = todayIso();
+    const dow = new Date(date + 'T00:00:00').getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+    const updated = { ...session, date, dayOfWeek: dow };
+    await repo.upsertSession(updated);
+    setSession(updated);
+  };
+
   if (!user || !session) return <div className="p-6 text-ink-dim">Loading…</div>;
 
   const units = user.units;
@@ -99,6 +113,15 @@ export default function DayDetailPage() {
           </div>
           {session.notes && (
             <div className="mt-3 pt-3 border-t border-ink-line text-sm text-ink-dim italic">&ldquo;{session.notes}&rdquo;</div>
+          )}
+          {!session.completed && !session.startedAt && session.date > today && (
+            <div className="mt-3 pt-3 border-t border-ink-line">
+              <p className="text-xs text-ink-dim mb-2">
+                Skipping the originally-scheduled day? Pull this workout to
+                today — its original date becomes an off-day.
+              </p>
+              <Button block size="sm" onClick={pullToToday}>Move to today</Button>
+            </div>
           )}
         </Card>
 
@@ -176,9 +199,10 @@ export default function DayDetailPage() {
                       } else {
                         body = <>{display ?? '—'} {wLabel} × {s.reps ?? '—'}</>;
                       }
+                      const isSkip = s.setType === 'skip';
                       return (
                         <li key={idx} className="rounded-lg border border-ink-line bg-bg-card px-3 py-2 flex items-center gap-3">
-                          <span className="w-5 h-5 rounded-full bg-ok/20 text-ok flex items-center justify-center text-[10px] flex-none">✓</span>
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-none ${isSkip ? 'bg-danger/20 text-danger' : 'bg-ok/20 text-ok'}`}>{isSkip ? '✕' : '✓'}</span>
                           <span className="text-sm font-medium">Set {idx + 1}</span>
                           <span className="flex-1 text-sm text-ink-dim numeric truncate">
                             {body}

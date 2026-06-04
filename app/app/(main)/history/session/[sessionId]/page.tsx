@@ -109,7 +109,9 @@ export default function SessionSummaryPage() {
       </div>
       <div className="px-4 pt-6 pb-3">
         <div className="text-5xl">🎉</div>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Workout done!</h1>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+          {session.exercises.length === 0 && session.cardio.length > 0 ? 'Cardio done!' : 'Workout done!'}
+        </h1>
         <p className="text-ink-dim mt-1 text-sm">
           {dayName} · {session.date}{meso ? ` · ${meso.name}` : ''}{micro ? ` · Week ${micro.weekNumber}` : ''}
         </p>

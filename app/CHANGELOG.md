@@ -8,6 +8,28 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.66.0 — 2026-05-31
+
+- Skip-ahead: pull a future scheduled workout into today on off-days.
+  When nothing's scheduled today but the next session is later this week,
+  Today shows a card with the upcoming day plus a "Pull this workout into
+  today" button. Tap it and the session's date moves to today; the
+  original date becomes an off-day. Same action also lives on the Plan day
+  detail page (`/plan/day/[sessionId]`) — a "Move to today" button shows
+  in the status card for any pending future session.
+- Post-workout summary header now reads "Cardio done!" when the session
+  has no logged exercises (cardio-only); other sessions still read
+  "Workout done!". Fixes the case where logging cardio on a rest day
+  showed "Workout done!" with no exercises listed.
+
+## v0.65.2 — 2026-05-31
+
+- Plan day detail page: skipped set rows now show a red ✕ icon instead of
+  the green ✓. The body already read "Skipped" from v0.65.1; the icon now
+  matches so the row reads as skipped at a glance.
+- History session page (`/history/session/[sessionId]`) doesn't render
+  per-set icons — its set list is text-only — so no change needed there.
+
 ## v0.65.1 — 2026-05-31
 
 - Edit-set capability extended to the Plan day detail page

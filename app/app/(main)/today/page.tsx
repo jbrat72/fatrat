@@ -41,6 +41,18 @@ export default function TodayPage() {
     });
   }, [today]);
 
+  /**
+   * Pull a future scheduled session into today. Updates the session's date +
+   * dayOfWeek so Today picks it up and the original date becomes an off-day.
+   */
+  const pullSessionToToday = async (s: WorkoutSession) => {
+    if (!user) return;
+    const date = todayIso();
+    const dow = new Date(date + 'T00:00:00').getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+    await getRepository().upsertSession({ ...s, date, dayOfWeek: dow });
+    setRefreshTick((n) => n + 1);
+  };
+
   if (loading) return <div className="p-6 text-ink-dim">Loading…</div>;
   if (!user) {
     return (
@@ -113,9 +125,22 @@ export default function TodayPage() {
           ))}
 
         {/* A pending session scheduled later in the active micro (no session
-            on today's date but there's one waiting). Show it as a preview. */}
+            on today's date but there's one waiting). Show it as a preview and
+            offer to pull it forward to today. */}
         {todaySessions.length === 0 && session && (
-          <SessionCard session={session} isPrimary meso={meso ?? null} micro={micro ?? null} dayOrdinal={dayOrdinal} />
+          <>
+            <SessionCard session={session} isPrimary meso={meso ?? null} micro={micro ?? null} dayOrdinal={dayOrdinal} />
+            <Card>
+              <p className="text-xs text-ink-dim mb-2">
+                Next scheduled workout is on {formatLongDate(session.date)}. If
+                you can't train then, pull it into today — its original day
+                becomes an off-day.
+              </p>
+              <Button block onClick={() => pullSessionToToday(session)}>
+                Pull this workout into today
+              </Button>
+            </Card>
+          </>
         )}
       </div>
 
