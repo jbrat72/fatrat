@@ -126,6 +126,10 @@ export interface WorkoutSession {
   /** Soreness reported at the start of this session about the prior session. */
   soreness?: MuscleSoreness[];
   notes?: string;
+  /** User-chosen rest seconds for this session. Used by ad-hoc / single-
+   *  workout sessions that have no mesocycle to pull rest from. Programmed
+   *  sessions fall back to `mesocycle.restSeconds`. */
+  restSeconds?: number;
   feedback?: SessionFeedback;
 }
 

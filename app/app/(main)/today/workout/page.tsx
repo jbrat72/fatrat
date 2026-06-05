@@ -245,11 +245,17 @@ export default function WorkoutPage() {
       ex.supersetGroup != null && focus != null &&
       next.exercises[focus.exIdx]?.supersetGroup === ex.supersetGroup &&
       focus.setIdx === setIdx;
-    if (meso && anyPending && !intoSupersetPartner) {
+    if (anyPending && !intoSupersetPartner) {
       const def = exerciseDefs[ex.exerciseId];
       const patterns: MovementPattern[] = def?.patterns ?? [];
-      // User-set rest from the wizard wins; otherwise fall back to the phase default.
-      setRestSec(meso.restSeconds ?? defaultRestSec(meso.phaseType, patterns));
+      // Rest precedence: explicit session rest (single-workout templates) →
+      // meso wizard setting → phase + movement default. Ad-hoc sessions
+      // without any rest hint fall through to the phase default for
+      // 'hypertrophy' which is sensible for most lifts.
+      const rest = next.restSeconds
+        ?? meso?.restSeconds
+        ?? defaultRestSec(meso?.phaseType ?? 'hypertrophy', patterns);
+      setRestSec(rest);
     }
 
     if (focus) {

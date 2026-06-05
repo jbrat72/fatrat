@@ -50,7 +50,16 @@ export default function TemplateDetailPage() {
         const def = defs[slot.exerciseId];
         const muscle = def?.primaryMuscle ?? 'core';
         const metric = def?.metric ?? 'weight-reps';
-        const sets: SetEntry[] = Array.from({ length: slot.prescribedSets }, (_, i) => ({ setIndex: i, weightKg: slot.startingWeightKg, completed: false }));
+        const useReps = metric === 'weight-reps' || metric === 'reps';
+        const useTime = metric === 'time' || metric === 'weight-time';
+        const useWeight = metric === 'weight-reps' || metric === 'weight-time';
+        const sets: SetEntry[] = Array.from({ length: slot.prescribedSets }, (_, i) => ({
+          setIndex: i,
+          weightKg: useWeight ? slot.startingWeightKg : undefined,
+          reps: useReps ? slot.repsLow : undefined,
+          timeSec: useTime ? slot.timeLow : undefined,
+          completed: false,
+        }));
         return {
           exerciseId: slot.exerciseId,
           name: def?.name ?? slot.exerciseId,
@@ -87,6 +96,7 @@ export default function TemplateDetailPage() {
         startedAt: new Date().toISOString(),
         exercises: workoutEntries,
         cardio: reuse?.cardio ?? [],
+        restSeconds: template.restSeconds,
         // Intentionally no microcycleId/mesocycleId — this is
         // an ad-hoc workout, not a programmed day.
       };

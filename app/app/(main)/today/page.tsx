@@ -171,7 +171,7 @@ export default function TodayPage() {
       <WorkoutPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onPick={async (entries, label) => {
+        onPick={async (entries, label, opts) => {
           if (!user) return;
           const repo = getRepository();
           const date = todayIso();
@@ -195,6 +195,7 @@ export default function TodayPage() {
             startedAt: new Date().toISOString(),
             exercises: entries,
             cardio: reuse?.cardio ?? [],
+            restSeconds: opts?.restSeconds,
           };
           await repo.upsertSession(session);
           setPickerOpen(false);

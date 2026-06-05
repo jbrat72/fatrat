@@ -8,6 +8,25 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.66.4 — 2026-05-31
+
+- Single-workout templates: when the user picks the workout from Today
+  (or starts it from the template detail page), the materialized session
+  now (a) pre-fills the reps / time on each set from `slot.repsLow` /
+  `slot.timeLow` so the value Brian set in the wizard actually shows up
+  in the logger; (b) carries `restSeconds` on the WorkoutSession so the
+  rest timer fires between sets.
+- New `WorkoutSession.restSeconds?: number` field. Programmed sessions
+  still pull rest from `mesocycle.restSeconds`; ad-hoc / single-workout
+  sessions now carry their own.
+- workout/page.tsx rest-timer trigger no longer requires a meso — the
+  precedence is `session.restSeconds → meso.restSeconds → defaultRestSec
+  (phase, patterns)`. Ad-hoc workouts without any rest hint fall back to
+  the hypertrophy default for the movement so the timer still fires.
+- Pre-fill applies to weight-reps (reps), reps-only (reps), time
+  (timeSec), and weight-time (weight + timeSec) metrics — weight comes
+  from `startingWeightKg`, reps from `repsLow`, time from `timeLow`.
+
 ## v0.66.3 — 2026-05-31
 
 - History calendar now overlays completed workouts from *other* blocks

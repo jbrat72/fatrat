@@ -10,7 +10,9 @@ interface Props {
   open: boolean;
   onClose: () => void;
   /** Called after the user picks a workout — receives the materialized exercise entries to seed AdHocWorkoutModal. */
-  onPick: (entries: ExerciseEntry[], sourceLabel: string) => void;
+  /** Called after the user picks a workout — receives the materialized exercise entries plus
+   *  the source template's optional rest setting so the workout page can use it. */
+  onPick: (entries: ExerciseEntry[], sourceLabel: string, opts?: { restSeconds?: number }) => void;
   /** Called when the user wants to log a fully custom workout from scratch. */
   onCreateCustom: () => void;
 }
@@ -77,9 +79,16 @@ export function WorkoutPicker({ open, onClose, onPick, onCreateCustom }: Props) 
       const def = defs[slot.exerciseId];
       const muscle = def?.primaryMuscle ?? 'core';
       const metric = def?.metric ?? 'weight-reps';
+      const useReps = metric === 'weight-reps' || metric === 'reps';
+      const useTime = metric === 'time' || metric === 'weight-time';
+      const useWeight = metric === 'weight-reps' || metric === 'weight-time';
+      // Pre-fill the rep / time count from the prescribed low end so the
+      // user only has to confirm or bump it, not type from scratch.
       const sets: SetEntry[] = Array.from({ length: slot.prescribedSets }, (_, i) => ({
         setIndex: i,
-        weightKg: slot.startingWeightKg,
+        weightKg: useWeight ? slot.startingWeightKg : undefined,
+        reps: useReps ? slot.repsLow : undefined,
+        timeSec: useTime ? slot.timeLow : undefined,
         completed: false,
       }));
       return {
@@ -95,7 +104,7 @@ export function WorkoutPicker({ open, onClose, onPick, onCreateCustom }: Props) 
         sets,
       };
     });
-    onPick(entries, tpl.name);
+    onPick(entries, tpl.name, { restSeconds: tpl.restSeconds });
   };
 
   return (
