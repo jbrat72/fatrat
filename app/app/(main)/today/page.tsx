@@ -211,7 +211,8 @@ export default function TodayPage() {
   );
 }
 
-/** Single-session card on Today. Shared by programmed and ad-hoc sessions. */
+/** Single-session card on Today. Shared by programmed, ad-hoc, and
+ *  cardio-only sessions. */
 function SessionCard({
   session, isPrimary, meso, micro, dayOrdinal,
 }: {
@@ -221,11 +222,22 @@ function SessionCard({
   micro: Microcycle | null;
   dayOrdinal: number | null;
 }) {
+  const isCardioOnly = session.exercises.length === 0 && (session.cardio?.length ?? 0) > 0;
+  // Open routes to history when done, /today/workout for a pending session
+  // (programmed or ad-hoc; cardio-only completed sessions route to history).
+  const openHref = session.completed
+    ? `/history/session/${session.id}`
+    : '/today/workout';
   return (
     <Card>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          {session.microcycleId ? (
+          {isCardioOnly ? (
+            <>
+              <div className="text-lg font-semibold leading-tight">CARDIO</div>
+              {session.name && <div className="text-lg font-medium leading-tight mt-0.5">{session.name}</div>}
+            </>
+          ) : session.microcycleId ? (
             <>
               <div className="text-lg font-semibold leading-tight">
                 {micro ? `WEEK ${micro.weekNumber}` : ''}
@@ -241,39 +253,57 @@ function SessionCard({
           )}
           <div className="text-xs text-ink-dim mt-1">{formatLongDate(session.date)}</div>
         </div>
-        {session.microcycleId && meso?.id && isPrimary && (
-          <Link href={`/plan/meso/${meso.id}`} className="shrink-0">
-            <Button variant="ghost" size="sm">Open</Button>
-          </Link>
-        )}
         {session.completed && (
-          <Link href={`/history/session/${session.id}`} className="shrink-0">
-            <span className="inline-flex items-center gap-1.5 text-ok text-[11px] tracking-wider2 font-semibold uppercase">
-              ✓ Done
-            </span>
-          </Link>
+          <span className="shrink-0 inline-flex items-center gap-1.5 text-ok text-[11px] tracking-wider2 font-semibold uppercase">
+            ✓ Done
+          </span>
         )}
       </div>
 
-      <ul className="mt-4 space-y-2">
-        {session.exercises.map((ex, i) => (
-          <li key={i} className="flex items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <div className="font-medium truncate">{ex.name}</div>
-              <div className="text-xs text-ink-dim tnum">
-                {ex.sets.length} × {(() => {
-                  const m = ex.metric ?? 'weight-reps';
-                  if (m === 'time' || m === 'weight-time') {
-                    return `${ex.prescribedTimeLow ?? '?'}–${ex.prescribedTimeHigh ?? '?'}s`;
-                  }
-                  return `${ex.prescribedRepsLow ?? '?'}–${ex.prescribedRepsHigh ?? '?'}`;
-                })()}
+      {isCardioOnly ? (
+        <ul className="mt-4 space-y-2">
+          {session.cardio.map((c, i) => (
+            <li key={i} className="flex items-center justify-between gap-2 text-sm">
+              <span className="capitalize">{c.activityType.replace('-', ' ')}</span>
+              <span className="text-ink-dim tnum">
+                {c.durationMin} min{c.distanceKm != null ? ` · ${c.distanceKm} km` : ''}
+                {c.avgHR != null ? ` · ${c.avgHR} bpm` : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ul className="mt-4 space-y-2">
+          {session.exercises.map((ex, i) => (
+            <li key={i} className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="font-medium truncate">{ex.name}</div>
+                <div className="text-xs text-ink-dim tnum">
+                  {ex.sets.length} × {(() => {
+                    const m = ex.metric ?? 'weight-reps';
+                    if (m === 'time' || m === 'weight-time') {
+                      return `${ex.prescribedTimeLow ?? '?'}–${ex.prescribedTimeHigh ?? '?'}s`;
+                    }
+                    return `${ex.prescribedRepsLow ?? '?'}–${ex.prescribedRepsHigh ?? '?'}`;
+                  })()}
+                </div>
               </div>
-            </div>
-            <MuscleBadge muscle={ex.muscle} />
-          </li>
-        ))}
-      </ul>
+              <MuscleBadge muscle={ex.muscle} />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-3 pt-3 border-t border-ink-line flex justify-end gap-2">
+        {!session.completed && session.microcycleId && meso?.id && isPrimary && (
+          <Link href={`/plan/meso/${meso.id}`}>
+            <Button variant="ghost" size="sm">Plan</Button>
+          </Link>
+        )}
+        <Link href={openHref}>
+          <Button size="sm">Open</Button>
+        </Link>
+      </div>
     </Card>
   );
 }

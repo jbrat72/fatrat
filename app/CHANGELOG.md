@@ -8,6 +8,19 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.66.2 — 2026-05-31
+
+- Today SessionCard renders cardio-only sessions (no logged exercises,
+  cardio entries present) with the title "CARDIO" — not "AD-HOC WORKOUT".
+  The body lists each cardio activity (Treadmill · 40 min · 145 bpm)
+  instead of the empty exercises list.
+- Every SessionCard now has an explicit "Open" button at the bottom.
+  Completed sessions route to `/history/session/[sessionId]` (the post-
+  workout summary); pending ones route to `/today/workout`. Programmed
+  pending sessions also get a "Plan" button alongside Open that jumps to
+  the meso week schedule. The "✓ Done" badge stays in the top right as a
+  visual indicator (no longer clickable; Open replaces it).
+
 ## v0.66.1 — 2026-05-31
 
 - "Pull this workout into today" now actually shows. The v0.66.0 condition
