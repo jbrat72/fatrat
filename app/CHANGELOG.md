@@ -8,6 +8,19 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.66.3 — 2026-05-31
+
+- History calendar now overlays completed workouts from *other* blocks
+  (e.g. plans that were cancelled mid-stream) onto the displayed week.
+  Previously the calendar only rendered sessions belonging to the
+  currently-selected block, so a cancelled plan's Mon–Thu lifts showed
+  as Rest. New `WeekCalendar.extraCompletedSessions` prop accepts a list
+  of cross-block completed sessions and the calendar fills any empty
+  cell whose date matches one of them. History page passes every
+  completed session from a different mesocycle.
+- The selected block's own sessions still take precedence — extras only
+  fill cells the selected block leaves empty.
+
 ## v0.66.2 — 2026-05-31
 
 - Today SessionCard renders cardio-only sessions (no logged exercises,

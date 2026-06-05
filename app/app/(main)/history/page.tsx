@@ -200,6 +200,9 @@ export default function HistoryPage() {
             micros={micros}
             isCurrent={selectedMesoId === currentMesoId && currentMesoId != null}
             sessions={sessions}
+            extraCompletedSessions={allSessions.filter(
+              (s) => s.completed && s.mesocycleId !== selectedMesoId,
+            )}
             todayIso={todayIso()}
             mode={terminologyMode(user)}
             weekStartsOn={user.weekStartsOn ?? 1}

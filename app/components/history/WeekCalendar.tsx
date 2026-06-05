@@ -38,6 +38,12 @@ interface Props {
    *      instead of "today's week", which is meaningless for an old block.
    */
   isCurrent?: boolean;
+  /** Optional list of completed sessions from OTHER blocks (e.g. an archived
+   *  plan the user already cancelled) to overlay onto this calendar by date.
+   *  Lets the History view surface the user's full training timeline instead
+   *  of a per-block silo. Sessions that already belong to the selected block
+   *  take precedence; extras fill empty cells. */
+  extraCompletedSessions?: WorkoutSession[];
 }
 
 const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -78,7 +84,7 @@ function intensityLabel(mode: UserMode, rir: number | undefined): string | null 
 type CellState = 'completed' | 'skipped' | 'planned' | 'rest';
 
 export function WeekCalendar(props: Props) {
-  const { micros, sessions, todayIso, mode, totalWeeks, onSelectSession, onSelectDay, isCurrent = true } = props;
+  const { micros, sessions, todayIso, mode, totalWeeks, onSelectSession, onSelectDay, isCurrent = true, extraCompletedSessions = [] } = props;
   const variant: Variant = props.variant ?? 'paged';
   // Normalised week-start weekday (0–6); defaults to Monday.
   const weekStartsOn = (((props.weekStartsOn ?? 1) % 7) + 7) % 7;
@@ -114,6 +120,17 @@ export function WeekCalendar(props: Props) {
     }
     return map;
   }, [sessions]);
+
+  /** Completed sessions from other blocks, keyed by their ISO date. Used to
+   *  overlay onto cells that wouldn't otherwise have a session for this block. */
+  const extrasByDate = useMemo(() => {
+    const map = new Map<string, WorkoutSession>();
+    for (const s of extraCompletedSessions) {
+      if (!s.completed) continue;
+      map.set(s.date, s);
+    }
+    return map;
+  }, [extraCompletedSessions]);
 
   // Each week's start date (on the chosen week-start weekday), derived from the
   // earliest session in that week's micro.
@@ -217,6 +234,18 @@ export function WeekCalendar(props: Props) {
     const arr: (WorkoutSession | null)[] = [null, null, null, null, null, null, null];
     if (micro) {
       for (const s of sessionsByMicroId.get(micro.id) ?? []) arr[s.dayOfWeek] = s;
+    }
+    // Overlay completed sessions from other blocks (e.g. cancelled plans)
+    // onto any still-empty cells whose calendar date matches an extra.
+    const startOfWeek = startOfWeekFor(weekNum);
+    if (startOfWeek && extrasByDate.size > 0) {
+      for (let col = 0; col < 7; col++) {
+        const dow = dowForCol(col);
+        if (arr[dow]) continue;
+        const cellDate = addDays(startOfWeek, col);
+        const cross = extrasByDate.get(cellDate);
+        if (cross) arr[dow] = cross;
+      }
     }
     return arr;
   }
