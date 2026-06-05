@@ -44,6 +44,11 @@ interface Props {
    *  of a per-block silo. Sessions that already belong to the selected block
    *  take precedence; extras fill empty cells. */
   extraCompletedSessions?: WorkoutSession[];
+  /** Maps the calendar's weekNumber to the source block (mesocycle) name.
+   *  When present, the paged header shows the block name in place of the
+   *  intensity badge so the user can tell which plan a given week belonged
+   *  to as they page through "All blocks" mode in History. */
+  blockNameByWeek?: Map<number, string>;
 }
 
 const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -84,7 +89,7 @@ function intensityLabel(mode: UserMode, rir: number | undefined): string | null 
 type CellState = 'completed' | 'skipped' | 'planned' | 'rest';
 
 export function WeekCalendar(props: Props) {
-  const { micros, sessions, todayIso, mode, totalWeeks, onSelectSession, onSelectDay, isCurrent = true, extraCompletedSessions = [] } = props;
+  const { micros, sessions, todayIso, mode, totalWeeks, onSelectSession, onSelectDay, isCurrent = true, extraCompletedSessions = [], blockNameByWeek } = props;
   const variant: Variant = props.variant ?? 'paged';
   // Normalised week-start weekday (0–6); defaults to Monday.
   const weekStartsOn = (((props.weekStartsOn ?? 1) % 7) + 7) % 7;
@@ -396,11 +401,15 @@ export function WeekCalendar(props: Props) {
         ) : (
           <>
             <span className="text-base font-semibold leading-none">Week {week} of {weekCount}</span>
-            {intensity && (
+            {blockNameByWeek?.get(week) ? (
+              <span className="text-2xs uppercase tracking-wider2 text-ink-dim bg-bg-elev rounded px-1.5 py-0.5 truncate max-w-[60%]">
+                {blockNameByWeek.get(week)}
+              </span>
+            ) : intensity ? (
               <span className="font-mono text-2xs uppercase tracking-wider2 text-ink-dim bg-bg-elev rounded px-1.5 py-0.5">
                 {intensity}
               </span>
-            )}
+            ) : null}
           </>
         )}
       </div>

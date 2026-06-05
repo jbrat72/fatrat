@@ -47,7 +47,7 @@ export default function HistoryPage() {
   const { user } = useUser();
   const [allMesos, setAllMesos] = useState<Mesocycle[]>([]);
   const [currentMesoId, setCurrentMesoId] = useState<string | null>(null);
-  const [selectedMesoId, setSelectedMesoId] = useState<string | null>(null);
+  const [selectedMesoId, setSelectedMesoId] = useState<string>('all');
   const [micros, setMicros] = useState<Microcycle[]>([]);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [allSessions, setAllSessions] = useState<WorkoutSession[]>([]);
@@ -73,10 +73,8 @@ export default function HistoryPage() {
       // archived plan as the current one after the user cancelled their program.
       const current = flat.find((m) => m.status === 'active') ?? null;
       setCurrentMesoId(current?.id ?? null);
-      // For initial selection, fall back to the most recent meso so the
-      // History dropdown still defaults to something useful when there's no
-      // active plan.
-      if (!selectedMesoId) setSelectedMesoId((current ?? flat[0])?.id ?? null);
+      // Default 'all' selection — leave selectedMesoId alone; the page now
+      // defaults to All blocks (by date) so the user sees their full history.
     };
     load();
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -87,19 +85,64 @@ export default function HistoryPage() {
     getRepository().listSessions(user.userId, { limit: 1000 }).then(setAllSessions);
   }, [user, refreshTick]);
 
-  // Calendar data: the micros + sessions of the selected block only.
+  // Maps weekNumber → source block name when in 'all' mode. The calendar
+  // header uses this to show which block each week belonged to.
+  const [blockNameByWeek, setBlockNameByWeek] = useState<Map<number, string> | undefined>(undefined);
+
+  // Calendar data: either a single block, or all blocks concatenated with
+  // renumbered weeks (sorted by each micro's earliest session date).
   useEffect(() => {
-    if (!selectedMesoId) { setMicros([]); setSessions([]); return; }
+    if (!user) return;
     const load = async () => {
       const repo = getRepository();
-      const ms = await repo.listMicrocycles(selectedMesoId);
-      ms.sort((a, b) => a.weekNumber - b.weekNumber);
-      setMicros(ms);
-      const ssArr = await Promise.all(ms.map((m) => repo.listSessionsInMicrocycle(m.id)));
-      setSessions(ssArr.flat());
+      if (selectedMesoId !== 'all') {
+        if (!selectedMesoId) { setMicros([]); setSessions([]); setBlockNameByWeek(undefined); return; }
+        const ms = await repo.listMicrocycles(selectedMesoId);
+        ms.sort((a, b) => a.weekNumber - b.weekNumber);
+        setMicros(ms);
+        const ssArr = await Promise.all(ms.map((m) => repo.listSessionsInMicrocycle(m.id)));
+        setSessions(ssArr.flat());
+        setBlockNameByWeek(undefined);
+        return;
+      }
+      // 'all' mode — gather every meso's micros + sessions, sort the micros
+      // by their earliest session date, then renumber weekNumber globally
+      // so the WeekCalendar paginates through them in chronological order.
+      const mesos = await repo.listMesocycles(user.userId);
+      const microsArr = await Promise.all(mesos.map((m) => repo.listMicrocycles(m.id)));
+      const sessionsArr = await Promise.all(
+        microsArr.flat().map((m) => repo.listSessionsInMicrocycle(m.id)),
+      );
+      const allSessFlat = sessionsArr.flat();
+      const allMicrosFlat = microsArr.flat();
+      const earliestByMicro = new Map<string, string>();
+      for (const sess of allSessFlat) {
+        if (!sess.microcycleId) continue;
+        const prev = earliestByMicro.get(sess.microcycleId);
+        if (!prev || sess.date < prev) earliestByMicro.set(sess.microcycleId, sess.date);
+      }
+      const ordered = [...allMicrosFlat].sort((a, b) => {
+        const ad = earliestByMicro.get(a.id) ?? '';
+        const bd = earliestByMicro.get(b.id) ?? '';
+        return ad.localeCompare(bd);
+      }).filter((m) => earliestByMicro.has(m.id)); // skip micros with no sessions
+      const mesoNameById = new Map(mesos.map((m) => [m.id, m.name]));
+      const nameByWeek = new Map<number, string>();
+      const renumbered: Microcycle[] = ordered.map((m, i) => {
+        const weekNumber = i + 1;
+        const blockName = mesoNameById.get(m.mesocycleId) ?? '';
+        if (blockName) nameByWeek.set(weekNumber, blockName);
+        return { ...m, weekNumber };
+      });
+      // Sessions reference the original microcycleId — that doesn't change
+      // when we renumber the micros, so the calendar's micro→sessions lookup
+      // keeps working unchanged.
+      setMicros(renumbered);
+      setSessions(allSessFlat);
+      setBlockNameByWeek(nameByWeek);
     };
     load();
-  }, [selectedMesoId, refreshTick]);
+  }, [selectedMesoId, refreshTick, user]);
 
   // Sessions feeding the progression chart, narrowed to the chosen date range.
   const chartSessions = useMemo(() => {
@@ -154,7 +197,7 @@ export default function HistoryPage() {
 
   if (!user) return null;
 
-  const selectedMeso = allMesos.find((m) => m.id === selectedMesoId) ?? null;
+  const selectedMeso = selectedMesoId === 'all' ? null : (allMesos.find((m) => m.id === selectedMesoId) ?? null);
   const weightTabLabel = isAdvanced ? 'e1RM' : 'Weight';
   const chartYLabel =
     chartMetric === 'reps'
@@ -165,7 +208,7 @@ export default function HistoryPage() {
 
   return (
     <div>
-      <PageTitle title="History" subtitle="Every session in this training block." />
+      <PageTitle title="History" subtitle={selectedMesoId === 'all' ? 'Every workout, sorted by date.' : 'Every session in this training block.'} />
       <div className="px-4 space-y-3">
         {allMesos.length > 0 && (
           <Card>
@@ -173,10 +216,11 @@ export default function HistoryPage() {
               <div className="min-w-0 flex-1">
                 <div className="section-head mb-1">BLOCK</div>
                 <select
-                  value={selectedMesoId ?? ''}
+                  value={selectedMesoId ?? 'all'}
                   onChange={(e) => setSelectedMesoId(e.target.value)}
                   className="w-full h-10 px-2 rounded-lg bg-bg-input border border-ink-line text-ink text-sm font-medium"
                 >
+                  <option value="all">All blocks (by date)</option>
                   {allMesos.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name}{m.id === currentMesoId ? ' · current' : m.status === 'completed' ? ' · done' : ''}
@@ -198,15 +242,16 @@ export default function HistoryPage() {
           <WeekCalendar
             key={selectedMesoId ?? 'none'}
             micros={micros}
-            isCurrent={selectedMesoId === currentMesoId && currentMesoId != null}
+            isCurrent={selectedMesoId === 'all' || (selectedMesoId === currentMesoId && currentMesoId != null)}
             sessions={sessions}
-            extraCompletedSessions={allSessions.filter(
+            extraCompletedSessions={selectedMesoId === 'all' ? [] : allSessions.filter(
               (s) => s.completed && s.mesocycleId !== selectedMesoId,
             )}
             todayIso={todayIso()}
             mode={terminologyMode(user)}
             weekStartsOn={user.weekStartsOn ?? 1}
-            totalWeeks={selectedMeso?.weeks}
+            totalWeeks={selectedMeso?.weeks ?? micros.length}
+            blockNameByWeek={blockNameByWeek}
             onSelectSession={(id) => setSelectedSessionId(id)}
             onSelectDay={(info) => setAddDay(info)}
           />
@@ -327,7 +372,7 @@ export default function HistoryPage() {
           onSaved={() => { setRefreshTick((n) => n + 1); setAddDay(null); setCardioOpen(false); }}
           dateOverride={addDay.date}
           microcycleId={micros.find((m) => m.weekNumber === addDay.weekNumber)?.id}
-          mesocycleId={selectedMesoId ?? undefined}
+          mesocycleId={selectedMesoId === 'all' ? undefined : (selectedMesoId ?? undefined)}
           planName={selectedMeso?.name}
         />
       )}
@@ -339,7 +384,7 @@ export default function HistoryPage() {
           onClose={() => setAdHocOpen(false)}
           onSaved={() => { setRefreshTick((n) => n + 1); setAddDay(null); setAdHocOpen(false); }}
           microcycleId={micros.find((m) => m.weekNumber === addDay.weekNumber)?.id}
-          mesocycleId={selectedMesoId ?? undefined}
+          mesocycleId={selectedMesoId === 'all' ? undefined : (selectedMesoId ?? undefined)}
           planName={selectedMeso?.name}
         />
       )}

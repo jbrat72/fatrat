@@ -33,20 +33,22 @@ export default function TodayPage() {
     resolveToday(getRepository(), user.userId, todayIso()).then(setToday);
   }, [user, refreshTick]);
 
-  // Find the earliest pending session dated strictly after today. Searches
-  // across the user's full session list (not just the active micro) so the
-  // pull-ahead button still appears at the end of a week.
+  // Find the earliest pending session dated strictly after today, restricted
+  // to the user's currently active mesocycle so archived / cancelled plans
+  // don't surface a stale workout.
   useEffect(() => {
     if (!user) { setNextPending(null); return; }
+    const activeMesoId = today?.mesocycle?.id ?? null;
+    if (!activeMesoId) { setNextPending(null); return; }
     (async () => {
       const all = await getRepository().listSessions(user.userId, { limit: 200 });
-      const today = todayIso();
+      const todayStr = todayIso();
       const future = all
-        .filter((s) => !s.completed && s.date > today && s.mesocycleId != null)
+        .filter((s) => !s.completed && s.date > todayStr && s.mesocycleId === activeMesoId)
         .sort((a, b) => a.date.localeCompare(b.date));
       setNextPending(future[0] ?? null);
     })();
-  }, [user, refreshTick]);
+  }, [user, refreshTick, today?.mesocycle?.id]);
 
   // Work out which training day of the week the primary session is (1st, 2nd…).
   useEffect(() => {
@@ -143,9 +145,9 @@ export default function TodayPage() {
             />
           ))}
 
-        {/* Skip-ahead: nothing pending for today, but a future workout is
-            scheduled. Offer to pull it into today. */}
-        {!startable && nextPending && (
+        {/* Skip-ahead: nothing pending for today, but a future workout in
+            the active plan is scheduled. Offer to pull it into today. */}
+        {!startable && nextPending && meso && (
           <Card>
             <div className="section-head mb-1">UP NEXT</div>
             <p className="text-sm text-ink-dim mb-2">

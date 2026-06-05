@@ -8,6 +8,25 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.67.0 — 2026-05-31
+
+- Today: the "UP NEXT" / pull-this-workout-into-today card no longer shows
+  when the user has no active plan. The next-pending lookup is also now
+  restricted to the active mesocycle, so cancelled / archived plans can't
+  surface a stale workout.
+- History redesigned around the user's full timeline. The Block dropdown
+  defaults to "All blocks (by date)" — the calendar concatenates every
+  block's micros in chronological order (sorted by each micro's earliest
+  session date), renumbers their `weekNumber` globally, and paginates
+  through them as one continuous timeline. Picking a specific block
+  filters back to its weeks only.
+- New `WeekCalendar.blockNameByWeek` prop. When present, the paged header
+  shows the block name in place of the per-week intensity badge — so the
+  Week N header changes its block label as you scroll through the
+  timeline. Specific-block view keeps the intensity badge.
+- Page subtitle now reads "Every workout, sorted by date." in All-blocks
+  mode and "Every session in this training block." in single-block mode.
+
 ## v0.66.4 — 2026-05-31
 
 - Single-workout templates: when the user picks the workout from Today
