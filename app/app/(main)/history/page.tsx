@@ -8,6 +8,7 @@ import { CardioLogModal } from '@/components/today';
 import { AdHocWorkoutModal } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
 import { weightSeries, e1rmSeries } from '@/lib/progress';
+import { cleanupArchivedPendingSessions } from '@/lib/session/cleanupArchived';
 import { terminologyMode, usesAdvancedTerminology } from '@/lib/periodization';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
 import { cn } from '@/lib/ui/cn';
@@ -64,6 +65,9 @@ export default function HistoryPage() {
     if (!user) return;
     const load = async () => {
       const repo = getRepository();
+      // Sweep orphan pending sessions tied to archived (cancelled) plans
+      // so the History calendar doesn't show their stale schedule.
+      await cleanupArchivedPendingSessions(repo, user.userId);
       const flat = await repo.listMesocycles(user.userId);
       setAllMesos([...flat].sort((a, b) => (b.weekIndex - a.weekIndex)));
 

@@ -163,14 +163,16 @@ export function WeekCalendar(props: Props) {
   }, [calendarWeeks, sortedMicros, sessionsByMicroId, weekStartsOn]);
 
   /** All sessions keyed by their ISO date. Used in date-organized mode so
-   *  cells find the right session regardless of which micro it belongs to. */
+   *  cells find the right session regardless of which micro it belongs to.
+   *  Completed sessions beat pending ones — for History we want what was
+   *  actually done, not a leftover schedule from a cancelled plan. */
   const sessionByDate = useMemo(() => {
     const map = new Map<string, WorkoutSession>();
     for (const s of sessions) {
-      // Pending sessions take precedence over completed ones if both fall on
-      // the same date (rare) — but completed wins if no pending is there.
       const prev = map.get(s.date);
-      if (!prev || (prev.completed && !s.completed)) map.set(s.date, s);
+      if (!prev) { map.set(s.date, s); continue; }
+      // Completed wins. If both are the same status, the first one stays.
+      if (!prev.completed && s.completed) map.set(s.date, s);
     }
     return map;
   }, [sessions]);

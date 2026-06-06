@@ -8,6 +8,21 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.67.2 — 2026-05-31
+
+- Cancelled-plan cleanup: new `cleanupArchivedPendingSessions(repo, userId)`
+  sweep deletes uncompleted sessions tied to archived mesocycles. The v0.60
+  cancel flow already deletes pending sessions at cancel time, but plans
+  cancelled before that landed still had orphan Mon-Wed-Fri scheduled
+  sessions in Firestore — those showed as Skipped/Planned cells in
+  History's All-blocks calendar. The sweep runs on every History page
+  load; safe to call repeatedly.
+- WeekCalendar date-organized mode now prefers *completed* sessions when
+  multiple sessions exist on the same calendar date. Previously a pending
+  session won; that meant even after cleanup, a stale future planned
+  session could still hide a completed one if they clashed on the same
+  date.
+
 ## v0.67.1 — 2026-05-31
 
 - History "All blocks (by date)" mode now actually buckets sessions by
