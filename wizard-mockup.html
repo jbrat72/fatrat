@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html data-theme="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FATRAT — Plan Wizard Mockup</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+:root{
+  --color-bg:10 10 10;--color-bg-card:32 32 34;--color-bg-elev:46 46 50;--color-bg-input:18 18 20;
+  --color-ink:245 245 245;--color-ink-dim:160 160 165;--color-ink-mute:115 115 120;--color-ink-line:58 58 64;
+  --color-accent:229 62 62;--color-accent-hot:255 91 61;--color-accent-dim:122 31 31;
+  --color-ok:34 197 94;--color-warn:245 158 11;--color-info:59 130 246;--color-danger:239 68 68;
+  --font-sans:'Onest',ui-sans-serif,system-ui,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:rgb(var(--color-bg));color:rgb(var(--color-ink));font-family:var(--font-sans);
+  -webkit-font-smoothing:antialiased;letter-spacing:-0.012em;line-height:1.45}
+.app{max-width:720px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:20;background:rgb(var(--color-bg)/0.92);backdrop-filter:blur(8px);
+  border-bottom:1px solid rgb(var(--color-ink-line));padding:14px 18px 12px}
+.topbar-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:0.02em}
+.brand .dot{width:10px;height:10px;border-radius:3px;background:rgb(var(--color-accent))}
+.steplabel{font-size:12px;color:rgb(var(--color-ink-dim));font-family:var(--font-mono)}
+.progress{height:4px;border-radius:99px;background:rgb(var(--color-ink-line));margin-top:12px;overflow:hidden}
+.progress > i{display:block;height:100%;background:rgb(var(--color-accent));transition:width .35s ease;border-radius:99px}
+.stepdots{display:flex;gap:4px;margin-top:10px;flex-wrap:wrap}
+.stepdots button{width:22px;height:22px;border-radius:6px;border:1px solid rgb(var(--color-ink-line));
+  background:rgb(var(--color-bg-card));color:rgb(var(--color-ink-mute));font-size:10px;font-family:var(--font-mono);cursor:pointer}
+.stepdots button.done{color:rgb(var(--color-ink));border-color:rgb(var(--color-accent-dim))}
+.stepdots button.cur{background:rgb(var(--color-accent));color:#fff;border-color:rgb(var(--color-accent))}
+.page{flex:1;padding:22px 18px 140px;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.eyebrow{font-weight:600;text-transform:uppercase;letter-spacing:0.1em;font-size:11px;color:rgb(var(--color-accent))}
+h1.pt{font-size:24px;font-weight:700;margin:6px 0 4px;letter-spacing:-0.02em}
+.sub{color:rgb(var(--color-ink-dim));font-size:14px;margin-bottom:18px}
+.section-head{font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-size:11px;color:rgb(var(--color-ink-dim));margin:22px 0 10px}
+.section-head:first-of-type{margin-top:4px}
+.grid{display:grid;gap:10px}
+.grid.two{grid-template-columns:1fr 1fr}
+.choice{background:rgb(var(--color-bg-card));border:1px solid rgb(var(--color-ink-line));border-radius:14px;
+  padding:14px 16px;cursor:pointer;transition:border-color .12s,background .12s,transform .08s;position:relative;text-align:left;width:100%;color:inherit;font-family:inherit}
+.choice:hover{border-color:rgb(var(--color-ink-mute))}
+.choice:active{transform:scale(.99)}
+.choice.sel{border-color:rgb(var(--color-accent))!important;background:rgb(var(--color-accent)/0.10)!important}
+.choice.disabled{opacity:.38;pointer-events:none}
+.choice .lbl{font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.choice .desc{color:rgb(var(--color-ink-dim));font-size:13px;margin-top:3px}
+.choice .check{position:absolute;top:12px;right:12px;width:20px;height:20px;border-radius:50%;border:2px solid rgb(var(--color-ink-line));display:flex;align-items:center;justify-content:center;font-size:12px}
+.choice.sel .check{background:rgb(var(--color-accent));border-color:rgb(var(--color-accent));color:#fff}
+.choice.multi .check{border-radius:6px}
+.badge{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 7px;border-radius:6px}
+.badge.fit{background:rgb(var(--color-ok)/0.16);color:rgb(var(--color-ok))}
+.badge.rec{background:rgb(var(--color-accent)/0.16);color:rgb(var(--color-accent-hot))}
+.badge.lvl{background:rgb(var(--color-info)/0.16);color:rgb(var(--color-info))}
+.badge.lock{background:rgb(var(--color-warn)/0.16);color:rgb(var(--color-warn))}
+.whyfit{font-size:12px;color:rgb(var(--color-ok));margin-top:6px;display:flex;gap:6px;align-items:flex-start}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:8px 13px;border-radius:99px;border:1px solid rgb(var(--color-ink-line));background:rgb(var(--color-bg-card));
+  font-size:13px;font-weight:500;cursor:pointer;color:inherit;font-family:inherit}
+.chip.sel{border-color:rgb(var(--color-accent));background:rgb(var(--color-accent)/0.12);color:rgb(var(--color-ink))}
+.chip:disabled{opacity:.35;pointer-events:none}
+.note{display:flex;gap:10px;padding:12px 14px;border-radius:12px;font-size:13px;margin:12px 0;line-height:1.45}
+.note .ic{flex:none;font-size:15px}
+.note.info{background:rgb(var(--color-info)/0.10);border:1px solid rgb(var(--color-info)/0.3);color:rgb(var(--color-ink))}
+.note.warn{background:rgb(var(--color-warn)/0.10);border:1px solid rgb(var(--color-warn)/0.35);color:rgb(var(--color-ink))}
+.note.ok{background:rgb(var(--color-ok)/0.10);border:1px solid rgb(var(--color-ok)/0.3);color:rgb(var(--color-ink))}
+.field{margin-bottom:16px}
+.field > label{display:block;font-size:13px;font-weight:600;margin-bottom:7px}
+.field .hint{font-size:12px;color:rgb(var(--color-ink-mute));font-weight:400;margin-top:2px}
+.inp{width:100%;background:rgb(var(--color-bg-input));border:1px solid rgb(var(--color-ink-line));border-radius:10px;
+  padding:11px 13px;color:rgb(var(--color-ink));font-size:15px;font-family:var(--font-mono)}
+.inp.txt{font-family:var(--font-sans)}
+.inp:focus{outline:none;border-color:rgb(var(--color-accent))}
+.row-inline{display:flex;gap:10px;align-items:center}
+.card{background:rgb(var(--color-bg-card));border:1px solid rgb(var(--color-ink-line));border-radius:14px;padding:13px 15px;margin-bottom:12px}
+.profcard{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px}
+.profcard .pk{color:rgb(var(--color-ink-mute));font-size:11px;text-transform:uppercase;letter-spacing:.05em;display:block}
+/* prioritization rows */
+.mrow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.mrow .mn{width:84px;flex:none;font-size:13px;font-weight:600}
+.mrow .na{height:36px;width:42px;flex:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;
+  background:rgb(var(--color-bg-input));border:1px solid rgb(var(--color-ink-line));color:rgb(var(--color-ink-mute))}
+.mrow .na.on{background:rgb(var(--color-bg-elev));border-color:rgb(var(--color-ink-dim));color:rgb(var(--color-ink))}
+.mrow .tiers{flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.mrow .tb{height:36px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;
+  background:rgb(var(--color-bg-input));border:1px solid rgb(var(--color-ink-line));color:rgb(var(--color-ink-dim))}
+.mrow .tb.maintain.on{background:rgb(var(--color-bg-elev));border-color:rgb(var(--color-ink-dim));color:rgb(var(--color-ink))}
+.mrow .tb.grow.on{background:rgb(var(--color-info)/0.2);border-color:rgb(var(--color-info));color:rgb(var(--color-info))}
+.mrow .tb.emphasize.on{background:rgb(var(--color-accent));border-color:rgb(var(--color-accent));color:#fff}
+.mrow .tb:disabled{opacity:.3;pointer-events:none}
+.emcount{font-size:12px;margin-bottom:12px}
+/* week / rest day grids */
+.weekrow{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.wcell{display:flex;flex-direction:column;align-items:center;gap:4px}
+.wcell .wn{font-size:10px;color:rgb(var(--color-ink-dim))}
+.wcell .wb{height:34px;width:100%;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.wb.work{background:rgb(var(--color-accent)/0.15);border:1px solid rgb(var(--color-accent)/0.4);color:rgb(var(--color-accent-hot))}
+.wb.rest{background-image:repeating-linear-gradient(45deg,rgb(var(--color-ink-line)/0.7),rgb(var(--color-ink-line)/0.7) 1px,transparent 1px,transparent 6px);border:1px solid rgb(var(--color-ink-line));color:rgb(var(--color-ink-mute))}
+.restbtn{height:36px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;
+  background:rgb(var(--color-bg-input));border:1px solid rgb(var(--color-ink-line));color:rgb(var(--color-ink-dim))}
+.restbtn.rest{background-image:repeating-linear-gradient(45deg,rgb(var(--color-ink-line)/0.7),rgb(var(--color-ink-line)/0.7) 1px,transparent 1px,transparent 6px);border-color:rgb(var(--color-ink-dim));color:rgb(var(--color-ink))}
+.restbtn.start{background:rgb(var(--color-accent)/0.15);border-color:rgb(var(--color-accent)/0.4);color:rgb(var(--color-accent-hot));opacity:.8;cursor:default}
+/* split preview */
+.weekgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
+.weekgrid .d{background:rgb(var(--color-bg-input));border-radius:7px;padding:6px 4px;text-align:center;font-size:10px;min-height:54px}
+.weekgrid .d .dn{font-weight:700;color:rgb(var(--color-ink-dim));font-size:9px;text-transform:uppercase}
+.weekgrid .d .dl{margin-top:4px;font-weight:600;font-size:10px;line-height:1.2}
+.weekgrid .d.rest{background:transparent;border:1px dashed rgb(var(--color-ink-line));color:rgb(var(--color-ink-mute))}
+.weekgrid .d.train{border:1px solid rgb(var(--color-accent-dim))}
+/* stepper */
+.stepper{display:flex;align-items:center;justify-content:space-between;padding:4px 0}
+.stepper .sl{font-size:12px;color:rgb(var(--color-ink-dim))}
+.stepbtn{width:34px;height:34px;border-radius:8px;border:1px solid rgb(var(--color-ink-line));background:rgb(var(--color-bg-input));color:rgb(var(--color-ink));font-size:18px;cursor:pointer}
+.stepbtn:disabled{opacity:.3}
+/* review */
+.rev{background:rgb(var(--color-bg-card));border:1px solid rgb(var(--color-ink-line));border-radius:12px;padding:13px 15px;margin-bottom:10px}
+.rev .rh{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.rev .rh b{font-size:14px}
+.rev .edit{font-size:12px;color:rgb(var(--color-accent-hot));cursor:pointer;background:none;border:none;font-family:inherit}
+.rev .rb{font-size:13px;color:rgb(var(--color-ink-dim));line-height:1.6}
+.rev .rb .k{color:rgb(var(--color-ink))}
+/* volume grid */
+.volcard{background:rgb(var(--color-bg-card));border:1px solid rgb(var(--color-ink-line));border-radius:12px;padding:14px;margin:14px 0}
+.volcard h4{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:rgb(var(--color-ink-dim));margin-bottom:4px}
+.volgrid{display:grid;gap:3px 4px;align-items:center;margin-top:8px}
+.volgrid .vh{font-size:10px;text-align:center;color:rgb(var(--color-ink-mute));text-transform:uppercase;letter-spacing:.04em}
+.volgrid .vm{font-size:12px;font-weight:600}
+.volgrid .vm.emphasize{color:rgb(var(--color-accent-hot))}
+.volgrid .vm.grow{color:rgb(var(--color-info))}
+.volgrid .vm.maintain{color:rgb(var(--color-ink-mute))}
+.volgrid .vn{font-family:var(--font-mono);font-size:12px;text-align:center;color:rgb(var(--color-ink-dim))}
+.volgrid .vn.dl{color:rgb(var(--color-ink-mute))}
+.vleg{display:flex;gap:12px;font-size:11px;color:rgb(var(--color-ink-mute));margin-top:10px}
+.vleg span{display:inline-flex;align-items:center;gap:5px}
+.swatch{width:10px;height:10px;border-radius:3px}
+/* p16 */
+.day{border:1px solid rgb(var(--color-ink-line));border-radius:12px;margin-bottom:10px;overflow:hidden}
+.day-h{padding:12px 15px;background:rgb(var(--color-bg-elev));display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px}
+.day-h .em{font-size:11px;color:rgb(var(--color-ink-dim));font-weight:500}
+.ex{display:flex;align-items:center;gap:10px;padding:11px 15px;border-top:1px solid rgb(var(--color-ink-line));font-size:13px}
+.ex .num{color:rgb(var(--color-ink-mute));font-family:var(--font-mono);font-size:12px;width:18px}
+.ex .nm{flex:1;font-weight:500}
+.ex .pr{font-family:var(--font-mono);font-size:12px;color:rgb(var(--color-ink-dim))}
+.ex .swap{font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid rgb(var(--color-ink-line));background:transparent;color:rgb(var(--color-ink));cursor:pointer;font-family:inherit}
+.ex .swap:hover{border-color:rgb(var(--color-accent))}
+.ex .exm{width:78px;flex:none;font-size:12px;font-weight:600;color:rgb(var(--color-ink-dim))}
+.ex .exsel{flex:1;min-width:0;background:rgb(var(--color-bg-input));border:1px solid rgb(var(--color-ink-line));border-radius:8px;color:rgb(var(--color-ink));padding:8px 9px;font-size:13px;font-family:inherit}
+.ex .exsel:focus{outline:none;border-color:rgb(var(--color-accent))}
+.ex .exdel{width:32px;flex:none;border:1px solid rgb(var(--color-ink-line));background:transparent;color:rgb(var(--color-ink-mute));border-radius:7px;cursor:pointer;font-size:13px}
+.ex .exdel:hover{border-color:rgb(var(--color-danger));color:rgb(var(--color-danger))}
+.exadd{display:flex;gap:8px;align-items:center;padding:11px 15px;border-top:1px dashed rgb(var(--color-ink-line))}
+.exadd select{flex:1;min-width:0;background:rgb(var(--color-bg-input));border:1px solid rgb(var(--color-ink-line));border-radius:8px;color:rgb(var(--color-ink));padding:8px 9px;font-size:13px;font-family:inherit}
+.exadd button{flex:none;border:1px solid rgb(var(--color-accent)/0.6);background:rgb(var(--color-accent)/0.08);color:rgb(var(--color-accent-hot));border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.exadd button:hover{background:rgb(var(--color-accent)/0.16)}
+.phasetabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.phasetabs button{padding:8px 12px;border-radius:8px;border:1px solid rgb(var(--color-ink-line));background:rgb(var(--color-bg-card));font-size:12px;cursor:pointer;color:rgb(var(--color-ink-dim));font-family:inherit}
+.phasetabs button.on{background:rgb(var(--color-accent));color:#fff;border-color:rgb(var(--color-accent))}
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:none}
+.scrim.open{display:block}
+.drawer{position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgb(var(--color-bg-card));
+  border-top:1px solid rgb(var(--color-ink-line));border-radius:18px 18px 0 0;max-width:720px;margin:0 auto;
+  padding:18px;transform:translateY(100%);transition:transform .28s ease;max-height:80vh;overflow:auto}
+.drawer.open{transform:none}
+.drawer h3{font-size:16px;margin-bottom:4px}
+.alt{border:1px solid rgb(var(--color-ink-line));border-radius:10px;padding:12px;margin-top:9px;cursor:pointer}
+.alt:hover{border-color:rgb(var(--color-accent))}
+.alt .an{font-weight:600;font-size:14px}
+.alt .ad{font-size:12px;color:rgb(var(--color-ink-dim));margin-top:2px}
+/* footer */
+.footer{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgb(var(--color-bg)/0.95);backdrop-filter:blur(8px);border-top:1px solid rgb(var(--color-ink-line))}
+.footer .hint{font-size:11px;color:rgb(var(--color-ink-mute));text-align:center;padding:5px 4px 0;font-family:var(--font-mono);min-height:18px}
+.footer .inner{max-width:720px;margin:0 auto;padding:8px 18px 14px;display:flex;gap:10px}
+.btn{flex:1;min-height:48px;border-radius:11px;font-weight:600;font-size:15px;cursor:pointer;border:none;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .1s,background .12s}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:rgb(var(--color-accent));color:#fff}
+.btn-primary:hover{background:rgb(var(--color-accent-hot))}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-ghost{background:transparent;color:rgb(var(--color-ink));border:1px solid rgb(var(--color-ink-line));flex:0 0 auto;padding:0 20px}
+.btn-generate{background:linear-gradient(135deg,rgb(var(--color-accent)),rgb(var(--color-accent-hot)));font-size:16px}
+.btn-sm{min-height:40px;font-size:13px;border-radius:9px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-row"><div class="brand"><span class="dot"></span>FATRAT · Plan Wizard</div><div class="steplabel" id="steplabel">1 / 16</div></div>
+    <div class="progress"><i id="progbar"></i></div>
+  </div>
+  <div class="page" id="page"></div>
+  <div class="footer">
+    <div class="hint" id="hint"></div>
+    <div class="inner"><button class="btn btn-ghost" id="backBtn">Back</button><button class="btn btn-primary" id="nextBtn">Next</button></div>
+  </div>
+</div>
+<div class="scrim" id="scrim"></div>
+<div class="drawer" id="drawer"></div>
+
+<script>
+/* ---------------- STATE ---------------- */
+const state = {
+  name:'',
+  goal:{primary:null,secondary:null},
+  experience:{level:null,status:null},
+  profile:{ageRange:'30',sex:'male',weightLbs:185,heightIn:'5ft 10',units:'lbs',injuries:[],stubbornAreas:[]},
+  schedule:{daysPerWeek:null,sessionMinutes:null,startDow:1,restDays:[],durationWeeks:null},
+  equipment:{environment:null,items:[]},
+  trainingStyle:{baseStyle:null,volumeFramework:null,periodizationStrategy:null},
+  split:{type:null},
+  prioritization:{tiers:{}}, // muscle -> 'maintain'|'grow'|'emphasize' ; absent = N/A
+  setsAndReps:{repRange:null,setTypes:[],autoVary:false},
+  restAndTempo:{restPreference:null,tempoEnabled:false,tempoStyle:null},
+  core:{method:null,frequency:null,blockExercises:'2-3',days:[]},
+  cardio:{included:null,type:[],frequency:null,placement:null,durationMinutes:null},
+  progression:{type:null,deloadProtocol:null,deloadFrequency:null,deloadStyle:null},
+  baselines:{methods:{},calibrationWeek:false,allConservative:false},
+  programByPhase:{},
+  generated:false
+};
+let cur=0, seen=false, curPhase=0;
+const seenPages=new Set();  // pages whose full content has been seen at least once
+const TOTAL=16;
+const DOW_ABBR=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DOW_FULL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAY_OFFSETS={1:[0],2:[0,3],3:[0,2,4],4:[0,1,3,4],5:[0,1,2,4,5],6:[0,1,2,3,4,5],7:[0,1,2,3,4,5,6]};
+
+/* ---------------- helpers ---------------- */
+const $=s=>document.querySelector(s);
+function getPath(p){return p.split('.').reduce((o,k)=>o&&o[k],state);}
+function setPath(p,v){const ks=p.split('.');let o=state;for(let i=0;i<ks.length-1;i++)o=o[ks[i]];o[ks[ks.length-1]]=v;}
+function toggleArr(p,v){const a=getPath(p)||[];const i=a.indexOf(v);i>=0?a.splice(i,1):a.push(v);setPath(p,a);}
+function effLevel(){let l=state.experience.level;if(state.experience.status==='layoff12'&&l){const o=['beginner','novice','intermediate','advanced'];const i=o.indexOf(l);if(i>0)return o[i-1];}return l;}
+function levelRank(l){return ({beginner:0,novice:1,intermediate:2,advanced:3})[l] ?? 0;}
+function isBeginnerScratch(){return state.experience.level==='beginner'&&state.experience.status==='scratch';}
+function isBlock(){return state.trainingStyle.periodizationStrategy==='block';}
+function isVolumeRamped(){return state.trainingStyle.volumeFramework==='evidence'||state.trainingStyle.periodizationStrategy==='block';}
+function durWeeks(){return state.schedule.durationWeeks==='ongoing'?8:(state.schedule.durationWeeks||8);}
+function bw(){return state.profile.units==='kg'?Math.round(state.profile.weightLbs/2.205):state.profile.weightLbs;}
+function note(type,txt,icon){const ic={info:'ℹ',warn:'⚠',ok:'✓'}[type];return `<div class="note ${type}"><span class="ic">${icon||ic}</span><span>${txt}</span></div>`;}
+function defaultRestDays(startDow,d){const work=new Set(DAY_OFFSETS[d]||[]);const rest=[];for(let off=0;off<7;off++)if(!work.has(off))rest.push((startDow+off)%7);return rest;}
+function nextDowStr(dow){const d=new Date();d.setDate(d.getDate()+((dow-d.getDay()+7)%7));return d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});}
+
+function singleCard(field,opts,o){o=o||{};return `<div class="grid ${o.two?'two':''}">`+opts.map(op=>{
+  const sel=getPath(field)===op.id;const dis=op.disabled?'disabled':'';
+  return `<button class="choice ${sel?'sel':''} ${dis}" data-single="${field}" data-val="${op.id}">
+    <span class="check">${sel?'✓':''}</span><div class="lbl">${op.label}${op.badge||''}</div>
+    ${op.desc?`<div class="desc">${op.desc}</div>`:''}${op.why?`<div class="whyfit">★ ${op.why}</div>`:''}</button>`;}).join('')+`</div>`;}
+function multiCard(field,opts){const arr=getPath(field)||[];return `<div class="grid">`+opts.map(op=>{
+  const sel=arr.includes(op.id);const dis=op.disabled?'disabled':'';
+  return `<button class="choice multi ${sel?'sel':''} ${dis}" data-multi="${field}" data-val="${op.id}">
+    <span class="check">${sel?'✓':''}</span><div class="lbl">${op.label}${op.badge||''}</div>
+    ${op.desc?`<div class="desc">${op.desc}</div>`:''}</button>`;}).join('')+`</div>`;}
+function chips(field,opts,multi){const v=getPath(field);return `<div class="chips">`+opts.map(op=>{
+  const sel=multi?(v||[]).includes(op.id):v===op.id;
+  return `<button class="chip ${sel?'sel':''}" data-${multi?'multi':'single'}="${field}" data-val="${op.id}">${op.label}</button>`;}).join('')+`</div>`;}
+
+/* ---------------- MUSCLE / VOLUME ---------------- */
+const TEMPLATE_MUSCLES=['chest','back','shoulders','biceps','triceps','forearms','quads','hamstrings','glutes','calves'];
+const MAX_EMPHASIZE=3;
+const LANDMARKS={chest:{mev:8,mav:16,mrv:22},back:{mev:10,mav:18,mrv:25},shoulders:{mev:8,mav:16,mrv:22},
+  biceps:{mev:6,mav:14,mrv:20},triceps:{mev:6,mav:14,mrv:18},forearms:{mev:0,mav:8,mrv:14},
+  quads:{mev:8,mav:16,mrv:20},hamstrings:{mev:6,mav:14,mrv:20},glutes:{mev:0,mav:12,mrv:16},calves:{mev:6,mav:12,mrv:18},core:{mev:0,mav:12,mrv:20}};
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+/* --- exercise-slot model, mirrors lib/program/templateLayout.ts --- */
+const DEFAULT_EMPHASIS_SLOTS=2;   // emphasis muscle gets 2 exercises per training day (overridable 1-3 in real app)
+const DEFAULT_SETS=3;             // default sets per exercise
+function slotsPerDayFor(tier){return tier==='emphasize'?DEFAULT_EMPHASIS_SLOTS:1;}  // grow/maintain = 1 exercise/day
+/* Sets per exercise for week w. Traditional = flat default (3). Periodized ramps 2->4, deload last week. */
+function setsThisWeek(w,weeks,per){if(!per)return DEFAULT_SETS;if(weeks>1&&w===weeks-1)return 2;const working=Math.max(1,weeks-1);const t=working>1?w/(working-1):0;return Math.round(2+2*t);}
+function volumeRamp(tier,weeks,lm,periodized){
+  const maintain=Math.max(1,Math.round(lm.mev*0.5));
+  if(!periodized){const steady=tier==='emphasize'?lm.mav:tier==='grow'?Math.round((lm.mev+lm.mav)/2):maintain;return Array.from({length:weeks},()=>Math.max(1,steady));}
+  const out=[];const working=Math.max(1,weeks-1);
+  for(let w=0;w<weeks;w++){if(w===weeks-1&&weeks>1){out.push(maintain);continue;}
+    const t=working>1?w/(working-1):0;let start=lm.mev,end=lm.mev;
+    if(tier==='emphasize')end=lm.mrv;else if(tier==='grow')end=lm.mav;else{start=maintain;end=maintain;}
+    out.push(Math.max(1,Math.round(start+(end-start)*t)));}
+  return out;
+}
+function defaultTier(m){const g=state.goal.primary;
+  if(g==='strength')return ['chest','back','quads'].includes(m)?'emphasize':['biceps','forearms','calves'].includes(m)?'maintain':'grow';
+  if(g==='athletic')return ['quads','hamstrings','glutes'].includes(m)?'emphasize':['biceps','forearms','calves'].includes(m)?'maintain':'grow';
+  if(g==='transform')return ['chest','back','quads'].includes(m)?'emphasize':'grow';
+  // muscle, leanout, fitness -> all Grow
+  return 'grow';
+}
+
+/* ---------------- PAGES ---------------- */
+const pages=[];
+
+/* P1 GOAL + NAME */
+pages.push({title:'Welcome & Goal',render(){
+  const goals=[
+    {id:'muscle',label:'Build Muscle',desc:'Maximize muscle size, fullness, and definition.'},
+    {id:'strength',label:'Build Strength',desc:'Lift heavier. Build raw, functional strength.'},
+    {id:'transform',label:'Transform My Body',desc:'Go from soft to strong — build muscle and lose fat. Best if you\'re newer to lifting or haven\'t trained consistently.'},
+    {id:'leanout',label:'Lean Out & Preserve',desc:'Cut body fat without losing the muscle you\'ve built. Best if you\'ve been lifting and want to reveal it.'},
+    {id:'fitness',label:'General Fitness & Conditioning',desc:'Feel better, move better, build a sustainable routine.'},
+    {id:'athletic',label:'Athletic Performance',desc:'Train for a sport, event, or physical challenge.'},
+  ];
+  let h=`<div class="eyebrow">Step 1</div><h1 class="pt">Let's build your program</h1><div class="sub">Name it for your library, then pick your main goal — every later page adapts to it.</div>`;
+  h+=`<div class="field"><label>Program name <span class="hint">saved to your template library</span></label><input class="inp txt" id="nameInput" placeholder="e.g. Summer Cut 2026" value="${state.name.replace(/"/g,'&quot;')}"></div>`;
+  h+=`<div class="section-head">Primary goal</div>`+singleCard('goal.primary',goals);
+  if(state.goal.primary){
+    const sec=[{id:'muscle',label:'…build more muscle',hide:['muscle','transform']},{id:'strength',label:'…get stronger',hide:['strength','transform']},
+      {id:'loss',label:'…trim down / lose fat',hide:['transform','leanout']},{id:'cond',label:'…improve conditioning',hide:['fitness']}].filter(o=>!o.hide.includes(state.goal.primary));
+    h+=`<div class="section-head">I also want to… (optional)</div>`+chips('goal.secondary',sec.map(o=>({id:o.id,label:o.label})),false);}
+  return h;
+},valid(){return !!state.goal.primary;}});
+
+/* P2 EXPERIENCE */
+pages.push({title:'Experience',render(){
+  let h=`<div class="eyebrow">Step 2</div><h1 class="pt">How much training experience?</h1><div class="sub">"Consistent" = at least 3×/week on a structured program, not occasional gym visits.</div>`;
+  h+=singleCard('experience.level',[{id:'beginner',label:'True Beginner',desc:'Under 6 months consistent'},{id:'novice',label:'Novice',desc:'6–18 months consistent'},
+    {id:'intermediate',label:'Intermediate',desc:'2–4 years consistent'},{id:'advanced',label:'Advanced',desc:'5+ years consistent, structured'}]);
+  h+=`<div class="section-head">Current status</div>`;
+  h+=singleCard('experience.status',[{id:'consistent',label:'Currently training consistently'},{id:'break_short',label:'Returning — short break (<3 mo)'},
+    {id:'break_long',label:'Returning — long break (3–12 mo)'},{id:'layoff12',label:'Returning — extended layoff (12+ mo)'},{id:'scratch',label:'Starting from scratch / never trained'}]);
+  if(['break_short','break_long','layoff12'].includes(state.experience.status))
+    h+=note('info','We\'ll add a 1–2 week ramp-up note. '+(state.experience.status==='layoff12'?'After 12+ months off, volume defaults drop one tier.':''));
+  return h;
+},valid(){return state.experience.level&&state.experience.status;}});
+
+/* P3 PROFILE (from profile) + stubborn areas + injuries */
+pages.push({title:'Body Profile',render(){
+  let h=`<div class="eyebrow">Step 3</div><h1 class="pt">Body profile & constraints</h1><div class="sub">Your basics come from your FATRAT profile. Tell us what to target and work around.</div>`;
+  h+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="section-head" style="margin:0">From your profile</div><button class="chip btn-sm" style="padding:5px 10px" data-noop="1">Edit in profile</button></div>
+    <div class="profcard">
+      <div><span class="pk">Age</span>${({u18:'Under 18','18':'18–29','30':'30–39','40':'40–49','50':'50–59','60':'60+'})[state.profile.ageRange]}</div>
+      <div><span class="pk">Sex</span>${cap(state.profile.sex)}</div>
+      <div><span class="pk">Weight</span>${bw()} ${state.profile.units}</div>
+      <div><span class="pk">Height</span>${state.profile.heightIn||'—'}</div>
+    </div></div>`;
+  h+=`<div class="section-head">Stubborn areas you want to work on (optional)</div>`;
+  h+=multiCard('profile.stubbornAreas',[{id:'belly',label:'Belly fat'},{id:'glutes',label:'Flat / flabby glutes'},{id:'lovehandles',label:'Love handles'},
+    {id:'arms',label:'Arm definition'},{id:'thighs',label:'Thighs'},{id:'chest',label:'Chest / pecs'},{id:'calves',label:'Calves'}]);
+  if(state.profile.stubbornAreas.length)h+=note('info','We\'ll bias volume and exercise selection toward these areas where it fits your split.');
+  h+=`<div class="section-head">Injuries or limitations (optional)</div>`;
+  h+=multiCard('profile.injuries',[{id:'shoulder',label:'Shoulders',desc:'rotator cuff, impingement, labrum'},{id:'lowback',label:'Lower Back',desc:'disc, chronic pain, SI joint'},
+    {id:'knee',label:'Knees',desc:'meniscus, patella, ligament'},{id:'elbow',label:'Wrists / Elbows',desc:'tendinitis, carpal tunnel'},
+    {id:'hip',label:'Hips',desc:'impingement, labrum, bursitis'},{id:'neck',label:'Neck / Upper Spine'}]);
+  if(state.profile.injuries.length)h+=note('info','Flagged areas trigger automatic exercise substitutions (e.g. lower-back → trap-bar deadlift).');
+  if(['50','60'].includes(state.profile.ageRange))h+=note('info','Age 50+: rest periods increased, volume capped at MAV, warm-up note added.');
+  return h;
+},valid(){return true;}});
+
+/* P4 SCHEDULE + START DAY */
+pages.push({title:'Schedule',onEnter(){
+  if(state.schedule.daysPerWeek&&state.schedule.restDays.length===0)state.schedule.restDays=defaultRestDays(state.schedule.startDow,state.schedule.daysPerWeek);
+},render(){
+  let h=`<div class="eyebrow">Step 4</div><h1 class="pt">Schedule & availability</h1><div class="sub">Determines which splits are possible and how much fits per session.</div>`;
+  h+=`<div class="field"><label>How many days per week?</label>`+chips('schedule.daysPerWeek',[2,3,4,5,6,7].map(n=>({id:n,label:String(n)})),false)+`</div>`;
+  h+=`<div class="field"><label>Session length</label>`+chips('schedule.sessionMinutes',[30,45,60,75,90].map(n=>({id:n,label:n+(n===90?'+ min':' min')})),false)+`</div>`;
+  h+=`<div class="field"><label>Start day <span class="hint">which weekday your plan begins on</span></label>`+chips('schedule.startDow',[1,2,3,4,5,6,0].map(d=>({id:d,label:DOW_ABBR[d]})),false);
+  h+=`<p class="hint" style="margin-top:6px">Starts ${nextDowStr(state.schedule.startDow)}.</p></div>`;
+  h+=`<div class="field"><label>Program duration</label>`+chips('schedule.durationWeeks',[{id:4,label:'4 weeks'},{id:6,label:'6 weeks'},{id:8,label:'8 weeks'},{id:12,label:'12 weeks'},{id:'ongoing',label:'Ongoing'}],false)+`</div>`;
+  if(state.schedule.durationWeeks==='ongoing')h+=note('info','Ongoing: a new mesocycle auto-generates when the current ends, with a deload at the transition.');
+  if(state.schedule.daysPerWeek===2&&state.schedule.sessionMinutes===30&&effLevel()==='advanced')
+    h+=note('warn','2 short sessions/week: we\'ll focus on the highest-impact compounds. Consider adding a day or extending sessions.');
+  return h;
+},valid(){return state.schedule.daysPerWeek&&state.schedule.sessionMinutes&&state.schedule.durationWeeks;}});
+
+/* P5 EQUIPMENT */
+const EQUIP_GROUPS={
+ 'Free Weights':['Barbell & Plates','Dumbbells — Fixed','Dumbbells — Adjustable','Kettlebells','EZ Curl Bar','Trap Bar'],
+ 'Racks & Benches':['Power / Squat Rack','Bench — Flat','Bench — Adjustable','Dip Station'],
+ 'Machines':['Smith Machine','Leg Press','Lat Pulldown / Row','Chest/Shoulder Press Machine','Leg Curl/Extension','Pec Deck','Hack Squat'],
+ 'Cables & Accessories':['Cable Machine','Functional Trainer','Resistance Bands','Pull-Up Bar','Suspension Trainer','Landmine','Ab Wheel','GHD'],
+ 'Cardio / Conditioning':['Battle Ropes','Sled / Prowler','Rower / Assault Bike / Ski Erg'],
+};
+function allEquip(){return Object.values(EQUIP_GROUPS).flat();}
+pages.push({title:'Equipment',onEnter(){
+  if(state.equipment.environment==='commercial'&&state.equipment.items.length===0)state.equipment.items=allEquip().slice();
+  if(state.equipment.environment==='hotel'&&state.equipment.items.length===0)state.equipment.items=['Resistance Bands'];
+},render(){
+  let h=`<div class="eyebrow">Step 5</div><h1 class="pt">Equipment access</h1><div class="sub">Filters the exercise library to what you can actually do.</div>`;
+  h+=singleCard('equipment.environment',[{id:'commercial',label:'Commercial Gym',desc:'Full equipment — uncheck what yours lacks'},
+    {id:'home',label:'Home Gym',desc:'Build your list from scratch'},{id:'garage',label:'Garage / Minimal',desc:'Build your list from scratch'},
+    {id:'bodyweight',label:'Bodyweight Only',desc:'Skips the equipment checklist'},{id:'hotel',label:'Hotel / Travel',desc:'Bodyweight + bands + maybe dumbbells'}]);
+  if(state.equipment.environment&&state.equipment.environment!=='bodyweight'){
+    h+=`<div class="section-head" style="display:flex;justify-content:space-between;align-items:center">Equipment checklist
+      <button class="chip" data-eqall="1" style="text-transform:none">${allEquip().every(i=>state.equipment.items.includes(i))?'Deselect all':'Select all'}</button></div>`;
+    for(const [grp,items] of Object.entries(EQUIP_GROUPS))
+      h+=`<div class="section-head">${grp}</div><div class="chips">`+items.map(i=>`<button class="chip ${state.equipment.items.includes(i)?'sel':''}" data-eq="${i}">${i}</button>`).join('')+`</div>`;
+    if(!state.equipment.items.includes('Barbell & Plates')&&state.equipment.items.length)h+=note('info','No barbell: barbell movements are removed; 1RM entry shows dumbbell/machine equivalents.');
+    if(!state.equipment.items.includes('Pull-Up Bar')&&!state.equipment.items.includes('Lat Pulldown / Row')&&state.equipment.items.length)h+=note('warn','No vertical pull — lat development will be constrained.');
+  }
+  if(state.equipment.environment==='bodyweight')h+=note('ok','Bodyweight selected — Calisthenics boosted, 1RM replaced with bodyweight milestones.');
+  if(state.equipment.environment==='hotel')h+=note('info','Travel mode: shorter sessions, higher reps and circuits auto-suggested.');
+  return h;
+},valid(){return !!state.equipment.environment;}});
+
+/* P6 TRAINING STYLE & MODIFIERS */
+const BASE_STYLES=[
+ {id:'powerlifting',label:'Powerlifting / Strength',desc:'Heavy compound lifts, low reps, long rest. Performance over aesthetics.'},
+ {id:'bodybuilding',label:'Bodybuilding / Hypertrophy',desc:'High volume, multiple angles per muscle, chase the pump. Aesthetics-driven.'},
+ {id:'hit',label:'High-Intensity Training (HIT)',desc:'One all-out set to failure per exercise. Brief, brutal, then recover.'},
+ {id:'powerbuilding',label:'Powerbuilding',desc:'Start heavy with compounds for strength, finish with higher-rep work for size.'},
+ {id:'fullbody',label:'Full-Body / Minimalist',desc:'Train every muscle every session. Compounds, minimum effective dose, high frequency.'},
+ {id:'calisthenics',label:'Calisthenics / Bodyweight',desc:'Build strength using only your body. Progress by making movements harder, not heavier.'},
+];
+function baseStyleScore(p){let s=0,why=null;const g=state.goal.primary,lv=effLevel(),d=state.schedule.daysPerWeek||0;
+  if(p==='powerlifting'&&(g==='strength'||g==='athletic')){s+=3;why='Strength-focused goal with barbell access.';}
+  if(p==='bodybuilding'&&g==='muscle'&&levelRank(lv)>=2&&d>=4){s+=3;why=`Build Muscle, ${d} days, ${lv} experience.`;}
+  if(p==='bodybuilding'&&g==='leanout'){s+=3;why='Preserve existing muscle with familiar stimulus.';}
+  if(p==='hit'&&levelRank(lv)<2)s-=99;
+  if(p==='powerbuilding'&&g==='transform'){s+=3;why='Maximize newbie gains + fat loss.';}
+  if(p==='powerbuilding'&&(g==='athletic'||g==='strength'||(g==='muscle'&&d<=3))){s+=2;why='Blends strength and size.';}
+  if(p==='powerbuilding'&&state.goal.secondary&&((g==='muscle'&&state.goal.secondary==='strength')||(g==='strength'&&state.goal.secondary==='muscle'))){s+=3;why='You want both size and strength.';}
+  if(p==='fullbody'&&(state.experience.level==='beginner'||d<=3||g==='fitness'||g==='transform')){s+=2;why='Great for beginners, transform, and lower frequency.';}
+  if(p==='calisthenics'&&state.equipment.environment==='bodyweight'){s+=5;why='Bodyweight-only equipment.';}
+  return {s,why};}
+function allowedBaseStyles(){let list=BASE_STYLES.map(p=>({...p,...baseStyleScore(p.id)}));
+  if(state.equipment.environment==='bodyweight')list=list.filter(p=>['calisthenics','fullbody'].includes(p.id));
+  else if(state.experience.level==='beginner')list=list.filter(p=>['powerlifting','bodybuilding','fullbody','calisthenics'].includes(p.id));
+  else if(state.experience.level==='novice')list=list.filter(p=>p.id!=='hit');
+  list.sort((a,b)=>b.s-a.s);return list;}
+const VOL_FRAMEWORKS=[
+ {id:'fixed',label:'Fixed Volume',desc:'Same prescribed sets across the mesocycle. Simple and predictable.'},
+ {id:'evidence',label:'Evidence-Based (MEV → MAV → MRV)',desc:'Ramp from minimum effective to maximum recoverable volume, then deload.'},
+ {id:'auto',label:'Autoregulated Volume',desc:'Add or drop sets session-to-session based on performance and fatigue.'},
+ {id:'med',label:'Minimum Effective Dose',desc:'Only the volume needed to grow. Prioritizes recovery and sustainability.'},
+];
+function defaultVolumeFramework(){const bs=state.trainingStyle.baseStyle,lv=effLevel();
+  if(bs==='hit')return 'med';
+  if(bs==='fullbody')return 'med';
+  if(state.equipment.environment==='bodyweight')return 'auto';
+  if(state.experience.level==='beginner'||state.experience.level==='novice')return 'fixed';
+  if(bs==='bodybuilding'||state.goal.primary==='leanout')return 'evidence';
+  if(levelRank(lv)>=3)return 'auto';
+  return 'evidence';}
+function volumeAllowed(id){const bs=state.trainingStyle.baseStyle;
+  if(bs==='hit')return id==='med';
+  if(state.experience.level==='beginner'&&id==='auto')return false;
+  return true;}
+const PERIODIZATIONS=[
+ {id:'none',label:'None / Straight Run',desc:'Same structure & exercises throughout. Progression via load, reps, or volume.'},
+ {id:'block',label:'Block Periodization',desc:'Distinct phases (2–4 wks each); exercises & rep ranges may change between blocks.'},
+ {id:'dup',label:'Daily Undulating (DUP)',desc:'Rep ranges & intensity vary session to session; exercises stay the same.'},
+ {id:'weekly',label:'Weekly Undulating',desc:'Rep ranges & intensity vary week to week; exercises stay the same.'},
+];
+function defaultPeriodization(){const bs=state.trainingStyle.baseStyle,wks=durWeeks();
+  if(state.experience.level==='beginner'||bs==='hit')return 'none';
+  if(state.goal.primary==='athletic'&&wks>=6)return 'block';
+  if(bs==='powerbuilding')return 'dup';
+  return 'none';}
+function periodizationAllowed(id){const bs=state.trainingStyle.baseStyle,wks=durWeeks();
+  if(state.experience.level==='beginner')return id==='none';
+  if(bs==='hit')return id==='none';
+  if(state.experience.level==='novice')return id==='none'||id==='dup';
+  if(id==='block'&&wks<6)return false;
+  return true;}
+pages.push({title:'Training Style',onEnter(){
+  if(state.trainingStyle.baseStyle&&state.trainingStyle.baseStyle!=='auto'){
+    if(!state.trainingStyle.volumeFramework)state.trainingStyle.volumeFramework=defaultVolumeFramework();
+    if(!state.trainingStyle.periodizationStrategy)state.trainingStyle.periodizationStrategy=defaultPeriodization();
+    if(state.trainingStyle.baseStyle==='hit'){state.trainingStyle.volumeFramework='med';state.trainingStyle.periodizationStrategy='none';}
+    if(!volumeAllowed(state.trainingStyle.volumeFramework))state.trainingStyle.volumeFramework=defaultVolumeFramework();
+    if(!periodizationAllowed(state.trainingStyle.periodizationStrategy))state.trainingStyle.periodizationStrategy=defaultPeriodization();
+  }
+},render(){
+  // resolve "Not sure" -> top recommendation + default modifiers
+  if(state.trainingStyle.baseStyle==='auto'){state.trainingStyle.baseStyle=(allowedBaseStyles()[0]||{id:'fullbody'}).id;
+    state.trainingStyle.volumeFramework=defaultVolumeFramework();state.trainingStyle.periodizationStrategy=defaultPeriodization();}
+  let h=`<div class="eyebrow">Step 6</div><h1 class="pt">Training style & modifiers</h1><div class="sub">First, how your sessions are structured. Then two refinements — most people can leave them on the defaults.</div>`;
+  h+=`<div class="section-head">Base training style</div>`;
+  const list=allowedBaseStyles();
+  h+=`<div class="grid">`+list.map((p,i)=>{const sel=state.trainingStyle.baseStyle===p.id;
+    const badge=(i===0&&p.s>0)?'<span class="badge rec">Recommended</span>':(p.s>0?'<span class="badge fit">Good fit</span>':'');
+    return `<button class="choice ${sel?'sel':''}" data-single="trainingStyle.baseStyle" data-val="${p.id}"><span class="check">${sel?'✓':''}</span>
+      <div class="lbl">${p.label} ${badge}</div><div class="desc">${p.desc}</div>${p.why&&p.s>0?`<div class="whyfit">★ ${p.why}</div>`:''}</button>`;}).join('')+`</div>`;
+  h+=`<div style="margin-top:10px">`+singleCard('trainingStyle.baseStyle',[{id:'auto',label:'Not sure — recommend everything for me',desc:'We\'ll pick the style and both modifiers.'}])+`</div>`;
+  if(!state.trainingStyle.baseStyle)return h;
+  // Step 2: Volume framework
+  h+=`<div class="section-head">Volume framework <span style="text-transform:none;font-weight:400;color:rgb(var(--color-ink-mute))">— how we manage your sets over time</span></div>`;
+  const vf=VOL_FRAMEWORKS.filter(v=>volumeAllowed(v.id));
+  h+=`<div class="grid">`+vf.map(v=>{const sel=state.trainingStyle.volumeFramework===v.id;const def=v.id===defaultVolumeFramework();
+    return `<button class="choice ${sel?'sel':''}" data-single="trainingStyle.volumeFramework" data-val="${v.id}"><span class="check">${sel?'✓':''}</span>
+      <div class="lbl">${v.label} ${def?'<span class="badge rec">Default</span>':''}</div><div class="desc">${v.desc}</div></button>`;}).join('')+`</div>`;
+  if(state.trainingStyle.baseStyle==='hit')h+=note('info','HIT locks volume to Minimum Effective Dose — it rejects the volume paradigm by design.');
+  if(state.trainingStyle.baseStyle==='calisthenics'&&state.trainingStyle.volumeFramework==='fixed')h+=note('info','With bodyweight training, volume often needs to flex as you progress to harder variations — Evidence-Based or Autoregulated may fit better.');
+  // Step 3: Periodization
+  h+=`<div class="section-head">Periodization strategy <span style="text-transform:none;font-weight:400;color:rgb(var(--color-ink-mute))">— how the program changes across weeks</span></div>`;
+  const pz=PERIODIZATIONS.filter(p=>periodizationAllowed(p.id));
+  h+=`<div class="grid">`+pz.map(p=>{const sel=state.trainingStyle.periodizationStrategy===p.id;const def=p.id===defaultPeriodization();
+    return `<button class="choice ${sel?'sel':''}" data-single="trainingStyle.periodizationStrategy" data-val="${p.id}"><span class="check">${sel?'✓':''}</span>
+      <div class="lbl">${p.label} ${def?'<span class="badge rec">Default</span>':''}</div><div class="desc">${p.desc}</div></button>`;}).join('')+`</div>`;
+  if(durWeeks()<6&&state.experience.level!=='beginner'&&state.trainingStyle.baseStyle!=='hit')h+=note('info','Block periodization is hidden — it needs at least a 6-week program to divide into phases.');
+  return h;
+},valid(){return !!state.trainingStyle.baseStyle&&!!state.trainingStyle.volumeFramework&&!!state.trainingStyle.periodizationStrategy;}});
+/* P7 SPLIT + REST DAY PICKER */
+const SPLITS={
+ 2:[{id:'fb2',label:'Full Body ×2',sub:'Both days hit every muscle'},{id:'ul',label:'Upper / Lower',sub:'1 upper, 1 lower'}],
+ 3:[{id:'fb3',label:'Full Body ×3',sub:'Every muscle, 3×/week'},{id:'ppl',label:'Push / Pull / Legs',sub:'Each once'},{id:'ulf',label:'Upper / Lower / Full Body',sub:'Hybrid'}],
+ 4:[{id:'ul2',label:'Upper / Lower ×2',sub:'Upper & lower twice each'},{id:'ppl1',label:'PPL + 1 repeat day',sub:'You pick the repeat day'},{id:'phul',label:'PHUL',sub:'Power + Hypertrophy, upper & lower'}],
+ 5:[{id:'pplul',label:'PPL + Upper / Lower',sub:'5-day classic'},{id:'bro',label:'Bro Split',sub:'Chest / Back / Shoulders / Legs / Arms'},{id:'phat',label:'PHAT',sub:'2 power + 3 hypertrophy days'},{id:'ulppl',label:'Upper/Lower/Push/Pull/Legs',sub:''}],
+ 6:[{id:'ppl2',label:'PPL ×2',sub:'Each hit twice'},{id:'arnold',label:'Arnold Split',sub:'Chest+Back / Shoulders+Arms / Legs ×2'},{id:'pplul1',label:'PPL + U/L + repeat',sub:''}],
+ 7:[{id:'ppl2',label:'PPL ×2 + 1',sub:'PPL twice, then a repeat'},{id:'arnold',label:'Arnold Split + 1',sub:'Chest+Back / Sh+Arms / Legs'},{id:'bro',label:'Bro Split + 2',sub:'Body-part split, every day'}],
+};
+function allowedSplits(){let list=(SPLITS[state.schedule.daysPerWeek]||[]).slice();const ph=state.trainingStyle.baseStyle;
+  if(ph==='fullbody'||ph==='hit')list=list.filter(s=>s.id.startsWith('fb'));
+  if(list.length===0&&(ph==='fullbody'||ph==='hit'))list=[{id:'fb3',label:'Full Body',sub:'Every muscle each session'}];
+  const boost=id=>{const i=list.findIndex(s=>s.id===id);if(i>0){const[x]=list.splice(i,1);list.unshift({...x,boosted:true});}};
+  if(ph==='bodybuilding'&&state.schedule.daysPerWeek>=5){boost('bro');boost('ppl2');}
+  if(ph==='powerbuilding'&&state.schedule.daysPerWeek===4)boost('phul');
+  if(state.goal.primary==='strength'&&state.schedule.daysPerWeek===4)boost('ul2');
+  return list;}
+pages.push({title:'Split',onEnter(){
+  if(state.schedule.restDays.length===0&&state.schedule.daysPerWeek)state.schedule.restDays=defaultRestDays(state.schedule.startDow,state.schedule.daysPerWeek);
+},render(){
+  let h=`<div class="eyebrow">Step 7</div><h1 class="pt">Training split & rest days</h1><div class="sub">How muscle groups spread across your ${state.schedule.daysPerWeek} days. Only feasible options shown.</div>`;
+  const list=allowedSplits();
+  h+=`<div class="grid">`+list.map(s=>{const sel=state.split.type===s.id;
+    return `<button class="choice ${sel?'sel':''}" data-single="split.type" data-val="${s.id}"><span class="check">${sel?'✓':''}</span>
+      <div class="lbl">${s.label} ${s.boosted?'<span class="badge rec">Top pick</span>':''}</div>${s.sub?`<div class="desc">${s.sub}</div>`:''}${sel?splitPreview(s.id):''}</button>${sel?restPickerCard():''}`;}).join('')+`</div>`;
+  if(isBlock())h+=note('info','Exercises and rep ranges change across phases, but the split structure stays consistent.');
+  return h;
+},valid(){return !!state.split.type;}});
+function restPickerCard(){const sd=state.schedule.startDow,d=state.schedule.daysPerWeek;
+  if(d>=7)return `<div class="card" style="margin:2px 0 0"><p class="hint" style="margin:0">You train every day — no rest days.</p></div>`;
+  let h=`<div class="card" style="margin:2px 0 0"><div class="section-head" style="margin-top:0">Rest days</div>
+    <p class="hint" style="margin:-4px 0 8px">Tap a day to make it rest. You have ${7-d} rest day${7-d===1?'':'s'} — marking a new one frees the oldest. Your start day stays a work day.</p>
+    <div class="weekrow">`+Array.from({length:7},(_,p)=>{const dow=(sd+p)%7;const rest=state.schedule.restDays.includes(dow);const isStart=dow===sd;
+      return `<button class="restbtn ${rest?'rest':''} ${isStart?'start':''}" data-rest="${dow}" ${isStart?'disabled':''}>${DOW_ABBR[dow]}</button>`;}).join('')+`</div></div>`;
+  return h;}
+function splitPreview(id){const seq=SPLIT_SEQ[id]||[];const sd=state.schedule.startDow;const rest=state.schedule.restDays;
+  let wi=0;const cells=[];
+  for(let p=0;p<7;p++){const dow=(sd+p)%7;if(rest.includes(dow)){cells.push(`<div class="d rest"><div class="dn">${DOW_ABBR[dow]}</div><div class="dl">rest</div></div>`);}
+    else{const lbl=seq[wi]||'—';wi++;cells.push(`<div class="d train"><div class="dn">${DOW_ABBR[dow]}</div><div class="dl">${lbl}</div></div>`);}}
+  return `<div class="weekgrid">${cells.join('')}</div>`;}
+
+/* P8 PRIORITIZE — mimic current code (rows: N/A | Maintain | Grow | Emphasize) */
+pages.push({title:'Prioritize',onEnter(){
+  if(Object.keys(state.prioritization.tiers).length===0)TEMPLATE_MUSCLES.forEach(m=>state.prioritization.tiers[m]=defaultTier(m));
+},render(){
+  let h=`<div class="eyebrow">Step 8</div><h1 class="pt">Prioritize muscles</h1>
+  <div class="sub">Sort each muscle into a tier. <b style="color:rgb(var(--color-ink))">Emphasize</b> the 2–3 you most want to grow (trained most often, first in the week). <b style="color:rgb(var(--color-ink))">Grow</b> = moderate volume. <b style="color:rgb(var(--color-ink))">Maintain</b> = once a week. <b style="color:rgb(var(--color-ink))">N/A</b> drops it.</div>`;
+  const tiers=state.prioritization.tiers;
+  const nE=Object.values(tiers).filter(t=>t==='emphasize').length;
+  h+=`<div class="emcount" style="color:${nE>=MAX_EMPHASIZE?'rgb(var(--color-warn))':'rgb(var(--color-ink-mute))'}">${nE} / ${MAX_EMPHASIZE} emphasized</div>`;
+  h+=TEMPLATE_MUSCLES.map(m=>{const t=tiers[m];const na=t==null;
+    return `<div class="mrow"><span class="mn">${cap(m)}</span>
+      <button class="na ${na?'on':''}" data-tier="${m}" data-val="na">N/A</button>
+      <div class="tiers">`+['maintain','grow','emphasize'].map(tt=>{const on=t===tt;const blocked=tt==='emphasize'&&!on&&nE>=MAX_EMPHASIZE;
+        return `<button class="tb ${tt} ${on?'on':''}" data-tier="${m}" data-val="${tt}" ${blocked?'disabled':''}>${cap(tt)}</button>`;}).join('')+`</div></div>`;}).join('');
+  if(nE>MAX_EMPHASIZE)h+=note('warn','Emphasizing too many dilutes the benefit — 3 at most is recommended.');
+  return h;
+},valid(){return true;}});
+
+/* P9 SETS & REPS */
+const SETTYPES=[
+ {id:'straight',label:'Straight Sets',desc:'Same weight & reps every set.',min:0},{id:'pyramid',label:'Pyramid Sets',desc:'Increase weight, decrease reps.',min:0},
+ {id:'revpyr',label:'Reverse Pyramid',desc:'Heaviest first, then lighter.',min:1},{id:'super_aa',label:'Supersets (Antagonist)',desc:'Opposing muscles back-to-back.',min:0},
+ {id:'super_same',label:'Supersets (Same Muscle)',desc:'Two moves, same muscle.',min:1},{id:'compound',label:'Compound Sets',desc:'Compound then isolation.',min:1},
+ {id:'drop',label:'Drop Sets',desc:'To failure, reduce, continue.',min:1},{id:'restpause',label:'Rest-Pause',desc:'Near-failure, short rest, more reps.',min:2},
+ {id:'myo',label:'Myo-Reps',desc:'Activation set + mini-sets.',min:2},{id:'cluster',label:'Cluster Sets',desc:'Mini-sets with intra-set rest.',min:2},
+ {id:'giant',label:'Giant / Tri-Sets',desc:'3–4 exercises in sequence.',min:2},{id:'mads',label:'Mechanical Adv. Drop Sets',desc:'Switch to an easier variation at failure.',min:3},
+];
+pages.push({title:'Sets & Reps',onEnter(){
+  if(!state.setsAndReps.repRange){const bs=state.trainingStyle.baseStyle,g=state.goal.primary;
+    state.setsAndReps.repRange=bs==='powerlifting'?'strength':bs==='bodybuilding'?'hypertrophy':bs==='powerbuilding'?'mixed':g==='transform'?'mixed':g==='leanout'?'hypertrophy':g==='strength'?'strength':'hypertrophy';}
+  if(state.setsAndReps.setTypes.length===0)state.setsAndReps.setTypes=['straight'];
+  if(state.trainingStyle.baseStyle==='hit')state.setsAndReps.setTypes=['straight'];
+},render(){
+  let h=`<div class="eyebrow">Step 9</div><h1 class="pt">Sets & rep preferences</h1><div class="sub">Pre-set by your training style — override anything.</div>`;
+  h+=`<div class="section-head">Primary rep range</div>`;
+  h+=singleCard('setsAndReps.repRange',[{id:'strength',label:'Strength-Focused (3–6)',desc:'Heavier loads, longer rest'},
+    {id:'hypertrophy',label:'Hypertrophy (8–12)',desc:'Moderate loads, max tension'},{id:'endurance',label:'Endurance / Metabolic (12–20)',desc:'Lighter loads, shorter rest'},
+    {id:'mixed',label:'Mixed / Undulating',desc:'Heavy compounds, lighter accessories'}]);
+  if(state.trainingStyle.baseStyle==='hit'){h+=note('info','HIT uses one working set to failure. Intensity techniques apply within that single set.');}
+  else{h+=`<div class="section-head">Set types (pick at least one)</div>`;const lv=levelRank(effLevel());const tight=state.schedule.sessionMinutes===30;
+    h+=multiCard('setsAndReps.setTypes',SETTYPES.map(s=>{const o={id:s.id,label:s.label,desc:s.desc,disabled:lv<s.min};
+      if(lv<s.min)o.label=s.label+' <span class="badge lvl">'+['','Novice+','Intermediate+','Advanced'][s.min]+'</span>';
+      if(tight&&['super_aa','myo','giant'].includes(s.id)&&lv>=s.min)o.label+=' <span class="badge fit">time-saver</span>';return o;}));
+    h+=`<button class="choice ${state.setsAndReps.autoVary?'sel':''}" data-toggle="setsAndReps.autoVary" style="margin-top:10px"><span class="check">${state.setsAndReps.autoVary?'✓':''}</span><div class="lbl">Auto-vary set types across the mesocycle</div><div class="desc">Rotate among your selected types week to week.</div></button>`;}
+  return h;
+},valid(){return state.setsAndReps.repRange&&(state.trainingStyle.baseStyle==='hit'||state.setsAndReps.setTypes.length>0);}});
+
+/* P10 REST & TEMPO */
+pages.push({title:'Rest & Tempo',onEnter(){
+  if(!state.restAndTempo.restPreference){const bs=state.trainingStyle.baseStyle,g=state.goal.primary;
+    state.restAndTempo.restPreference=(bs==='powerlifting'||g==='strength')?'long':(g==='transform'||g==='leanout'||g==='fitness'||g==='muscle')?'moderate':'auto';}
+},render(){
+  let h=`<div class="eyebrow">Step 10</div><h1 class="pt">Rest periods & tempo</h1><div class="sub">Affects session length, stimulus and energy systems.</div>`;
+  if(state.trainingStyle.baseStyle==='hit'){h+=note('info','HIT: rest between exercises is 1–2 min. Tempo defaults to controlled 4-second negatives.');}
+  else{h+=`<div class="section-head">Rest between sets</div>`;
+    h+=singleCard('restAndTempo.restPreference',[{id:'short',label:'Short (30–60s)',desc:'Max metabolic stress, shorter sessions'},
+      {id:'moderate',label:'Moderate (60–90s)',desc:'The hypertrophy sweet spot'},{id:'long',label:'Long (2–3 min)',desc:'Full recovery for heavy compounds'},
+      {id:'auto',label:'Auto (per exercise)',desc:'Compounds long, isolations short',badge:'<span class="badge rec">Recommended</span>'}]);
+    if(state.schedule.sessionMinutes===30&&state.restAndTempo.restPreference==='long')h+=note('warn','Long rest in 30-min sessions cuts how many exercises fit. Auto or Moderate is recommended.');}
+  h+=`<div class="section-head">Tempo prescription</div>`;
+  h+=`<button class="choice ${state.restAndTempo.tempoEnabled?'sel':''}" data-toggle="restAndTempo.tempoEnabled"><span class="check">${state.restAndTempo.tempoEnabled?'✓':''}</span><div class="lbl">Prescribe rep tempo</div><div class="desc">Adds time-under-tension control. Off by default${state.experience.level==='beginner'?' — adds complexity beginners don\'t need':''}.</div></button>`;
+  if(state.restAndTempo.tempoEnabled)h+=`<div style="margin-top:10px">`+singleCard('restAndTempo.tempoStyle',[{id:'ecc',label:'Controlled Eccentrics (3-0-1-0)',desc:'3s lower — time under tension'},
+    {id:'exp',label:'Explosive Concentrics (1-0-X-0)',desc:'Fast lift — strength & power'},{id:'tension',label:'Constant Tension (2-1-2-1)',desc:'Pauses top & bottom'},
+    {id:'varied',label:'Program-Varied',desc:'Engine assigns per exercise role'}])+`</div>`;
+  if(state.goal.primary==='transform'||state.goal.primary==='fitness')h+=note('info','Adding tempo control increases calorie burn and time under tension.');
+  return h;
+},valid(){return state.trainingStyle.baseStyle==='hit'||!!state.restAndTempo.restPreference;}});
+
+/* P11 CORE — block expands to # exercises */
+pages.push({title:'Core',onEnter(){
+  if(!state.core.method){const bs=state.trainingStyle.baseStyle;
+    state.core.method=bs==='bodybuilding'?'block':(bs==='fullbody'||bs==='hit')?'superset':state.goal.primary==='athletic'?'superset':'block';
+    state.core.frequency=state.experience.level==='beginner'?'2x':state.goal.primary==='athletic'?'3x':'everyother';}
+},render(){
+  let h=`<div class="eyebrow">Step 11</div><h1 class="pt">Core & abs strategy</h1><div class="sub">Intentionally programmed — not an afterthought.</div>`;
+  const tight=state.schedule.sessionMinutes===30;
+  const opts=[{id:'block',label:'Dedicated Core Block',desc:'Core exercises at session end',disabled:tight},
+    {id:'day',label:'Dedicated Core Day',desc:'Separate short session on chosen day(s)',disabled:tight},{id:'superset',label:'Superset Between Lifts',desc:'Core during compound rest periods'},
+    {id:'compound',label:'Compound-Only (Indirect)',desc:'Rely on heavy squats/deadlifts/presses'},{id:'none',label:'None — I\'ll handle it',desc:'Excluded from the program'}];
+  const freqChips=()=>`<div class="section-head" style="margin-top:14px">Core frequency</div>`+chips('core.frequency',[{id:'every',label:'Every session'},{id:'everyother',label:'Every other'},{id:'2x',label:'2×/week'},{id:'3x',label:'3×/week'}],false);
+  const qtyChips=()=>`<div class="section-head" style="margin-top:14px">Exercises per core session</div>`+chips('core.blockExercises',[{id:'1-2',label:'1–2 exercises'},{id:'2-3',label:'2–3 exercises'},{id:'3-4',label:'3–4 exercises'}],false);
+  const dayPicker=()=>{const sd=state.schedule.startDow;return `<div class="section-head" style="margin-top:14px">Which day(s)?</div>
+    <p class="hint" style="margin:-4px 0 8px">Pick the day(s) for your dedicated core session.</p>
+    <div class="weekrow">`+Array.from({length:7},(_,p)=>{const dow=(sd+p)%7;const on=state.core.days.includes(dow);
+      return `<button class="restbtn ${on?'start':''}" data-coreday="${dow}">${DOW_ABBR[dow]}</button>`;}).join('')+`</div>`;};
+  h+=`<div class="grid">`+opts.map(o=>{const sel=state.core.method===o.id;const dis=o.disabled?'disabled':'';
+    let exp='';
+    if(sel&&o.id==='block')exp=qtyChips()+freqChips();
+    if(sel&&o.id==='day')exp=dayPicker()+qtyChips();
+    if(sel&&o.id==='superset')exp=freqChips();
+    const btn=`<button class="choice ${sel?'sel':''} ${dis}" data-single="core.method" data-val="${o.id}"><span class="check">${sel?'✓':''}</span>
+      <div class="lbl">${o.label}</div><div class="desc">${o.desc}</div></button>`;
+    return btn+(exp?`<div class="card" style="margin:2px 0 0">${exp}</div>`:'');}).join('')+`</div>`;
+  if(state.core.method==='day'&&state.core.days.length===0)h+=note('warn','Pick at least one day for your dedicated core session.');
+  if(state.profile.injuries.includes('lowback'))h+=note('info','Lower-back flag: flexion & rotation excluded. Anti-extension & anti-rotation favored.');
+  if(tight)h+=note('info','30-min sessions: dedicated core options hidden — superset or compound-only keeps you in budget.');
+  return h;
+},valid(){return state.core.method&&!(state.core.method==='day'&&state.core.days.length===0);}});
+
+/* P12 CARDIO */
+pages.push({title:'Cardio',onEnter(){
+  if(state.cardio.included===null){const g=state.goal.primary;
+    if(g==='transform'){Object.assign(state.cardio,{included:'yes',type:['hiit','liss'],frequency:3,placement:'offdays',durationMinutes:20});}
+    else if(g==='leanout'){Object.assign(state.cardio,{included:'yes',type:['liss'],frequency:3,placement:'offdays',durationMinutes:30});}
+    else if(g==='athletic'){Object.assign(state.cardio,{included:'yes',type:['circuit'],frequency:2,placement:'separate',durationMinutes:20});}
+    else if(g==='fitness'){Object.assign(state.cardio,{included:'yes',type:['liss','hiit'],frequency:3,placement:'separate',durationMinutes:30});}
+    else if(g==='muscle'||g==='strength')state.cardio.included='no';}
+},render(){
+  let h=`<div class="eyebrow">Step 12</div><h1 class="pt">Cardio & conditioning</h1><div class="sub">Pre-filled from your goal — adjust freely.</div>`;
+  h+=singleCard('cardio.included',[{id:'yes',label:'Yes — include it'},{id:'restdays',label:'On rest days only',desc:'Guidelines, not structured workouts'},{id:'no',label:'No — skip cardio'}]);
+  if(state.goal.primary==='transform'&&state.cardio.included==='yes')h+=note('ok','Cardio is a key part of your transformation — it accelerates fat loss while your lifting builds new muscle.');
+  if(state.goal.primary==='leanout'&&state.cardio.included==='yes')h+=note('ok','Steady-state cardio is preferred during a cut — it burns calories without hammering recovery the way HIIT does.');
+  if((state.goal.primary==='muscle'||state.goal.primary==='strength')&&state.cardio.included==='yes')h+=note('warn','Keep cardio moderate — LISS 2×/week on off-days is plenty without compromising gains.');
+  if(state.cardio.included==='yes'){
+    h+=`<div class="section-head">Type</div>`+multiCard('cardio.type',[{id:'liss',label:'Steady-State (LISS)',desc:'Walk/jog/cycle at 60–70% max HR'},
+      {id:'hiit',label:'HIIT',desc:'All-out bursts + rest'},{id:'circuit',label:'Conditioning Circuits',desc:'Ropes, sleds, KB complexes'}]);
+    h+=`<div class="section-head">Frequency</div>`+chips('cardio.frequency',[1,2,3,4,5].map(n=>({id:n,label:n+'×/wk'})),false);
+    h+=`<div class="section-head">Placement</div>`+chips('cardio.placement',[{id:'before',label:'Before lifting'},{id:'after',label:'After lifting'},{id:'separate',label:'Separate sessions'},{id:'offdays',label:'On off-days'}],false);
+    h+=`<div class="section-head">Duration</div>`+chips('cardio.durationMinutes',[10,15,20,30,45].map(n=>({id:n,label:n+' min'})),false);
+    if(state.cardio.type.includes('hiit')&&state.cardio.placement==='before')h+=note('warn','HIIT before lifting reduces strength. Place it after lifting or on separate days.');
+    if(state.cardio.frequency&&state.schedule.daysPerWeek&&(state.cardio.frequency+state.schedule.daysPerWeek>7)&&state.cardio.placement==='separate')h+=note('warn','Lifting + cardio days exceed 7 — stack cardio after lifting or reduce frequency.');
+  }
+  return h;
+},valid(){return state.cardio.included!==null;}});
+
+/* P13 PROGRESSION */
+const PROGS=[
+ {id:'linear',label:'Linear Progression',desc:'Add weight every session. Great for beginners.',min:0,recFor:['beginner']},
+ {id:'double',label:'Double Progression',desc:'Hit top of a rep range, then add weight.',min:0,recFor:['novice','intermediate']},
+ {id:'percent',label:'Percentage-Based',desc:'Loads as % of 1RM, rising weekly.',min:2},
+ {id:'undulating',label:'Undulating / Wave',desc:'Intensity & volume wave session to session.',min:2},
+ {id:'rpe',label:'RPE / RIR Auto-Regulation',desc:'Load by effort level. Most flexible.',min:2,recFor:['advanced']},
+];
+pages.push({title:'Progression',onEnter(){
+  if(!state.progression.type){const lv=effLevel();
+    state.progression.type=state.experience.level==='beginner'?'linear':levelRank(lv)>=3?'rpe':'double';
+    if(isBlock())state.progression.type='percent';
+    if(state.trainingStyle.periodizationStrategy==='dup')state.progression.type='undulating';
+    if(state.trainingStyle.baseStyle==='hit')state.progression.type='double';}
+  if(!state.progression.deloadProtocol){Object.assign(state.progression,{deloadProtocol:'scheduled',deloadFrequency:4,deloadStyle:'volume'});}
+},render(){
+  let h=`<div class="eyebrow">Step 13</div><h1 class="pt">Progression model</h1><div class="sub">How load, volume and intensity advance over time.</div>`;
+  const lv=levelRank(effLevel());const blockP=isBlock();
+  const progs=PROGS.map(p=>({...p,disabled:lv<p.min||(blockP&&!['percent','undulating'].includes(p.id))}));
+  h+=`<div class="grid">`+progs.map(p=>{const sel=state.progression.type===p.id;const rec=p.recFor&&p.recFor.includes(state.experience.level);
+    return `<button class="choice ${sel?'sel':''} ${p.disabled?'disabled':''}" data-single="progression.type" data-val="${p.id}"><span class="check">${sel?'✓':''}</span>
+      <div class="lbl">${p.label} ${rec?'<span class="badge rec">For you</span>':''} ${p.min>0?`<span class="badge lvl">${['','','Intermediate+','Advanced'][p.min]}</span>`:''}</div><div class="desc">${p.desc}</div></button>`;}).join('')+`</div>`;
+  if(blockP)h+=note('info','Block periodization locks progression to Percentage-Based or Undulating.');
+  if(state.trainingStyle.periodizationStrategy==='dup')h+=note('info','DUP pairs naturally with Undulating / Wave loading.');
+  if(state.experience.level==='beginner'&&state.progression.type==='percent')h+=note('warn','Percentage-based needs accurate 1RM data. Linear or Double is recommended.');
+  if(state.trainingStyle.baseStyle==='calisthenics')h+=note('info','Calisthenics: progression is movement difficulty, not load.');
+  h+=`<div class="section-head">Deload protocol</div>`;
+  h+=singleCard('progression.deloadProtocol',[{id:'scheduled',label:'Scheduled Deload',desc:'Auto-reduce every Nth week'},
+    {id:'reactive',label:'Reactive Deload',desc:'Triggered when performance stalls'},{id:'none',label:'No Deload',desc:'Not recommended past 4 weeks'}]);
+  if(state.progression.deloadProtocol==='scheduled'){
+    h+=`<div class="section-head">Frequency</div>`+chips('progression.deloadFrequency',[3,4,5,6].map(n=>({id:n,label:'Every '+n+'th wk'})),false);
+    h+=`<div class="section-head">Style</div>`+chips('progression.deloadStyle',[{id:'volume',label:'Reduce volume'},{id:'intensity',label:'Reduce intensity'},{id:'both',label:'Both'}],false);}
+  if(state.progression.deloadProtocol==='none')h+=note('warn','Training without deloads raises injury and plateau risk.');
+  return h;
+},valid(){return state.progression.type&&state.progression.deloadProtocol;}});
+
+/* P14 BASELINES */
+function programLifts(){if(state.equipment.environment==='bodyweight')return null;
+  const hasBar=state.equipment.items.includes('Barbell & Plates')||state.equipment.environment==='commercial';
+  const pre=hasBar?'Barbell ':'Dumbbell ';let squat=pre+'Squat',press=pre+'Overhead Press',bench=pre+'Bench Press',dl=pre+'Deadlift',row=pre+'Row';
+  if(!hasBar){squat='Dumbbell Goblet Squat';dl='Dumbbell Romanian Deadlift';}
+  if(state.profile.injuries.includes('shoulder'))press='Landmine Press';
+  if(state.profile.injuries.includes('lowback'))dl=hasBar?'Trap Bar Deadlift':'Dumbbell RDL';
+  return [squat,bench,dl,press,row];}
+pages.push({title:'Baselines',render(){
+  let h=`<div class="eyebrow">Step 14</div><h1 class="pt">Strength baselines</h1>`;
+  if(state.equipment.environment==='bodyweight'){h+=`<div class="sub">Bodyweight program — we use movement milestones instead of 1RM.</div>`;
+    h+=`<div class="field"><label>Max push-ups in one set</label><input class="inp" placeholder="e.g. 20"></div>`;
+    h+=`<div class="field"><label>Max pull-ups in one set</label><input class="inp" placeholder="0 if none yet"></div>`;
+    h+=`<div class="field"><label>Max plank hold (seconds)</label><input class="inp" placeholder="e.g. 60"></div>`;
+    h+=`<div class="field"><label>Full-depth bodyweight squat?</label>`+chips('_bwsquat',[{id:'y',label:'Yes'},{id:'n',label:'Not yet'}],false)+`</div>`;return h;}
+  h+=`<div class="sub">Sets starting weights for each main lift in ${state.profile.units} (from your profile). Pick a method per lift.</div>`;
+  // shortcut buttons (mutually exclusive)
+  h+=`<div class="chips" style="margin-bottom:12px">
+    <button class="chip ${state.baselines.allConservative?'sel':''}" data-allcons="1">${state.baselines.allConservative?'✓ ':'↺ '}Start all conservative</button>
+    <button class="chip ${state.baselines.calibrationWeek?'sel':''}" data-calib="1">${state.baselines.calibrationWeek?'✓ ':'+ '}Add a calibration week to find my 1RM</button></div>`;
+  if(state.baselines.calibrationWeek)h+=note('ok','Week 1 becomes a calibration week — the program ramps you to a tested or estimated 1RM on each main lift, then real loading starts Week 2. Each lift below is set to "Calculated during calibration week," and your total program runs one week longer.');
+  if(state.profile.ageRange==='u18')h+=note('info','Under 18: lifts default to a conservative start; 1RM testing isn\'t recommended.');
+  if(state.progression.type==='percent'&&!state.baselines.calibrationWeek)h+=note('warn','Percentage-based loading — accurate 1RM matters. Use a recent 3–5 rep set if unsure.');
+  if((state.experience.status==='layoff12'||state.experience.status==='break_long')&&!state.baselines.calibrationWeek)h+=note('info','After a long break, start at 50–60% of previous working weights.');
+  const lifts=programLifts();
+  lifts.forEach(lift=>{
+    if(state.baselines.calibrationWeek){
+      h+=`<div class="rev"><div class="rh"><b>${lift}</b></div><div class="rb"><span class="k">Calculated during calibration week</span></div></div>`;
+      return;
+    }
+    const method=state.baselines.methods[lift]||(state.baselines.allConservative||state.profile.ageRange==='u18'?'conservative':'working');
+    h+=`<div class="rev"><div class="rh"><b>${lift}</b></div><div class="chips" style="margin-bottom:8px">
+      ${[['known','Known 1RM'],['working','Recent set'],['conservative','Start conservative']].map(([id,l])=>`<button class="chip ${method===id?'sel':''}" data-baseline="${lift}" data-val="${id}" ${state.profile.ageRange==='u18'&&id==='known'?'disabled':''}>${l}</button>`).join('')}</div>`;
+    if(method==='known')h+=`<input class="inp" placeholder="1RM (${state.profile.units})">`;
+    else if(method==='working')h+=`<div class="row-inline"><input class="inp" placeholder="weight" style="flex:2"><span style="color:rgb(var(--color-ink-mute))">×</span><input class="inp" placeholder="reps" style="flex:1"></div><div class="hint" style="margin-top:6px">Best from a 3–8 rep set. We estimate 1RM via Epley/Brzycki.</div>`;
+    else h+=`<div class="hint">We'll assign a safe body-weight-relative start for your level.</div>`;
+    h+=`</div>`;});
+  return h;
+},valid(){return true;}});
+
+/* P15 REVIEW + VOLUME-PER-WEEK card */
+function lbl(map,v){return map[v]||v||'—';}
+pages.push({title:'Review',render(){
+  const G={muscle:'Build Muscle',strength:'Build Strength',transform:'Transform My Body',leanout:'Lean Out & Preserve',fitness:'General Fitness',athletic:'Athletic Performance'};
+  const BS_LABEL=Object.fromEntries(BASE_STYLES.map(p=>[p.id,p.label]));const VF_LABEL=Object.fromEntries(VOL_FRAMEWORKS.map(v=>[v.id,v.label]));const PZ_LABEL=Object.fromEntries(PERIODIZATIONS.map(p=>[p.id,p.label]));
+  const sec=(title,page,body)=>`<div class="rev"><div class="rh"><b>${title}</b><button class="edit" data-goto="${page}">Edit</button></div><div class="rb">${body}</div></div>`;
+  let h=`<div class="eyebrow">Step 15</div><h1 class="pt">Review & generate</h1><div class="sub">Everything you chose. Tap Edit on any section to jump back.</div>`;
+  h+=sec('Program',0,`Name: <span class="k">${state.name||'Untitled'}</span> · Goal: ${G[state.goal.primary]||'—'}${state.goal.secondary?` (also ${G[state.goal.secondary]||state.goal.secondary})`:''}`);
+  h+=sec('Experience',1,`${lbl({beginner:'Beginner',novice:'Novice',intermediate:'Intermediate',advanced:'Advanced'},state.experience.level)} · ${lbl({consistent:'Currently training',break_short:'Short break',break_long:'Long break',layoff12:'12+ mo layoff',scratch:'From scratch'},state.experience.status)}`);
+  h+=sec('Profile',2,`Age ${state.profile.ageRange} · ${cap(state.profile.sex)} · ${bw()} ${state.profile.units}${state.profile.stubbornAreas.length?` · target: ${state.profile.stubbornAreas.join(', ')}`:''}${state.profile.injuries.length?` · injuries: ${state.profile.injuries.join(', ')}`:''}`);
+  h+=sec('Schedule',3,`${state.schedule.daysPerWeek} days/wk · ${state.schedule.sessionMinutes} min · starts ${DOW_FULL[state.schedule.startDow]} · ${state.schedule.durationWeeks==='ongoing'?'Ongoing':state.schedule.durationWeeks+' weeks'}`);
+  h+=sec('Equipment',4,`${lbl({commercial:'Commercial Gym',home:'Home Gym',garage:'Garage',bodyweight:'Bodyweight',hotel:'Hotel/Travel'},state.equipment.environment)}${state.equipment.items.length?` · ${state.equipment.items.length} items`:''}`);
+  h+=sec('Training Style',5,`Style: <span class="k">${BS_LABEL[state.trainingStyle.baseStyle]||'—'}</span><br>Volume: ${VF_LABEL[state.trainingStyle.volumeFramework]||'—'}<br>Periodization: ${PZ_LABEL[state.trainingStyle.periodizationStrategy]||'—'}`);
+  h+=sec('Split',6,`${(allowedSplits().find(s=>s.id===state.split.type)||{}).label||'—'} · rest: ${state.schedule.restDays.map(d=>DOW_ABBR[d]).join(', ')||'none'}`);
+  const tiers=state.prioritization.tiers;const byT=t=>TEMPLATE_MUSCLES.filter(m=>tiers[m]===t).map(cap);
+  h+=sec('Prioritization',7,`Emphasize: <span class="k">${byT('emphasize').join(', ')||'none'}</span><br>Grow: ${byT('grow').join(', ')||'none'}<br>Maintain: ${byT('maintain').join(', ')||'none'}`);
+  h+=sec('Sets & Reps',8,`${lbl({strength:'Strength 3–6',hypertrophy:'Hypertrophy 8–12',endurance:'Endurance 12–20',mixed:'Mixed/Undulating'},state.setsAndReps.repRange)} · ${state.trainingStyle.baseStyle==='hit'?'Single set to failure':state.setsAndReps.setTypes.length+' set type(s)'}${state.setsAndReps.autoVary?' · auto-vary ON':''}`);
+  h+=sec('Rest & Tempo',9,`Rest: ${lbl({short:'Short',moderate:'Moderate',long:'Long',auto:'Auto'},state.restAndTempo.restPreference)} · Tempo: ${state.restAndTempo.tempoEnabled?(state.restAndTempo.tempoStyle||'on'):'off'}`);
+  h+=sec('Core',10,`${lbl({block:'Dedicated block',day:'Dedicated day',superset:'Superset between lifts',compound:'Compound-only',none:'None'},state.core.method)}${(state.core.method==='block'||state.core.method==='day')?` (${state.core.blockExercises})`:''}${state.core.method==='day'&&state.core.days.length?` · ${state.core.days.map(d=>DOW_ABBR[d]).join(', ')}`:''}${state.core.frequency&&!['none','compound','day'].includes(state.core.method)?` · ${state.core.frequency}`:''}`);
+  h+=sec('Cardio',11,state.cardio.included==='yes'?`Yes · ${(state.cardio.type||[]).join('+')||'—'} · ${state.cardio.frequency||'?'}×/wk · ${lbl({before:'before',after:'after',separate:'separate',offdays:'off-days'},state.cardio.placement)} · ${state.cardio.durationMinutes||'?'} min`:lbl({no:'Skipped',restdays:'Rest days only'},state.cardio.included));
+  h+=sec('Progression',12,`${lbl({linear:'Linear',double:'Double',percent:'Percentage-based',undulating:'Undulating',rpe:'RPE/RIR'},state.progression.type)} · Deload: ${state.progression.deloadProtocol==='scheduled'?`every ${state.progression.deloadFrequency}th wk (${state.progression.deloadStyle})`:lbl({reactive:'reactive',none:'none'},state.progression.deloadProtocol)}${state.baselines.calibrationWeek?' · +calibration wk':''}`);
+  const lifts=programLifts();
+  h+=sec('Baselines',13,lifts?(state.baselines.calibrationWeek?'Calculated during calibration week (all lifts)':lifts.map(l=>`${l}: ${lbl({known:'known 1RM',working:'from recent set',conservative:'conservative'},state.baselines.methods[l]||(state.baselines.allConservative?'conservative':'working'))}`).join('<br>')):'Bodyweight milestones');
+  // VOLUME PER WEEK (mimics the wizard's Week-layout card)
+  h+=volumeCard();
+  if((state.schedule.daysPerWeek===2)&&byT('emphasize').length>2)h+=note('warn','2 days/week with '+byT('emphasize').length+' emphasized groups — not enough session time. Consider trimming to 2.');
+  if(state.progression.type==='percent'&&lifts&&lifts.some(l=>(state.baselines.methods[l]||'working')==='conservative'))h+=note('warn','Percentage-based loading but some lifts are "start conservative" — first-week weights are estimates.');
+  return h;
+},valid(){return true;}});
+function coreDaysCount(){const d=state.schedule.daysPerWeek||0;
+  if(state.core.method==='day')return state.core.days.length;
+  if(state.core.method==='block'||state.core.method==='superset')return ({every:d,everyother:Math.ceil(d/2),'2x':2,'3x':3})[state.core.frequency]||0;
+  return 0;}
+function coreExCount(){return ({'1-2':2,'2-3':3,'3-4':4})[state.core.blockExercises]||3;}
+/* Week model: optional calibration week first, then training weeks with scheduled deloads. */
+function weekStructure(){
+  const base=state.schedule.durationWeeks==='ongoing'?8:(state.schedule.durationWeeks||8);
+  const sched=state.progression.deloadProtocol==='scheduled'&&state.progression.deloadFrequency;
+  const out=[];let loadIdx=0;
+  if(state.baselines.calibrationWeek)out.push({label:'Cal',kind:'cal'});
+  for(let i=0;i<base;i++){
+    if(sched&&((i+1)%state.progression.deloadFrequency===0))out.push({label:'DL',kind:'deload'});
+    else out.push({label:'W'+(++loadIdx),kind:'load',loadIdx:loadIdx-1});
+  }
+  out.loadCount=loadIdx;return out;
+}
+function muscleSetsForWeek(m,wkObj,loadCount){
+  const tier=state.prioritization.tiers[m];if(tier==null)return 0;const lm=LANDMARKS[m];const per=isVolumeRamped();
+  const maintain=Math.max(1,Math.round(lm.mev*0.5));
+  const steady=tier==='emphasize'?lm.mav:tier==='grow'?Math.round((lm.mev+lm.mav)/2):maintain;
+  const peak=tier==='emphasize'?lm.mrv:tier==='grow'?lm.mav:maintain;
+  if(wkObj.kind==='cal')return Math.max(1,Math.round(steady*0.4));
+  if(wkObj.kind==='deload')return Math.max(1,Math.round(steady*0.5));
+  if(per){const lc=Math.max(1,loadCount-1);const t=lc>0?wkObj.loadIdx/lc:0;return Math.max(1,Math.round(lm.mev+(peak-lm.mev)*t));}
+  return steady;
+}
+function coreSetsForWeek(wkObj){const cd=coreDaysCount();if(cd<=0)return 0;const steady=cd*coreExCount()*DEFAULT_SETS;
+  if(wkObj.kind==='cal')return Math.round(steady*0.4);if(wkObj.kind==='deload')return Math.round(steady*0.5);return steady;}
+function volumeCard(){
+  const struct=weekStructure();const lc=struct.loadCount;const periodized=isVolumeRamped();
+  const tiers=state.prioritization.tiers;const tpw=timesPerWeekMap();
+  const muscles=TEMPLATE_MUSCLES.filter(m=>tiers[m]!=null&&(tpw[m]||0)>0);
+  const bits=[];if(state.baselines.calibrationWeek)bits.push('a calibration week (~40%)');
+  if(state.progression.deloadProtocol==='scheduled')bits.push('deload every '+state.progression.deloadFrequency+'th week (~50%)');
+  let h=`<div class="volcard"><h4>Volume per week — hard sets per muscle</h4>
+    <p class="sub" style="font-size:12px;margin:0 0 4px">${periodized?'Builds toward each muscle’s ceiling.':'Held steady on load weeks.'}${bits.length?' Includes '+bits.join(' and ')+'.':''} Split across exercises at ~${DEFAULT_SETS} sets each on page 16.</p>
+    <div class="volgrid" style="grid-template-columns:4.5rem repeat(${struct.length},minmax(0,1fr))"><div></div>`;
+  struct.forEach(w=>h+=`<div class="vh">${w.label}</div>`);
+  muscles.forEach(m=>{h+=`<div class="vm ${tiers[m]}">${cap(m)}</div>`+struct.map(w=>`<div class="vn ${w.kind!=='load'?'dl':''}">${muscleSetsForWeek(m,w,lc)}</div>`).join('');});
+  const cd=coreDaysCount();
+  if(cd>0)h+=`<div class="vm grow" style="color:rgb(var(--color-info))">Core</div>`+struct.map(w=>`<div class="vn ${w.kind!=='load'?'dl':''}">${coreSetsForWeek(w)}</div>`).join('');
+  h+=`</div><div class="vleg"><span><i class="swatch" style="background:rgb(var(--color-accent))"></i>Emphasize</span><span><i class="swatch" style="background:rgb(var(--color-info))"></i>Grow</span><span><i class="swatch" style="background:rgb(var(--color-ink-mute))"></i>Maintain</span><span style="margin-left:auto">Cal / DL columns dimmed</span></div></div>`;
+  return h;
+}
+
+/* ---------------- P16 EXERCISE REVIEW (matches split + equipment) ---------------- */
+const SPLIT_SEQ={
+  fb2:['Full Body','Full Body'],ul:['Upper','Lower'],fb3:['Full Body','Full Body','Full Body'],
+  ppl:['Push','Pull','Legs'],ulf:['Upper','Lower','Full Body'],ul2:['Upper','Lower','Upper','Lower'],
+  ppl1:['Push','Pull','Legs','Push'],phul:['Upper','Lower','Upper','Lower'],
+  pplul:['Push','Pull','Legs','Upper','Lower'],bro:['Chest','Back','Shoulders','Legs','Arms'],
+  phat:['Upper','Lower','Push','Pull','Legs'],ulppl:['Upper','Lower','Push','Pull','Legs'],
+  ppl2:['Push','Pull','Legs','Push','Pull','Legs'],arnold:['Chest+Back','Shoulders+Arms','Legs','Chest+Back','Shoulders+Arms','Legs'],
+  pplul1:['Push','Pull','Legs','Upper','Lower','Push'],
+};
+/* Muscles trained on each day type (deduped). Drives volume-aware set allocation. */
+const DAY_MUSCLES={
+  'Full Body':['quads','chest','back','hamstrings','shoulders'],'Upper':['chest','back','shoulders','triceps','biceps','forearms'],
+  'Lower':['quads','hamstrings','glutes','calves'],'Push':['chest','shoulders','triceps'],'Pull':['back','biceps','forearms'],
+  'Legs':['quads','hamstrings','glutes','calves'],'Chest':['chest'],'Back':['back'],'Shoulders':['shoulders'],'Arms':['biceps','triceps','forearms'],
+  'Chest+Back':['chest','back'],'Shoulders+Arms':['shoulders','biceps','triceps'],
+};
+const _DB=['Dumbbells — Fixed','Dumbbells — Adjustable'],_BB=['Barbell & Plates'],_BW=['__bw'];
+const EXPOOL={
+ chest:[['Barbell Bench Press',_BB,true],['Incline Barbell Press',_BB,false],['Flat DB Press',_DB,false],['Incline DB Press',_DB,false],['DB Fly',_DB,false],['Machine Chest Press',['Chest/Shoulder Press Machine'],false],['Cable Fly',['Cable Machine','Functional Trainer'],false],['Pec Deck',['Pec Deck'],false],['Weighted Dip',['Dip Station'],false],['Push-Up',_BW,false],['Incline Push-Up',_BW,false],['Deficit Push-Up',_BW,false]],
+ back:[['Barbell Row',_BB,true],['Pendlay Row',_BB,false],['Pull-Up',['Pull-Up Bar'],false],['Chin-Up',['Pull-Up Bar'],false],['Lat Pulldown',['Lat Pulldown / Row'],false],['Seated Cable Row',['Cable Machine','Lat Pulldown / Row'],false],['One-Arm DB Row',_DB,false],['Chest-Supported DB Row',_DB,false],['Inverted Row',_BW,false],['Band Row',['Resistance Bands'],false]],
+ shoulders:[['Overhead Press',_BB,false],['DB Shoulder Press',_DB,false],['Arnold Press',_DB,false],['Machine Shoulder Press',['Chest/Shoulder Press Machine'],false],['Cable Lateral Raise',['Cable Machine'],false],['DB Lateral Raise',_DB,false],['Band Lateral Raise',['Resistance Bands'],false],['DB Rear Delt Fly',_DB,false],['Pike Push-Up',_BW,false]],
+ biceps:[['Barbell Curl',['Barbell & Plates','EZ Curl Bar'],false],['EZ-Bar Curl',['EZ Curl Bar'],false],['DB Curl',_DB,false],['Incline DB Curl',_DB,false],['Hammer Curl',_DB,false],['Cable Curl',['Cable Machine'],false],['Chin-Up',['Pull-Up Bar'],false],['Band Curl',['Resistance Bands'],false]],
+ triceps:[['Tricep Pushdown',['Cable Machine'],false],['Overhead Cable Extension',['Cable Machine'],false],['Skull Crusher',['EZ Curl Bar','Barbell & Plates'],false],['DB Overhead Extension',_DB,false],['DB Kickback',_DB,false],['Weighted Dip',['Dip Station'],false],['Close-Grip Push-Up',_BW,false],['Diamond Push-Up',_BW,false]],
+ forearms:[['Barbell Wrist Curl',_BB.concat(_DB),false],['Cable Wrist Curl',['Cable Machine'],false],['Reverse Curl',['EZ Curl Bar'].concat(_DB),false],['DB Wrist Curl',_DB,false],['Towel Hang',['Pull-Up Bar'],false],['Farmer Hold',_DB.concat(['Kettlebells']),false]],
+ quads:[['Barbell Back Squat',_BB,true],['Front Squat',_BB,false],['Leg Press',['Leg Press'],false],['Hack Squat',['Hack Squat'],false],['Goblet Squat',_DB.concat(['Kettlebells']),false],['Bulgarian Split Squat',_DB.concat(_BW),false],['Walking Lunge',_DB.concat(_BW),false],['Leg Extension',['Leg Curl/Extension'],false],['Step-Up',_DB.concat(_BW),false],['Bodyweight Squat',_BW,false]],
+ hamstrings:[['Romanian Deadlift',_BB,true],['DB RDL',_DB,false],['Lying Leg Curl',['Leg Curl/Extension'],false],['Seated Leg Curl',['Leg Curl/Extension'],false],['Good Morning',_BB,false],['Glute-Ham Raise',['GHD'],false],['Nordic Curl',_BW,false]],
+ glutes:[['Barbell Hip Thrust',['Barbell & Plates','Bench — Flat','Bench — Adjustable'],false],['DB Hip Thrust',_DB.concat(['Bench — Flat','Bench — Adjustable']),false],['Bulgarian Split Squat',_DB.concat(_BW),false],['Cable Kickback',['Cable Machine'],false],['Reverse Lunge',_DB.concat(_BW),false],['Step-Up',_DB.concat(_BW),false],['Glute Bridge',_BW,false]],
+ calves:[['Standing Calf Raise',['Leg Press','Smith Machine'],false],['Seated Calf Raise',['Leg Curl/Extension'],false],['DB Calf Raise',_DB,false],['Single-Leg Calf Raise',_BW,false],['Bodyweight Calf Raise',_BW,false]],
+};
+function availSet(){const s=new Set(['__bw']);if(state.equipment.environment==='commercial')allEquip().forEach(i=>s.add(i));else state.equipment.items.forEach(i=>s.add(i));return s;}
+function hasEq(reqList){if(state.equipment.environment==='bodyweight')return reqList.includes('__bw');const a=availSet();return reqList.some(r=>a.has(r));}
+function repsFor(anchor){const rr=state.setsAndReps.repRange;if(rr==='strength')return anchor?5:6;if(rr==='endurance')return 15;if(rr==='mixed')return anchor?5:10;return anchor?8:10;}
+function poolFor(m){return (EXPOOL[m]||[]).filter(e=>state.equipment.environment==='bodyweight'?e[1].includes('__bw'):hasEq(e[1]));}
+/* Weekly hard-set target per muscle for week w (the landmark volume shown on the card). */
+function weeklyTargets(w){const weeks=durWeeks();const per=isVolumeRamped();
+  const t={};TEMPLATE_MUSCLES.forEach(m=>{const tier=state.prioritization.tiers[m];if(tier==null)return;const r=volumeRamp(tier,weeks,LANDMARKS[m],per);t[m]=r[w]??r[0];});return t;}
+function splitDays(){const id=state.split.type;const seq=SPLIT_SEQ[id]||['Full Body','Full Body'];const sd=state.schedule.startDow;const rest=state.schedule.restDays;
+  const workDows=[];for(let p=0;p<7;p++){const dow=(sd+p)%7;if(!rest.includes(dow))workDows.push(dow);}
+  const emph=TEMPLATE_MUSCLES.filter(m=>state.prioritization.tiers[m]==='emphasize');
+  return seq.map((type,i)=>({dow:workDows[i],type,emphasis:i===0&&emph.length?`${cap(emph[0])} emphasis`:''}));}
+/* Volume-driven: each muscle's weekly target sets are split across its training days, then across
+   exercises at ~DEFAULT_SETS sets each. Exercise count is capped only by equipment-valid options. */
+function pickForDay(dayType,targets,timesPer,dayIdx){const muscles=DAY_MUSCLES[dayType]||DAY_MUSCLES['Full Body'];const out=[];
+  muscles.forEach(m=>{const tier=state.prioritization.tiers[m];if(tier==null)return;const target=targets[m];if(!target)return;
+    const tp=timesPer[m]||1;const setsToday=Math.max(2,Math.round(target/tp));
+    const pool=poolFor(m);if(pool.length===0)return;
+    const nEx=Math.max(1,Math.min(pool.length,Math.round(setsToday/DEFAULT_SETS)));
+    const base=Math.floor(setsToday/nEx),rem=setsToday-base*nEx;
+    for(let i=0;i<nEx;i++){const sets=base+(i<rem?1:0);const e=pool[(i+(dayIdx||0))%pool.length];const anchor=e[2]&&i===0;
+      out.push({name:e[0],presc:`${sets}×${anchor?repsFor(true):repsFor(false)}`,anchor,muscle:m});}});
+  return out;}
+function timesPerWeekMap(){const seq=SPLIT_SEQ[state.split.type]||[];const t={};
+  seq.forEach(type=>{(DAY_MUSCLES[type]||[]).forEach(m=>{t[m]=(t[m]||0)+1;});});return t;}
+/* Build the week for display week wk. Each muscle's weekly target is split EXACTLY across its
+   training days (so the day totals sum to the card), then across exercises at ~DEFAULT_SETS each. */
+function buildProgram(targets){
+  const seq=SPLIT_SEQ[state.split.type]||['Full Body','Full Body'];const tpw=timesPerWeekMap();
+  const alloc={};Object.keys(targets).forEach(m=>{const tp=tpw[m]||0;if(tp<=0)return;const T=targets[m];
+    const b=Math.floor(T/tp),r=T-b*tp;alloc[m]=Array.from({length:tp},(_,i)=>b+(i<r?1:0));});  // may be 0 on some days for low-volume muscles
+  const occ={};const sd=state.schedule.startDow,rest=state.schedule.restDays;
+  const workDows=[];for(let p=0;p<7;p++){const dow=(sd+p)%7;if(!rest.includes(dow))workDows.push(dow);}
+  const emph=TEMPLATE_MUSCLES.filter(m=>state.prioritization.tiers[m]==='emphasize');
+  return seq.map((type,di)=>{const muscles=DAY_MUSCLES[type]||DAY_MUSCLES['Full Body'];const exs=[];
+    muscles.forEach(m=>{if(state.prioritization.tiers[m]==null||!alloc[m])return;const idx=occ[m]||0;occ[m]=idx+1;
+      const setsToday=alloc[m][idx]||0;if(setsToday<=0)return;const pool=poolFor(m);if(pool.length===0)return;
+      const nEx=Math.max(1,Math.round(setsToday/DEFAULT_SETS));  // ~3 sets each; cycles the pool (repeats only if equipment is very limited)
+      const b=Math.floor(setsToday/nEx),r=setsToday-b*nEx;
+      for(let i=0;i<nEx;i++){const sets=b+(i<r?1:0);if(sets<=0)continue;const e=pool[(i+di)%pool.length];const anchor=e[2]&&i===0;
+        exs.push({name:e[0],presc:`${sets}×${anchor?repsFor(true):repsFor(false)}`,anchor,muscle:m});}});
+    return {dow:workDows[di],type,emphasis:di===0&&emph.length?`${cap(emph[0])} emphasis`:'',exercises:exs};});
+}
+const CORE_POOL=[['Plank',_BW],['Dead Bug',_BW],['Bird Dog',_BW],['Side Plank',_BW],['Hollow Hold',_BW],['Reverse Crunch',_BW],['Hanging Leg Raise',['Pull-Up Bar']],['Cable Crunch',['Cable Machine']],['Cable Woodchop',['Cable Machine']],['Pallof Press',['Cable Machine','Resistance Bands']],['Ab Wheel Rollout',['Ab Wheel']],['Russian Twist',_BW],['Suitcase Carry',_DB.concat(['Kettlebells'])]];
+function corePool(){let p=CORE_POOL.filter(e=>hasEq(e[1]));
+  if(state.profile.injuries.includes('lowback'))p=p.filter(e=>!['Cable Crunch','Russian Twist','Reverse Crunch','Cable Woodchop','Hanging Leg Raise'].includes(e[0]));
+  return p.map(e=>e[0]);}
+/* Build editable day list for a phase, including Core rows treated like any muscle. */
+function genDays(wkObj,lc){
+  const targets={};TEMPLATE_MUSCLES.forEach(m=>{if(state.prioritization.tiers[m]!=null)targets[m]=muscleSetsForWeek(m,wkObj,lc);});
+  const days=buildProgram(targets);const cm=state.core.method;const cp=corePool();const n=coreExCount();
+  if(cm==='block'||cm==='superset')days.forEach(d=>{for(let i=0;i<n&&i<cp.length;i++)d.exercises.push({muscle:'Core',name:cp[i],presc:cm==='superset'?'3×12':'3×15',anchor:false});});
+  else if(cm==='day'&&days[0])for(let i=0;i<n&&i<cp.length;i++)days[0].exercises.push({muscle:'Core',name:cp[i],presc:'3×15',anchor:false});
+  return days;
+}
+pages.push({title:'Exercises',render(){
+  if(!state.generated)return `<div class="eyebrow">Step 16</div><h1 class="pt">Generate to review exercises</h1><div class="sub">Hit "Generate My Program" on the Review page first.</div>${note('info','This page lists every exercise grouped by day, built from your split & equipment, with swap options. Anchors 🔒 reset progression when swapped.')}`;
+  const struct=weekStructure();const lc=struct.loadCount;const block=isBlock();
+  const loads=struct.filter(w=>w.kind==='load');
+  const phase=block?curPhase:0;
+  let wkObj=block?(loads[[0,Math.floor((loads.length-1)/2),loads.length-1][phase]]||loads[0]):(loads[0]||struct[0]);
+  if(!state.programByPhase[phase])state.programByPhase[phase]=genDays(wkObj,lc);
+  const days=state.programByPhase[phase];
+  let h=`<div class="eyebrow">Step 16</div><h1 class="pt">Your program</h1><div class="sub">Built from your ${(allowedSplits().find(s=>s.id===state.split.type)||{}).label||'split'} using only your equipment. Pick a different movement from any dropdown, or add/remove exercises. Core is listed like any other muscle group. Each exercise targets ~${DEFAULT_SETS} sets.</div>`;
+  if(block){const phases=['Phase 1: Hypertrophy','Phase 2: Strength','Phase 3: Peak'];
+    h+=`<div class="phasetabs">`+phases.map((p,i)=>`<button class="${i===curPhase?'on':''}" data-phase="${i}">${p}</button>`).join('')+`</div>`;}
+  days.forEach((d,di)=>{const daySets=d.exercises.reduce((a,e)=>a+parseInt(e.presc),0);
+    h+=`<div class="day"><div class="day-h">${DOW_FULL[d.dow]} — ${d.type} <span class="em">${d.emphasis?d.emphasis+' · ':''}${daySets} sets</span></div>`;
+    d.exercises.forEach((e,ei)=>{
+      let opts=e.muscle==='Core'?corePool():poolFor(e.muscle).map(x=>x[0]);
+      if(!opts.includes(e.name))opts=[e.name].concat(opts);
+      h+=`<div class="ex"><span class="exm">${cap(e.muscle)}${e.anchor?' 🔒':''}</span>`+
+        `<select class="exsel" data-exsel="${phase}:${di}:${ei}">`+opts.map(o=>`<option ${o===e.name?'selected':''}>${o}</option>`).join('')+`</select>`+
+        `<span class="pr">${e.presc}</span><button class="exdel" data-exdel="${phase}:${di}:${ei}" title="Remove">✕</button></div>`;});
+    const addMuscles=(DAY_MUSCLES[d.type]||[]).filter(m=>state.prioritization.tiers[m]!=null);
+    if(['block','superset','day'].includes(state.core.method))addMuscles.push('Core');
+    h+=`<div class="exadd"><select data-addmuscle="${phase}:${di}">`+addMuscles.map(m=>`<option value="${m}">${cap(m)}</option>`).join('')+`</select><button data-exadd="${phase}:${di}">+ Add exercise</button></div>`;
+    h+=`</div>`;});
+  return h;
+},valid(){return true;}});
+
+/* ---------------- DRAWER ---------------- */
+const SWAP_ALTS={
+  'Incline DB Press':[['Incline Barbell Press','Chest','Barbell','Heavier loading, same angle'],['Machine Chest Press','Chest','Machine','Fixed path, easier on shoulders']],
+  'Cable Fly':[['Pec Deck','Chest','Pec Deck','Same isolation, more stable'],['DB Fly','Chest','Dumbbells','No cables needed']],
+  'DB Lateral Raise':[['Cable Lateral Raise','Side Delts','Cable','Constant tension'],['Machine Lateral Raise','Side Delts','Machine','Strict, fixed path']],
+  'Barbell Bench Press':[['Dumbbell Bench Press','Chest','Dumbbells','Bigger stretch, less shoulder stress'],['Floor Press','Chest','Barbell','Shorter ROM, shoulder-friendly']],
+  'Barbell Back Squat':[['Front Squat','Quads','Barbell','More upright, quad-biased'],['Hack Squat','Quads','Machine','Fixed path, quad focus']],
+  'Barbell Row':[['Chest-Supported Row','Back','Machine/Bench','Removes lower-back strain'],['One-Arm DB Row','Back','Dumbbells','Unilateral, big stretch']],
+};
+function openSwap(name,anchor){
+  const alts=SWAP_ALTS[name]||[['Alternative A','Same muscle','Your equipment','Matched by muscle, equipment & pattern'],['Alternative B','Same muscle','Your equipment','Matched by muscle, equipment & pattern']];
+  let h=`<h3>Swap: ${name}</h3><div class="sub" style="margin-bottom:8px">Filtered by muscle group, your equipment & movement pattern.</div>`;
+  if(anchor)h+=note('warn','This is a primary lift your progression is built around. Swapping resets loading for this movement pattern.');
+  h+=alts.map(a=>`<div class="alt" data-pick="1"><div class="an">${a[0]}</div><div class="ad">${a[1]} · ${a[2]} — ${a[3]}</div></div>`).join('');
+  h+=`<button class="btn btn-ghost" style="width:100%;margin-top:14px" data-closedrawer="1">Cancel</button>`;
+  $('#drawer').innerHTML=h;$('#drawer').classList.add('open');$('#scrim').classList.add('open');}
+function closeDrawer(){$('#drawer').classList.remove('open');$('#scrim').classList.remove('open');}
+
+/* ---------------- RENDER & NAV ---------------- */
+function render(scroll){
+  const p=pages[cur];if(p.onEnter)p.onEnter();
+  const y=window.scrollY;
+  $('#page').innerHTML=p.render();
+  $('#steplabel').textContent=(cur+1)+' / '+TOTAL;
+  $('#progbar').style.width=((cur+1)/TOTAL*100)+'%';
+  $('#backBtn').style.visibility=cur===0?'hidden':'visible';
+  if(scroll){window.scrollTo(0,0);}else{window.scrollTo(0,y);}
+  evalSeen();
+}
+function markSeen(){seen=true;seenPages.add(cur);updateNav();}
+function evalSeen(){
+  const fits=document.body.scrollHeight<=window.innerHeight+8;
+  if(fits||seenPages.has(cur))markSeen();else updateNav();
+}
+function updateNav(){
+  const p=pages[cur];const valid=p.valid?p.valid():true;const nb=$('#nextBtn');
+  if(cur===14){nb.textContent='⚡ Generate My Program';nb.className='btn btn-primary btn-generate';}
+  else if(cur===15){nb.textContent='Start My Program';nb.className='btn btn-primary';}
+  else{nb.textContent='Next';nb.className='btn btn-primary';}
+  nb.disabled=!(valid&&seen);
+  $('#hint').textContent = !seen ? 'Scroll down to see the whole page ↓' : (!valid ? 'Make a selection to continue' : '');
+}
+function sectionAnchors(){const p=$('#page');return Array.prototype.filter.call(p.children,c=>c.classList&&(c.classList.contains('section-head')||c.classList.contains('field')));}
+function nextSectionIdx(el){const ct=el.getBoundingClientRect().top+window.scrollY;let idx=0;sectionAnchors().forEach(a=>{if(a.getBoundingClientRect().top+window.scrollY<=ct+1)idx++;});return idx;}
+function scrollToSection(idx){const secs=sectionAnchors();const el=secs[idx];if(!el)return;const top=el.getBoundingClientRect().top+window.scrollY-90;window.scrollTo({top:Math.max(0,top),behavior:'smooth'});}
+function navTo(i){cur=i;seen=seenPages.has(i);render(true);}
+function next(){if(!seen)return;if(cur===14){state.generated=true;state.programByPhase={};navTo(15);return;}if(cur<TOTAL-1){navTo(cur+1);}else{alert('🎉 Program started! (mockup end)');}}
+function back(){if(cur>0)navTo(cur-1);}
+
+/* ---------------- EVENTS ---------------- */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-single],[data-multi],[data-toggle],[data-eq],[data-eqall],[data-tier],[data-rest],[data-coreday],[data-baseline],[data-allcons],[data-calib],[data-goto],[data-phase],[data-swap],[data-exadd],[data-exdel],[data-pick],[data-closedrawer],[data-noop]');
+  if(!t)return;
+  if(t.dataset.noop!==undefined)return;
+  if(t.dataset.single!==undefined){const _ni=nextSectionIdx(t);let v=t.dataset.val;if(v!=='ongoing'&&!isNaN(+v)&&v!=='')v=+v;setPath(t.dataset.single,v);
+    if(t.dataset.single==='schedule.daysPerWeek'){state.schedule.restDays=defaultRestDays(state.schedule.startDow,v);state.split.type=null;}
+    if(t.dataset.single==='schedule.startDow'){state.schedule.restDays=defaultRestDays(v,state.schedule.daysPerWeek);}
+    if(t.dataset.single==='trainingStyle.baseStyle'){state.trainingStyle.volumeFramework=null;state.trainingStyle.periodizationStrategy=null;}
+    render(false);scrollToSection(_ni);}
+  else if(t.dataset.multi!==undefined){let v=t.dataset.val;if(!isNaN(+v))v=+v;toggleArr(t.dataset.multi,v);render(false);}
+  else if(t.dataset.toggle!==undefined){setPath(t.dataset.toggle,!getPath(t.dataset.toggle));render(false);}
+  else if(t.dataset.eq!==undefined){toggleArr('equipment.items',t.dataset.eq);render(false);}
+  else if(t.dataset.eqall!==undefined){const all=allEquip();state.equipment.items=all.every(i=>state.equipment.items.includes(i))?[]:all.slice();render(false);}
+  else if(t.dataset.tier!==undefined){const m=t.dataset.tier,v=t.dataset.val;state.prioritization.tiers[m]=(v==='na'?null:v);if(v==='na')delete state.prioritization.tiers[m];render(false);}
+  else if(t.dataset.rest!==undefined){toggleRest(+t.dataset.rest);render(false);}
+  else if(t.dataset.coreday!==undefined){toggleArr('core.days',+t.dataset.coreday);render(false);}
+  else if(t.dataset.baseline){if(t.disabled)return;state.baselines.methods[t.dataset.baseline]=t.dataset.val;render(false);}
+  else if(t.dataset.allcons!==undefined){state.baselines.allConservative=!state.baselines.allConservative;
+    if(state.baselines.allConservative){state.baselines.calibrationWeek=false;(programLifts()||[]).forEach(l=>state.baselines.methods[l]='conservative');}render(false);}
+  else if(t.dataset.calib!==undefined){state.baselines.calibrationWeek=!state.baselines.calibrationWeek;if(state.baselines.calibrationWeek)state.baselines.allConservative=false;render(false);}
+  else if(t.dataset.goto!==undefined){navTo(+t.dataset.goto);}
+  else if(t.dataset.phase!==undefined){curPhase=+t.dataset.phase;render(false);}
+  else if(t.dataset.exadd!==undefined){const a=t.dataset.exadd.split(':').map(Number);const sel=document.querySelector(`[data-addmuscle="${a[0]}:${a[1]}"]`);const m=sel?sel.value:null;if(!m)return;
+    let name=m==='Core'?corePool()[0]:((poolFor(m)[0]||[])[0]);if(!name)return;
+    state.programByPhase[a[0]][a[1]].exercises.push({muscle:m,name,presc:'3×'+repsFor(false),anchor:false});render(false);}
+  else if(t.dataset.exdel!==undefined){const a=t.dataset.exdel.split(':').map(Number);state.programByPhase[a[0]][a[1]].exercises.splice(a[2],1);render(false);}
+  else if(t.dataset.swap!==undefined){openSwap(t.dataset.swap,t.dataset.anchor==='1');}
+  else if(t.dataset.pick!==undefined){closeDrawer();}
+  else if(t.dataset.closedrawer!==undefined){closeDrawer();}
+});
+function toggleRest(dow){const d=state.schedule.daysPerWeek;const maxRest=7-d;let r=state.schedule.restDays.slice();
+  if(dow===state.schedule.startDow)return;
+  if(r.includes(dow)){r=r.filter(x=>x!==dow);}
+  else{r.push(dow);while(r.length>maxRest)r.shift();}
+  state.schedule.restDays=r;}
+document.addEventListener('change',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.exsel!==undefined){const a=t.dataset.exsel.split(':').map(Number);const d=state.programByPhase[a[0]];if(d&&d[a[1]]&&d[a[1]].exercises[a[2]])d[a[1]].exercises[a[2]].name=t.value;}});
+document.addEventListener('input',e=>{
+  if(e.target.id==='nameInput')state.name=e.target.value;
+  if(e.target.id==='bwInput'){const v=parseFloat(e.target.value)||0;state.profile.weightLbs=state.profile.units==='kg'?Math.round(v*2.205):v;}
+});
+window.addEventListener('scroll',()=>{if(window.innerHeight+window.scrollY>=document.body.scrollHeight-10){if(!seen)markSeen();}},{passive:true});
+window.addEventListener('resize',evalSeen);
+$('#nextBtn').onclick=next;$('#backBtn').onclick=back;$('#scrim').onclick=closeDrawer;
+navTo(0);
+</script>
+</body>
+</html>

@@ -8,6 +8,30 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.68.0 — 2026-06-06
+
+- Plan Wizard v2 — engine foundation (Chunk 1 of 3). New, additive
+  `lib/wizard/` module; no UI or existing flows changed yet.
+  - `types.ts` — `WizardState` model matching the approved mockup: 6 goals
+    (incl. Transform / Lean Out), 4 experience tiers, `trainingStyle`
+    {baseStyle, volumeFramework, periodizationStrategy}, calibration week,
+    stubborn areas, per-muscle tiers.
+  - `engine.ts` — pure generation engine. Volume is the single source of
+    truth: tier → MEV/MAV/MRV landmark targets (Emphasize→MRV, Grow→MAV,
+    Maintain→~½MEV). `weekStructure()` builds the calibration + scheduled-
+    deload week shape; `muscleSetsForWeek()` ramps load weeks for
+    Evidence-Based / Block. `generateWeek()` is volume-driven: each muscle's
+    weekly target is split across its training days then into exercises at
+    ~3 sets each, selecting only equipment-valid movements from the real
+    exercise library, with core treated as its own group. Granular Page-5
+    equipment is mapped onto the library's coarse EquipmentType set.
+  - `engine.test.ts` — covers volume-driven exercise count, card↔program
+    reconciliation, equipment filtering, calibration/deload week structure,
+    and the evidence-based volume ramp. (Run on Windows via `npm test`;
+    vitest can't run in the Linux sandbox — rollup native binary.)
+  - Next: Chunk 2 (wizard UI in React/TSX), Chunk 3 (persistence +
+    Edit-this-plan round-trip + stored-type extensions + migration).
+
 ## v0.67.4 — 2026-05-31
 
 - Fixed: WeekCalendar prev/next week buttons stopped working after v0.67.3.

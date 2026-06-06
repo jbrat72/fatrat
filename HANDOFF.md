@@ -1,6 +1,6 @@
 # FATRAT — Project Handoff
 
-_Last updated: 2026-05-31 (app v0.60.9)_
+_Last updated: 2026-06-05 (app v0.67.4)_
 
 Paste this file (or point the new chat at it) to bring a fresh session up to speed.
 
@@ -14,15 +14,15 @@ workout app where periodized training is one option alongside ad-hoc single
 workouts. It plans programs, runs daily workouts, logs sets, and tracks
 progress over time.
 
-**Live in production** as of v0.55.0+:
+**Live in production:**
 - Hosted on Vercel — `https://fatrat-pi.vercel.app`
 - Backed by Firebase Auth (Google sign-in) + Firestore
 - Custom domain `fatrat.app` is purchased at GoDaddy (DNS work pending; see §11)
 
 The original build brief, **`FATRAT Initial Build Specification.md`**, is in
 the project root. Reference screenshots live in `screenshots/`. Brian's
-muscle-group volume guide for an upcoming refactor is at
-**`Optimal Exercises per Muscle Group.txt`** in the root.
+muscle-group volume guide is at **`Optimal Exercises per Muscle Group.txt`**
+in the root — relevant to the upcoming wizard rebuild (§10A).
 
 ---
 
@@ -38,9 +38,8 @@ truncating them mid-file, mangling JSX/TSX, or appending garbage/null bytes.
 `tsc` reports the damage as `TS1127 Invalid character`, `TS1002 Unterminated
 string literal`, or `TS17008 JSX element has no closing tag`.
 
-This is **not** rare. Confirmed again 2026-05-31 — three sequential Edits on
-`WeekCalendar.tsx` produced TS1127 errors at the end of the file, requiring a
-full rewrite. Treat the Edit and Write tools as unreliable in this project.
+This is **constant**. Hit it dozens of times in the v0.61 → v0.67 work.
+Treat the Edit and Write tools as unreliable in this project.
 
 **Workaround — use bash heredocs for all writes:**
 
@@ -48,13 +47,16 @@ full rewrite. Treat the Edit and Write tools as unreliable in this project.
     ...full file contents...
     XEOF
 
-The quoted delimiter preserves backticks, `$`, and template literals. Bash
-writes via the workspace mount are reliable.
+The quoted delimiter preserves backticks, `$`, and template literals.
 
-- To **recover** a corrupted file: use the Read tool (it still returns the
-  intact intended content even when the on-disk file is truncated), then
-  rewrite the whole file via heredoc.
+- To **recover** a corrupted file: prefer `git show HEAD:path/to/file` to
+  recover the pristine version (the Read tool sometimes returns the
+  on-disk truncated state, not the intended content). Then rewrite via
+  heredoc.
 - After any work, **verify**: run `npx tsc --noEmit` from `app/`.
+- When `head -N` + heredoc to append, double-check you cut at the right
+  line — off-by-one drops needed code. Always inspect the join with
+  `sed -n` before moving on.
 
 ---
 
@@ -74,9 +76,9 @@ writes via the workspace mount are reliable.
 implementations swap behind it:
 
 - `firestoreRepository.ts` — used when `NEXT_PUBLIC_FIREBASE_*` env vars are
-  present (i.e. production and any environment with a `.env.local`).
-- `mock.ts` — in-memory + localStorage-backed (key `fatrat:mock:v4`), used when
-  Firebase is not configured. Still useful for offline tinkering.
+  present (production + any environment with a `.env.local`).
+- `mock.ts` — in-memory + localStorage-backed (key `fatrat:mock:v5`, bumped
+  in v0.61 for the post-Macrocycle data model). Useful for offline tinkering.
 
 `lib/firebase/client.ts` exposes `isFirebaseEnabled()` and `getFirebaseAuth()`.
 
@@ -90,32 +92,47 @@ app/
     today/                 daily workout screen (+ workout/ logger sub-route)
     plan/                  current plan dashboard
        meso/[mesoId]/      week-by-week schedule for an active block
-       day/[sessionId]/    a programmed day's preview
+       day/[sessionId]/    a programmed day's preview (incl. Edit-set mode)
        templates/          landing page → programs/ or workouts/ sub-routes
-    history/               calendar + progression charts + exercise history
+    history/               calendar + week-sessions list + progression charts
+       session/[id]/       post-workout summary (incl. Edit-set mode)
     exercises/             exercise library (personalizable per user)
     profile/  settings/
   login/                   Google sign-in screen
-  onboarding/              setup wizard
+  onboarding/              setup wizard (NO auto-plan generation as of v0.64.2)
 components/
   app/        AppShell, BottomNav, ThemeProvider, UserProvider, UpdateToast
   charts/     Sparkline, VolumeBars, VolumeTrafficLights
-  history/    WeekCalendar, CalendarLegend, DaySessionSheet
+  history/    WeekCalendar (paged/expandable, supports calendar-week mode),
+              CalendarLegend, DaySessionSheet
   onboarding/ OnboardingWizard.tsx
-  plan/       TemplateWizard, SingleWorkoutWizard, ChangePlanSheet, ...
-  settings/  today/  ui/  workout/
+  plan/       TemplateWizard, SingleWorkoutWizard, ChangePlanSheet,
+              VolumeDashboard
+  settings/   ModeSwitchDialog
+  today/      StreakCard, BodyWeightCheckIn, WorkoutPicker, CardioLogModal
+  ui/         InlineNumber, ChoiceCard, Button, Card, ... (cn, kgToDisplay)
+  workout/    SetLoggerRow, ExerciseCard, EffortPicker, RestTimer,
+              ExerciseTimer, EditableSetTable, AdHocWorkoutModal,
+              SessionFeedbackModal, SorenessCheckIn, SwapExerciseModal,
+              ExerciseHistorySheet
 lib/
   firebase/       client.ts — initialization + isFirebaseEnabled()
   firestore/      repo interface + mock + Firestore impl + seed data
+                  migrations/ — runtime one-shot migrations (dropMacrocycle,
+                                relabelSessionsToDays)
   periodization/  core domain math — e1rm, volume, rpe, deload, progression,
-                  mode, terminology, modeDiff, adjustFromSoreness/Feedback
-                  (NOTE: half of this only applies to periodized plans —
-                   see §10 cleanup task)
-  program/        program generation, template layout, tier inference
+                  mode, terminology, modeDiff, adjustFromSoreness/Feedback,
+                  rest, effortShort
+  program/        program generation (generate), template-program builder,
+                  mesoToTemplate (Edit-this-plan), startingWeights,
+                  templateLayout, structuredLayout, inferTiers,
+                  recommendTemplate
   progress/       series, streaks, personal bests, meso recap
-  session/        resolveToday, advance, hydrateFromHistory
+  session/        resolveToday (returns todaySessions[]), advance,
+                  hydrateFromHistory, nextSetNudge, cleanupArchived
   exercise/       personalize.ts (favorites/hidden)
-  export/  ui/    (cn.ts, date.ts, units.ts, feedback.ts)
+  ui/             cn, beep (double-beep helper), date, feedback, units
+  export/         index.ts
   version.ts      APP_VERSION (kept in sync with package.json + CHANGELOG)
 types/            exercise, periodization, profile, session, template
 public/           fatrat-logo2.png, fatrat-rat.png, PWA icons, manifest
@@ -123,20 +140,28 @@ scripts/          one-off migration scripts (e.g. exercise library seeding)
 firestore.rules   security rules (root of repo, not under app/)
 ```
 
-### Domain model
+### Domain model — POST-MACROCYCLE (v0.61+)
 
-`Macrocycle → Mesocycle → Microcycle → WorkoutSession`
+`Mesocycle → Microcycle → WorkoutSession`
 
-- A macrocycle holds exactly **one** mesocycle (1:1 — created together).
-- The word "macrocycle" was retired from the UI back in v0.22.0; everything
-  the user sees is a **"Training Plan."** `macro.name` is the plan name;
-  `meso.name` is the training block; `micro.weekNumber` is the week.
-- **However, macrocycle as a concept has effectively been eliminated** — it's
-  vestigial. Removing the data-model relic is one of the cleanup tasks in §10.
-- Sessions can be **ad-hoc** (no `microcycleId`/`mesocycleId`/`macrocycleId`)
-  or **programmed** (all three IDs set). `WorkoutSession.name` is set on
-  ad-hoc sessions so Today can display the workout's name without chasing
-  IDs. Programmed sessions inherit display info from their meso/micro.
+- **Macrocycle is gone** (retired v0.61). What used to live on a macro
+  (name, goal, startDate, targetDate) lives on `Mesocycle` directly. The
+  meso IS the user's "Training Plan."
+- Sessions can be **ad-hoc** (no `microcycleId` / `mesocycleId`) or
+  **programmed** (both set). Sessions carry a denormalized `planName`
+  (mesocycle.name) and an optional `restSeconds` for ad-hoc / single-
+  workout sessions that have no meso.
+- `WorkoutSession.name` is set on ad-hoc sessions so Today can display the
+  workout's name without chasing IDs. Programmed sessions inherit display
+  info from their meso/micro.
+- Cardio-only sessions: `exercises.length === 0 && cardio.length > 0`.
+  Today renders them as "CARDIO" cards; the post-workout summary header
+  reads "Cardio done!" instead of "Workout done!".
+- Multiple sessions per day are supported (v0.63.0). A pending session and
+  a completed session can coexist on the same date. `listSessionsOnDate`
+  returns them all. Save flows only reuse an existing session's id when
+  that session is still incomplete — completed sessions never get
+  overwritten.
 
 ### Template kinds — two distinct things
 
@@ -144,9 +169,14 @@ Templates have a `kind: 'program' | 'workout'` discriminator.
 
 - **`program`** — multi-week plan with periodization knobs. Becomes the
   user's active program when started; runs through `TemplateWizard`.
+  Activate-flow also saves the program back as a custom template
+  ("Summer Workout, by Brian") so the user can find it in Browse
+  templates later.
 - **`workout`** — one-shot routine. Runs through `SingleWorkoutWizard`.
   Picked from Today's Ad-Hoc picker, materialized into an unattached
-  `WorkoutSession`, then logged via `/today/workout`.
+  `WorkoutSession` (sets pre-filled from `repsLow`/`timeLow`/
+  `startingWeightKg`; `restSeconds` carried on the session), then logged
+  via `/today/workout`.
 
 ### Modes & terminology — two independent axes
 
@@ -157,22 +187,27 @@ Templates have a `kind: 'program' | 'workout'` discriminator.
   opt-in for jargon — RIR/RPE numbers, MEV/MAV/MRV, mesocycle/microcycle
   naming. Defaults to plain language for all modes. INTERMEDIATE/ADVANCED
   can opt in; BASIC users are never asked.
-- `lib/periodization/terminology.ts` exposes `usesAdvancedTerminology(user)`
-  and `terminologyMode(user)`. UI surfaces are fed `terminologyMode(user)`
-  rather than the raw mode.
+- `lib/periodization/terminology.ts` exposes `usesAdvancedTerminology(user)`,
+  `terminologyMode(user)`, `isPeriodizedSession(session, meso)`, and
+  `effortShort(mode, rpe)` — all single source of truth, used everywhere.
 
 ### ExerciseMetric system
 
 Not every exercise is weight × reps. `ExerciseDefinition.metric` is one of:
 
-- `weight-reps` (bench, squat, curl)
-- `reps` (pull-ups, push-ups, dips — bodyweight to failure)
+- `weight-reps` (bench, squat, curl) — default when omitted
+- `reps` (push-ups — pure bodyweight)
 - `time` (plank, dead hang, wall sit)
 - `weight-time` (loaded carries)
 
 `SetEntry` carries `weightKg?`, `reps?`, `timeSec?` per metric. The logging
 UI, summary cards, prescription templates, and chart series all branch on
 the exercise's metric.
+
+**Live-def-metric override** (v0.64.2): `ExerciseCard` prefers the live
+exercise definition's `metric` over the saved `exercise.metric` on the
+session. Protects against stale denormalized data when the library evolves
+(e.g. Reverse Fly that was once 'reps' is now 'weight-reps').
 
 ---
 
@@ -188,7 +223,7 @@ Run from `C:\Users\brian\_fatratapp\app`:
 | Unit tests | `npm test` (vitest) |
 
 `tsconfig.check.json` exists as a scoped fallback if root `tsc` ever gets
-slow. **Current status: typecheck clean (EXIT 0) at v0.60.9.**
+slow. **Current status: typecheck clean (EXIT 0) at v0.67.4.**
 
 > Sandbox note: `npm test` (vitest) may fail *inside the Linux shell sandbox*
 > — `node_modules` was installed on Windows and rollup's native binary is
@@ -219,185 +254,193 @@ files in sync: `lib/version.ts` (`APP_VERSION`), the `"version"` field in
 `package.json`, and `app/CHANGELOG.md` (newest entry on top). Semver — patch
 for tweaks/fixes, minor for new features/screens, major for a finished release.
 
-**Current version: 0.60.9.**
+**Current version: 0.67.4.**
 
 After version bump + typecheck, Brian deploys via:
 
     cd C:\Users\brian\_fatratapp; git status; git add .; git commit -m "vX.Y.Z — summary"; git push
 
-Vercel auto-deploys from `main`. The Update Toast (added v0.55.x) polls
-`/api/version` so the user sees a "new version" prompt without hard-refresh.
+Vercel auto-deploys from `main`. The Update Toast polls `/api/version` so the
+user sees a "new version" prompt without hard-refresh.
 
 ---
 
-## 8. Firestore layout (current)
+## 8. Firestore layout (current, post v0.62)
 
 ```
 exercises/                        ← global library, read-only for users
   ab-wheel-rollout, bench-press, ...
 
-users/{uid}/                      ← profile doc (name, units, mode, prefs)
+users/{uid}/                      ← profile doc (name, units, mode, prefs,
+                                    soundsEnabled, migratedMacroDrop,
+                                    migratedSessionsToDays)
   ├ bodyWeight/{2026-05-31}       ← weight entries, doc id = ISO date
-  ├ macrocycles/{id}              ← "Training Plan" (vestigial wrapper, 1:1 with meso)
-  ├ mesocycles/{id}               ← training block (e.g. "5/3/1 Block 1")
+  ├ mesocycles/{id}               ← training plan — owns name/goal/startDate
+  │                                 (Macrocycle was retired in v0.61)
   ├ microcycles/{id}              ← a single week
-  ├ sessions/{id}                 ← a day's workout — entire thing in one doc
-  │   fields: date, dayOfWeek, name,
-  │           macrocycleId, mesocycleId, microcycleId  (all 3 = programmed; none = ad-hoc),
-  │           exercises[{ name, sets[{weight, reps, rpe, ...}] }],
-  │           cardio[]
+  ├ days/{id}                     ← a day's workout — formerly `sessions/`
+  │   fields: date, dayOfWeek, name, planName (denormalized),
+  │           mesocycleId, microcycleId  (both set = programmed; none = ad-hoc),
+  │           exercises[{ name, metric, sets[{weight, reps, timeSec, rpe, ...}] }],
+  │           cardio[],
+  │           restSeconds (single-workout / ad-hoc only)
   ├ customExercises/{id}
   ├ templates/{id}                ← user-saved program OR workout templates
   └ exercisePrefs/main            ← favorites + hidden, single doc
 ```
 
-**Scale check (informational, not blocking):** at 10 users × 1 year × ~300
-sessions/user = ~3,000 session docs total. Free Firestore tier (50K
-reads/day, 20K writes/day) handles this with ~5% utilization. The only
+**One-shot runtime migrations** (run on sign-in, idempotent via profile flags):
+- `migrateMacrocyclesForUser` — folds old `macrocycles/*` data onto mesos,
+  strips `macrocycleId` from sessions. Gated by `profile.migratedMacroDrop`.
+- `migrateSessionsToDaysForUser` — copies `sessions/*` to `days/*` with
+  `planName` filled. Gated by `profile.migratedSessionsToDays`.
+- `cleanupArchivedPendingSessions` — sweeps uncompleted sessions tied to
+  archived mesos. Runs on every History page load (idempotent). Cleans up
+  orphan pending sessions from plans cancelled before v0.60.
+
+The old `macrocycles` and `sessions` subcollections are left orphan in
+Firestore for cancelled users' data — delete manually in the console once
+you've confirmed each user has migrated.
+
+**Scale check:** at 10 users × 1 year × ~300 sessions/user = ~3,000 day docs
+total. Free Firestore tier handles this with ~5% utilization. The only
 read-cost weakness is the progression chart's `listSessions(limit: 1000)`
-call — fine until any single user crosses ~3 years of history, after which
-pagination or pre-aggregated stats become worth the work. Not urgent.
-
-**Navigability is a known pain point** — every doc ID is a random slug, so
-the Firestore console is unbrowsable. See §10.
+call. Not urgent.
 
 ---
 
-## 9. Recent work (v0.56 → v0.60.9, condensed)
+## 9. Recent work (v0.61 → v0.67.4, condensed)
 
-The detail is in `app/CHANGELOG.md`. Highlights since the live launch:
+The detail is in `app/CHANGELOG.md`. The big arcs since the last handoff:
 
-- **v0.56** — Single Workout template kind landed end-to-end (wizard, picker,
-  Today integration). Templates page restructured: landing → programs / workouts.
-- **v0.57** — Big exercise-library expansion from a TRX-style chart, all with
-  dumbbell/bodyweight variants. ExerciseMetric system completed (time / reps /
-  weight-time alongside weight-reps).
-- **v0.58** — Picked workouts now run through `/today/workout` (not the old
-  ad-hoc modal) — full logging experience identical to a programmed day.
-- **v0.59** — Fixes from the live deployment: Firestore composite-index trap
-  in `listSessionsInMicrocycle`, week-calendar default-week selection (was
-  picking last instead of first week with sessions on fresh programs), ad-hoc
-  sessions being mis-attached to the active program, settings ACCOUNT card
-  refresh, removed "Reset demo data."
-- **v0.60** — Plan management: Restart from a new date (delta-shifts every
-  workout), Reschedule missed days, Cancel plan, Cancel-and-switch. New
-  `ChangePlanSheet` shared by /plan and the meso detail page. Open button on
-  Today's programmed session card. `deleteSession` added to repo so cancel
-  cleans up pending sessions. History was leaking archived blocks as
-  "current" — fixed via `currentMesoId` resolution chain + `isCurrent` prop
-  on `WeekCalendar`.
-- **v0.60.6–9** — History calendar polish for archived blocks: no future
-  "Lift" cells, no "This week" badge, archived weeks default to Week 1, and
-  for weeks entirely in the future of an archived block the "Week N of N"
-  header swaps to **"No Active Plan"** while the grid still renders (all
-  off-day tiles) so the user sees a real off-day calendar.
+### B-audit (v0.60.10 → v0.62.0)
+
+- **v0.60.10** — B1: confined periodization vocab to periodized sessions.
+  New `isPeriodizedSession(session, meso)` gate. RIR readout hidden unless
+  ADVANCED. `effortShort` consolidated.
+- **v0.61.0** — B2: retired Macrocycle from types, repo, generators, seed,
+  and every caller. New repo surface: `getActivePlan(userId)`,
+  `listMesocycles(userId)`. One-shot Firestore migration.
+- **v0.62.0** — B3: renamed `sessions` subcollection → `days`. Denormalized
+  `planName` onto each day doc. One-shot Firestore migration.
+
+### Edit-this-plan flow (v0.62.1 → v0.62.3)
+
+- New "Edit this plan" button on the Change Plan sheet (both /plan and
+  /plan/meso/[id]). Opens TemplateWizard pre-populated with the current
+  meso's name/goal/weeks/days/split/tiers/set styles/rest, and pulls
+  per-exercise `startingWeightKg` from each session's first set.
+
+### UX / wiring fixes (v0.62.4 → v0.65.2)
+
+- Core skipped from feedback prompts. Reps +/- on the set logger was
+  double-firing on mobile (touchstart + synthetic mousedown) — fixed with
+  pointer events. Easy weeks (RIR ≥ 2) hold weight steady regardless of
+  set feel.
+- "Make it active" in TemplateWizard ALSO saves the program as a custom
+  template (so user can find "Summer Workout, by Brian" in Browse later).
+- InlineNumber editor floats above the row at smart-expand width (anchors
+  to whichever side has more room) with a visible Done button. Replaces
+  the 160% centered expansion that went off-screen.
+- Today supports multiple sessions per day. `resolveToday.todaySessions`
+  returns all of them. Picker / AdHoc / Cardio save flows never overwrite
+  a completed session — they create a new doc.
+- INTERMEDIATE effort picker renamed Smooth/Solid/Tough/Grinding/Failed →
+  Easy/Solid/Tough/Hard/Failed.
+- Plan + History session detail pages render set bodies metric-aware
+  (reps-only shows `× N`, time shows `Xs`, weight-time shows `kg × Ns`).
+- Web Audio double-beep helper + `profile.soundsEnabled` setting. Rest
+  timer beeps; new `ExerciseTimer` overlay for time-based sets with ±10s
+  and Done.
+- Edit-set mode on `/history/session/[id]` and `/plan/day/[id]`. Shared
+  `EditableSetTable` component. Skipped sets stay marked Skipped. Plan
+  day renders the skipped icon as a red ✕ (not green ✓).
+
+### Today / Plan / History redesign (v0.66 → v0.67.4)
+
+- **v0.66.0** — Skip-ahead: pull a future scheduled workout into today.
+  Today card + Plan day detail page both surface the action.
+- **v0.66.1** — Pull-ahead lookup expanded from "next pending in active
+  micro" to "next pending in any micro" (then re-tightened in v0.67.0 to
+  active meso only).
+- **v0.66.2** — Today renders cardio-only sessions as "CARDIO" (not
+  "AD-HOC WORKOUT") with the cardio list. Every session card got an
+  explicit Open button.
+- **v0.66.3** — History calendar overlays completed sessions from other
+  blocks (cancelled plans) onto the displayed week.
+- **v0.66.4** — Single-workout templates pre-fill reps/time on materialized
+  sets; `WorkoutSession.restSeconds` carries the rest setting so the timer
+  fires for ad-hoc sessions.
+- **v0.67.0 → v0.67.4** — History redesigned around the user's full
+  timeline:
+  - Block dropdown defaults to "All blocks (by date)".
+  - All-blocks mode buckets sessions by *calendar* week (Mon-Sun), so
+    multiple blocks overlapping the same calendar week merge into one row.
+  - `WeekCalendar` gained a `calendarWeeks` prop (date-organized mode),
+    a `blockNameByWeek` map (shown in the week header), and an
+    `onViewWeekChange` callback.
+  - `cleanupArchivedPendingSessions` sweep runs on History load to delete
+    orphan pending sessions from cancelled plans.
+  - "Week Sessions" collapsible card sits between the calendar and the
+    progression chart. Always shows the in-view week's sessions; each
+    session row collapses individually to reveal exercise/cardio details.
+    "Open" link routes to the full post-workout summary.
+  - Today's UP NEXT / pull-into-today card is gated on having an active
+    plan AND restricts the search to the active meso (so archived plans
+    can't surface a stale workout).
+
+### Onboarding (v0.64.2)
+
+- New users no longer get an auto-generated starter program. Onboarding
+  saves the profile and lands them on Today with no active plan. The
+  user picks a template (or builds one) when ready.
 
 ---
 
-## 10. Upcoming work — read these before starting the next session
+## 10. Upcoming work
 
-### A) Block design refinement (next thing Brian wants to tackle)
+### A) Rebuild the wizard for a better outcome — **NEXT TASK**
 
-Brian uploaded **`Optimal Exercises per Muscle Group.txt`** to the project
-root. It codifies how many exercises per muscle group per week different
-experience levels should run, plus large/small muscle splits and the 10–20
-sets-per-week hypertrophy heuristic.
+Brian wants to redesign the program/workout wizard. The current
+`TemplateWizard` and `SingleWorkoutWizard` (under `components/plan/`) have
+grown organically and aren't producing the outcome he wants. Specific
+direction will come at the start of the new chat — **prompt Brian for the
+problem statement before touching code**.
 
-The current block / program generator does not consult these rules. Read the
-doc first, then audit `lib/program/templateProgram.ts` (and the wizard's
-volume controls) to figure out where the rules should plug in. Likely
-touches:
+Likely scope to think about while reading the existing code:
+- TemplateWizard: multi-step flow (program style → workout type → days →
+  emphasis → muscle layout → starting weights → save). Lots of state,
+  lots of toggles. Volume controls are derived from `volumeRamp` + tiers.
+- The `Optimal Exercises per Muscle Group.txt` doc in the root codifies
+  per-tier exercise count caps + 10–20 sets/week heuristics. The current
+  generator doesn't consult it — likely a piece of this rebuild.
+- SingleWorkoutWizard is its own flow but shares some primitives.
+- Edit-this-plan (v0.62.1+) opens TemplateWizard pre-populated from a live
+  meso via `mesocycleToTemplate`. Any redesign needs to preserve this
+  entry point.
+- `generateCustomProgram` (templateProgram.ts) and `generateProgram`
+  (generate.ts) are the two materialization paths. Both create sessions
+  pre-filled with reps/weight/RIR.
 
-- Exercise count caps per muscle group, scaled by user mode (Basic /
-  Intermediate / Advanced)
-- Different handling for "small" vs "large" muscle groups
-- Frequency-aware splitting (twice/week → 5–10 sets/session, etc.)
+**Don't refactor blindly.** Audit the existing wizard files first, then
+ask Brian what specifically he wants different about the outcome.
 
-Expect this to be a multi-step effort — wizard UX changes plus generator
-math plus possibly new template defaults. **Prompt Brian for direction after
-auditing; don't refactor blindly.**
+### B) Performance analytics (still on the back burner)
 
-### B) Codebase clarity audit — three sub-tasks
+Brian wants real data analytics over completed blocks — "what worked,
+what didn't" analysis on past training. Two tiers based on mode:
 
-These are interrelated. Brian wants a sweep.
-
-**B1 — Confine periodization vocabulary to periodized plans only.**
-
-The app was originally designed around periodization; periodization later
-became one option inside a broader workout app. Today, periodization concepts
-(RIR, RPE, mesocycle, microcycle, deload, MEV/MAV/MRV, target intensity by
-week) leak into surfaces that have nothing to do with periodized plans —
-ad-hoc workouts, single-workout sessions, Today copy, settings, History.
-
-The fix is **language-only** for many places (rename "mesocycle" → "block",
-strip RIR from non-periodization contexts) and **gating** for others (don't
-ask for RIR after an ad-hoc workout). `lib/periodization/terminology.ts`
-already encodes this distinction for users; the cleanup is to apply the same
-gate to *plans/sessions* — if a session has no microcycleId, skip all
-periodization prompts and copy.
-
-Files to audit: `lib/periodization/`, `lib/program/`, `components/today/`,
-`components/workout/`, `components/history/`, `app/(main)/today/page.tsx`,
-post-workout summary, soreness prompts.
-
-**B2 — Finish retiring `Macrocycle`.**
-
-v0.22.0 removed "macrocycle" from the UI but left the data model intact —
-every plan still has an invisible macro wrapper with a 1:1 meso. This is now
-dead weight that confuses Firestore browsing, makes resolveToday more
-complex than necessary, and confuses any future maintainer.
-
-The cleanup:
-- Promote `Macrocycle` fields needed by the UI (name, status, startDate)
-  onto `Mesocycle` directly.
-- Drop the `macrocycles` Firestore collection. Migration script needed for
-  existing users (Brian + family).
-- Remove `macrocycleId` from `WorkoutSession`. Sessions reference meso/micro
-  only.
-- Simplify `getActiveMacrocycle` → `getActivePlan` (returns the active meso).
-- Update `ChangePlanSheet`, `resolveToday`, History page, Plan page.
-
-This is a structural refactor, not a rename. Plan it, then execute in one
-focused session.
-
-**B3 — Make Firestore data navigable.**
-
-Currently every doc ID under `users/{uid}/` is a random slug
-(`mac-abc123`, `meso-xyz789`, `session-q0w9e8`). Browsing the Firestore
-console to debug a real user is nearly impossible.
-
-Two paths discussed with Brian (see chat history if needed):
-
-1. **Cheap relabel** — rename `sessions` → `days`; denormalize `planName`
-   onto each day doc so each row is self-describing.
-2. **Date-keyed paths** — move to `users/{uid}/days/{2026-05-31}/...`.
-   Cleaner browsing; requires a migration and a refactor of the repository.
-
-Brian hasn't picked. Get a decision before doing the work. Both options
-fold naturally into B2 (retiring macrocycle), so consider doing all three
-in one stroke.
-
-### C) Performance analytics (a bigger upcoming feature)
-
-Brian wants real data analytics over completed blocks — "what worked, what
-didn't" analysis on past training. Two tiers based on mode:
-
-- **Advanced users:** Stimulus-to-Fatigue Ratio (SFR) per exercise — how
-  much hypertrophic/strength stimulus a movement delivers relative to the
-  fatigue cost. Requires reasoning over volume load, RPE trajectory across
-  sessions, and recovery (could lean on the existing soreness prompts).
-- **Basic / Intermediate users:** the same insight delivered in plain
-  language — "X exercise gave you steady progress with manageable effort;
-  Y exercise made you sore for two days every time and your lifts stalled."
+- **Advanced users:** Stimulus-to-Fatigue Ratio (SFR) per exercise.
+- **Basic / Intermediate users:** the same insight in plain language.
 
 Open questions before building:
 - Does SFR need a research pass (math from the literature)?
-- What's the UI surface — a new "Insights" tab? A post-block review screen?
+- What's the UI surface — a new "Insights" tab? A post-block review?
   Annotations on the existing Progression chart?
 - What's the minimum data needed for the calc, and do current sessions
-  capture it? (Soreness data is currently periodization-only — see B1.)
+  capture it?
 
-This is **last** in priority — finish A and B first.
+After the wizard rebuild lands.
 
 ---
 
@@ -419,15 +462,21 @@ This is **last** in priority — finish A and B first.
   reason. `listTemplates` merges code-defined globals with user-saved
   templates from Firestore.
 
+- **Orphan Firestore collections** — `users/{uid}/macrocycles/*` and
+  `users/{uid}/sessions/*` are inert post-migration but still take space.
+  Delete via console once you're confident every active user has migrated.
+
 ---
 
 ## 12. How Brian likes to work
 
 - Iterative, one focused UI/UX change at a time.
 - Wants to be **prompted after each completed section** before moving on.
+  For larger redesigns (like the wizard rebuild), audit first and ask
+  direction before cutting.
 - Precise about wording/typography (font size, color, hierarchy) — read
   requests literally and match them exactly.
-- Bash heredocs for all file writes — see §2.
+- Bash heredocs for all file writes — see §2. Edit/Write are unreliable.
 - Always run `npx tsc --noEmit` after a change. Always bump the version
   and add a changelog entry. Always end the response with the push command
   block — Brian copies it directly:
@@ -435,5 +484,8 @@ This is **last** in priority — finish A and B first.
       cd C:\Users\brian\_fatratapp; git status; git add .; git commit -m "vX.Y.Z — summary"; git push
 
 - Don't write extensive postambles after sharing a file/PR; Brian can read
-  the diff.
+  the diff. Two or three sentences max — outcome + caveat.
 - Don't be sycophantic. Acknowledge mistakes briefly, fix them, move on.
+- When a screenshot shows something unexpected, treat it as authoritative
+  over your reasoning about the code path. Trace the actual data flow that
+  produced what the screenshot shows.
