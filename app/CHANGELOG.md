@@ -8,6 +8,18 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.67.3 — 2026-05-31
+
+- History: collapsible "WEEK SESSIONS" card now sits between the calendar
+  and the progression chart. Header shows the in-view week's session
+  count; tap to expand and see each session as a row (day · date,
+  exercise summary, ✓ Done badge). Each row opens the post-workout
+  summary (`/history/session/[id]`).
+- New `WeekCalendar.onViewWeekChange(weekNumber, startDate)` callback —
+  fires whenever the displayed week changes so the History page can
+  re-derive the visible session list as you page through weeks.
+- Works in both single-block and All-blocks (by-date) modes.
+
 ## v0.67.2 — 2026-05-31
 
 - Cancelled-plan cleanup: new `cleanupArchivedPendingSessions(repo, userId)`

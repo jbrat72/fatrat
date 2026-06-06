@@ -55,6 +55,10 @@ interface Props {
    *  prop, so multiple source blocks that overlap the same calendar week
    *  merge correctly. Overrides the per-micro week generation. */
   calendarWeeks?: { startDate: string; blockName?: string }[];
+  /** Called whenever the displayed week changes — lets a parent surface
+   *  session details for the in-view week (e.g. an expandable session list
+   *  below the calendar). */
+  onViewWeekChange?: (weekNumber: number, startDate: string | null) => void;
 }
 
 const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -95,7 +99,7 @@ function intensityLabel(mode: UserMode, rir: number | undefined): string | null 
 type CellState = 'completed' | 'skipped' | 'planned' | 'rest';
 
 export function WeekCalendar(props: Props) {
-  const { micros, sessions, todayIso, mode, totalWeeks, onSelectSession, onSelectDay, isCurrent = true, extraCompletedSessions = [], blockNameByWeek, calendarWeeks } = props;
+  const { micros, sessions, todayIso, mode, totalWeeks, onSelectSession, onSelectDay, isCurrent = true, extraCompletedSessions = [], blockNameByWeek, calendarWeeks, onViewWeekChange } = props;
   const variant: Variant = props.variant ?? 'paged';
   // Normalised week-start weekday (0–6); defaults to Monday.
   const weekStartsOn = (((props.weekStartsOn ?? 1) % 7) + 7) % 7;
@@ -246,6 +250,12 @@ export function WeekCalendar(props: Props) {
   }, [defaultWeek, userPaged]);
 
   const week = Math.min(Math.max(viewWeek, 1), weekCount);
+
+  // Surface the current week to the parent so callers (the History page)
+  // can render details for the week in view.
+  useEffect(() => {
+    onViewWeekChange?.(week, startOfWeekByWeek.get(week) ?? null);
+  }, [week, startOfWeekByWeek, onViewWeekChange]);
 
   const goWeek = (next: number) => {
     setUserPaged(true);

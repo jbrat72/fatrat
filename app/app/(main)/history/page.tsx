@@ -93,6 +93,10 @@ export default function HistoryPage() {
   // header uses this to show which block each week belonged to.
   const [blockNameByWeek, setBlockNameByWeek] = useState<Map<number, string> | undefined>(undefined);
   const [calendarWeeks, setCalendarWeeks] = useState<{ startDate: string; blockName?: string }[] | undefined>(undefined);
+  /** The week currently displayed by WeekCalendar, surfaced via callback. */
+  const [viewWeek, setViewWeek] = useState<{ weekNumber: number; startDate: string | null }>({ weekNumber: 1, startDate: null });
+  /** Local expand/collapse state for the per-week session list. */
+  const [weekListOpen, setWeekListOpen] = useState(false);
 
   // Calendar data: either a single block, or all blocks concatenated with
   // renumbered weeks (sorted by each micro's earliest session date).
@@ -281,9 +285,97 @@ export default function HistoryPage() {
             calendarWeeks={calendarWeeks}
             onSelectSession={(id) => setSelectedSessionId(id)}
             onSelectDay={(info) => setAddDay(info)}
+            onViewWeekChange={(weekNumber, startDate) => setViewWeek({ weekNumber, startDate })}
           />
           <CalendarLegend className="mt-3" />
         </Card>
+
+        {/* Collapsible list of the in-view week's sessions. Sits between the
+            calendar and the progression chart. */}
+        {viewWeek.startDate && (() => {
+          const start = viewWeek.startDate!;
+          const wkStart = new Date(start + 'T00:00:00');
+          const weekEnd = (() => {
+            const d = new Date(wkStart); d.setDate(d.getDate() + 6);
+            return d.toISOString().slice(0, 10);
+          })();
+          const weekSessions = (selectedMesoId === 'all' ? sessions : allSessions)
+            .filter((s) => s.date >= start && s.date <= weekEnd)
+            .slice()
+            .sort((a, b) => a.date.localeCompare(b.date));
+          const totalCount = weekSessions.length;
+          return (
+            <Card>
+              <button
+                type="button"
+                onClick={() => setWeekListOpen((v) => !v)}
+                aria-expanded={weekListOpen}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <div>
+                  <div className="section-head">WEEK SESSIONS</div>
+                  <div className="text-xs text-ink-dim mt-0.5 tnum">
+                    {totalCount === 0 ? 'No workouts this week' : `${totalCount} workout${totalCount === 1 ? '' : 's'}`}
+                  </div>
+                </div>
+                <svg
+                  viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  className={cn('text-ink-dim transition-transform', weekListOpen && 'rotate-180')}
+                  aria-hidden
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {weekListOpen && totalCount > 0 && (
+                <ul className="mt-3 divide-y divide-ink-line">
+                  {weekSessions.map((sess) => {
+                    const d = new Date(sess.date + 'T00:00:00');
+                    const dayName = DOW_NAMES[d.getDay()];
+                    const exCount = sess.exercises.filter((e) => e.sets.some((s) => s.completed)).length;
+                    const cardioCount = sess.cardio?.length ?? 0;
+                    const summary = sess.completed
+                      ? (exCount > 0 || cardioCount > 0
+                          ? [
+                              exCount > 0 ? `${exCount} exercise${exCount === 1 ? '' : 's'}` : null,
+                              cardioCount > 0 ? `${cardioCount} cardio` : null,
+                            ].filter(Boolean).join(' · ')
+                          : 'Logged')
+                      : 'Pending';
+                    return (
+                      <li key={sess.id} className="py-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSessionId(sess.id)}
+                          className="w-full text-left flex items-center justify-between gap-2"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-xs text-ink-mute tracking-wider2 uppercase">{dayName} · {sess.date}</div>
+                            <div className="text-sm font-medium truncate mt-0.5">
+                              {sess.name ?? (sess.exercises.length > 0
+                                ? sess.exercises.slice(0, 3).map((e) => e.name).join(' · ')
+                                : (cardioCount > 0 ? 'Cardio' : 'Session'))}
+                            </div>
+                            <div className="text-xs text-ink-dim mt-0.5 tnum">
+                              {summary}
+                              {sess.completed && (
+                                <span className="text-ok ml-2">✓ Done</span>
+                              )}
+                            </div>
+                          </div>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-ink-mute shrink-0">
+                            <polyline points="9 6 15 12 9 18" />
+                          </svg>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Card>
+          );
+        })()}
 
         <Card>
           <div className="flex items-center justify-between mb-2">
