@@ -53,8 +53,10 @@ describe('streakStats', () => {
 
 describe('isoWeekStamp', () => {
   it('Monday anchors stay on Monday', () => {
-    expect(isoWeekStamp(new Date('2026-05-11'))).toBe('2026-05-11'); // a Monday
-    expect(isoWeekStamp(new Date('2026-05-13'))).toBe('2026-05-11'); // Wednesday → that Monday
-    expect(isoWeekStamp(new Date('2026-05-17'))).toBe('2026-05-11'); // Sunday → previous Monday
+    // Parse as LOCAL midnight (matching how production builds dates: `date + 'T00:00:00'`).
+    // Plain `new Date('YYYY-MM-DD')` is UTC and makes this assertion timezone-dependent.
+    expect(isoWeekStamp(new Date('2026-05-11T00:00:00'))).toBe('2026-05-11'); // a Monday
+    expect(isoWeekStamp(new Date('2026-05-13T00:00:00'))).toBe('2026-05-11'); // Wednesday → that Monday
+    expect(isoWeekStamp(new Date('2026-05-17T00:00:00'))).toBe('2026-05-11'); // Sunday → previous Monday
   });
 });

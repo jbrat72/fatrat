@@ -8,6 +8,44 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.69.1 — 2026-06-06
+
+- Fixed blank screen at `/wizard-v2`: the preview route returned null whenever
+  there was no signed-in user (Firebase mode, signed out, or still loading).
+  It now shows a loading state, falls back to a stub profile when signed out
+  (with a "preview mode" banner), and wraps the wizard in an error boundary so
+  any runtime error is shown on-screen instead of blanking.
+
+## v0.69.0 — 2026-06-06
+
+- Plan Wizard v2 — UI (Chunk 2 of 3). New `components/plan/PlanWizardV2.tsx`,
+  a React/TSX port of the approved 16-page mockup, driven by the Chunk-1
+  `lib/wizard` engine. Themed with the app's tokens (bg-card, accent, ink-*).
+  - All 16 pages: goal (6 incl. Transform / Lean Out), experience, read-only
+    profile + injuries + stubborn areas, schedule (7 days + start day),
+    equipment, the 3-step Training Style (base + volume framework +
+    periodization) with smart defaults/filtering, split + inline rest-day
+    picker, muscle prioritization, sets/reps, rest/tempo, core (inline
+    expanders incl. core-day picker), cardio, progression, baselines (quick
+    actions + calibration week), review with the volume-per-week card, and the
+    exercise editor (per-row muscle + dropdown, add/remove, core as a group).
+  - Volume + generation come entirely from the engine, so the in-app program
+    reconciles with the volume card exactly.
+  - Mounted on a preview route at `/wizard-v2` (NOT linked in nav, existing
+    TemplateWizard untouched). "Start My Program" currently logs the state +
+    generated program; persistence + the Programs-flow swap + Edit-this-plan
+    land in Chunk 3.
+  - Typecheck clean. One non-blocking react-hooks/exhaustive-deps warning on
+    the scroll effect (intentional).
+
+## v0.68.1 — 2026-06-06
+
+- Fixed a timezone-fragile unit test: `streak.test.ts > isoWeekStamp` built
+  dates with `new Date('YYYY-MM-DD')` (parsed as UTC), so it failed on
+  machines west of UTC even though `isoWeekStamp` and all production callers
+  use local-midnight dates. Test now uses `...T00:00:00` to match. No
+  production code changed.
+
 ## v0.68.0 — 2026-06-06
 
 - Plan Wizard v2 — engine foundation (Chunk 1 of 3). New, additive
