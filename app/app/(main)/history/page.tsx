@@ -95,8 +95,8 @@ export default function HistoryPage() {
   const [calendarWeeks, setCalendarWeeks] = useState<{ startDate: string; blockName?: string }[] | undefined>(undefined);
   /** The week currently displayed by WeekCalendar, surfaced via callback. */
   const [viewWeek, setViewWeek] = useState<{ weekNumber: number; startDate: string | null }>({ weekNumber: 1, startDate: null });
-  /** Local expand/collapse state for the per-week session list. */
-  const [weekListOpen, setWeekListOpen] = useState(false);
+  /** Session ids that are currently expanded in the WEEK SESSIONS list. */
+  const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
 
   // Calendar data: either a single block, or all blocks concatenated with
   // renumbered weeks (sorted by each micro's earliest session date).
@@ -290,8 +290,10 @@ export default function HistoryPage() {
           <CalendarLegend className="mt-3" />
         </Card>
 
-        {/* Collapsible list of the in-view week's sessions. Sits between the
-            calendar and the progression chart. */}
+        {/* Always-expanded WEEK SESSIONS card. Each session row collapses
+            individually — tap to reveal exercise summary; tap again to
+            collapse. The chevron at the right opens the full post-workout
+            summary at /history/session/[id]. */}
         {viewWeek.startDate && (() => {
           const start = viewWeek.startDate!;
           const wkStart = new Date(start + 'T00:00:00');
@@ -303,32 +305,15 @@ export default function HistoryPage() {
             .filter((s) => s.date >= start && s.date <= weekEnd)
             .slice()
             .sort((a, b) => a.date.localeCompare(b.date));
-          const totalCount = weekSessions.length;
           return (
             <Card>
-              <button
-                type="button"
-                onClick={() => setWeekListOpen((v) => !v)}
-                aria-expanded={weekListOpen}
-                className="w-full flex items-center justify-between text-left"
-              >
-                <div>
-                  <div className="section-head">WEEK SESSIONS</div>
-                  <div className="text-xs text-ink-dim mt-0.5 tnum">
-                    {totalCount === 0 ? 'No workouts this week' : `${totalCount} workout${totalCount === 1 ? '' : 's'}`}
-                  </div>
-                </div>
-                <svg
-                  viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
-                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                  className={cn('text-ink-dim transition-transform', weekListOpen && 'rotate-180')}
-                  aria-hidden
-                >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-
-              {weekListOpen && totalCount > 0 && (
+              <div className="section-head">WEEK SESSIONS</div>
+              <div className="text-xs text-ink-dim mt-0.5 tnum">
+                {weekSessions.length === 0
+                  ? 'No workouts this week'
+                  : `${weekSessions.length} workout${weekSessions.length === 1 ? '' : 's'}`}
+              </div>
+              {weekSessions.length > 0 && (
                 <ul className="mt-3 divide-y divide-ink-line">
                   {weekSessions.map((sess) => {
                     const d = new Date(sess.date + 'T00:00:00');
@@ -343,14 +328,24 @@ export default function HistoryPage() {
                             ].filter(Boolean).join(' · ')
                           : 'Logged')
                       : 'Pending';
+                    const isOpen = expandedSessionIds.has(sess.id);
+                    const toggleOpen = () => {
+                      setExpandedSessionIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(sess.id)) next.delete(sess.id);
+                        else next.add(sess.id);
+                        return next;
+                      });
+                    };
                     return (
                       <li key={sess.id} className="py-2">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedSessionId(sess.id)}
-                          className="w-full text-left flex items-center justify-between gap-2"
-                        >
-                          <div className="min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={toggleOpen}
+                            aria-expanded={isOpen}
+                            className="min-w-0 flex-1 text-left"
+                          >
                             <div className="text-xs text-ink-mute tracking-wider2 uppercase">{dayName} · {sess.date}</div>
                             <div className="text-sm font-medium truncate mt-0.5">
                               {sess.name ?? (sess.exercises.length > 0
@@ -363,11 +358,66 @@ export default function HistoryPage() {
                                 <span className="text-ok ml-2">✓ Done</span>
                               )}
                             </div>
+                          </button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <svg
+                              viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                              className={cn('text-ink-mute transition-transform', isOpen && 'rotate-180')}
+                              onClick={toggleOpen}
+                              aria-hidden
+                            >
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedSessionId(sess.id)}
+                              className="text-xs text-accent font-medium px-2 py-1"
+                              aria-label={`Open ${sess.date} session`}
+                            >
+                              Open
+                            </button>
                           </div>
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-ink-mute shrink-0">
-                            <polyline points="9 6 15 12 9 18" />
-                          </svg>
-                        </button>
+                        </div>
+                        {isOpen && (
+                          <div className="mt-2 pl-1">
+                            {sess.exercises.length > 0 && (
+                              <ul className="space-y-1.5">
+                                {sess.exercises.map((ex, i) => {
+                                  const logged = ex.sets.filter((s) => s.completed && s.setType !== 'skip');
+                                  return (
+                                    <li key={i} className="text-xs text-ink-dim">
+                                      <div className="font-medium text-ink">{ex.name}</div>
+                                      <div className="tnum mt-0.5">
+                                        {logged.length > 0
+                                          ? logged.map((s, j) => {
+                                              const m = ex.metric ?? 'weight-reps';
+                                              if (m === 'time') return `${s.timeSec ?? '—'}s`;
+                                              if (m === 'weight-time') return `${kgToDisplay(s.weightKg, user.units) ?? '—'} ${weightLabel(user.units)} × ${s.timeSec ?? '—'}s`;
+                                              if (m === 'reps') return `× ${s.reps ?? '—'}`;
+                                              return `${kgToDisplay(s.weightKg, user.units) ?? '—'} ${weightLabel(user.units)} × ${s.reps ?? '—'}`;
+                                            }).join(' · ')
+                                          : 'No sets logged'}
+                                      </div>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
+                            {sess.cardio.length > 0 && (
+                              <ul className={cn('space-y-0.5', sess.exercises.length > 0 && 'mt-2 pt-2 border-t border-ink-line')}>
+                                {sess.cardio.map((c, j) => (
+                                  <li key={j} className="text-xs text-ink-dim tnum">
+                                    <span className="capitalize text-ink">{c.activityType.replace('-', ' ')}</span>
+                                    {` · ${c.durationMin} min`}
+                                    {c.distanceKm != null && ` · ${c.distanceKm} km`}
+                                    {c.avgHR != null && ` · ${c.avgHR} bpm`}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        )}
                       </li>
                     );
                   })}

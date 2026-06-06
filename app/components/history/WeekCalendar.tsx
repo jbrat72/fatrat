@@ -252,10 +252,14 @@ export function WeekCalendar(props: Props) {
   const week = Math.min(Math.max(viewWeek, 1), weekCount);
 
   // Surface the current week to the parent so callers (the History page)
-  // can render details for the week in view.
+  // can render details for the week in view. Deliberately excludes
+  // onViewWeekChange from deps — the callback's identity changes every
+  // parent render, which would re-fire this effect and re-trigger the
+  // parent, blocking the prev/next week buttons.
   useEffect(() => {
     onViewWeekChange?.(week, startOfWeekByWeek.get(week) ?? null);
-  }, [week, startOfWeekByWeek, onViewWeekChange]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [week, startOfWeekByWeek]);
 
   const goWeek = (next: number) => {
     setUserPaged(true);

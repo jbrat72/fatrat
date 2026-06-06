@@ -8,6 +8,18 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.67.4 — 2026-05-31
+
+- Fixed: WeekCalendar prev/next week buttons stopped working after v0.67.3.
+  The `onViewWeekChange` callback's identity changed every parent render,
+  re-firing the effect that called it, which re-triggered the parent and
+  pinned `viewWeek` in a loop. Removed the callback from the effect's
+  dependency list — only the actual `week` value triggers the notification.
+- Week Sessions card no longer has a top-level collapse. The week is
+  always shown; each individual session row collapses on tap to reveal
+  exercise summaries (logged sets with weight × reps, or cardio details).
+  A separate "Open" link still routes to the full post-workout summary.
+
 ## v0.67.3 — 2026-05-31
 
 - History: collapsible "WEEK SESSIONS" card now sits between the calendar
