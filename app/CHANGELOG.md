@@ -8,6 +8,23 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.67.1 — 2026-05-31
+
+- History "All blocks (by date)" mode now actually buckets sessions by
+  calendar week. v0.67.0 renumbered each source micro into a unique
+  "week N", so when two blocks overlapped the same calendar week (e.g.
+  a cancelled plan whose dates intersected Summer Workout's week 1)
+  the calendar surfaced only one of them depending on sort order.
+- New `WeekCalendar.calendarWeeks` prop. When provided, the calendar
+  enters *date-organized* mode: each entry is a calendar week anchored
+  at a `startDate`, in chronological order, and cells look up sessions
+  by their date across the entire `sessions` prop. Multiple source
+  blocks that overlap the same calendar week merge correctly.
+- History page in "All blocks" mode: buckets every session into
+  calendar-week start dates (Mon-Sun, honoring `weekStartsOn`), picks
+  the dominant parent meso per week for the block label, and passes
+  the resulting list to the calendar.
+
 ## v0.67.0 — 2026-05-31
 
 - Today: the "UP NEXT" / pull-this-workout-into-today card no longer shows

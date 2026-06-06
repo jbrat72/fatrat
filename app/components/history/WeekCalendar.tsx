@@ -49,6 +49,12 @@ interface Props {
    *  intensity badge so the user can tell which plan a given week belonged
    *  to as they page through "All blocks" mode in History. */
   blockNameByWeek?: Map<number, string>;
+  /** When provided, the calendar enters "date-organized" mode: each entry
+   *  is a calendar week (Mon-Sun) anchored at `startDate`, in chronological
+   *  order. Cells look up sessions by their date across the whole `sessions`
+   *  prop, so multiple source blocks that overlap the same calendar week
+   *  merge correctly. Overrides the per-micro week generation. */
+  calendarWeeks?: { startDate: string; blockName?: string }[];
 }
 
 const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -89,7 +95,7 @@ function intensityLabel(mode: UserMode, rir: number | undefined): string | null 
 type CellState = 'completed' | 'skipped' | 'planned' | 'rest';
 
 export function WeekCalendar(props: Props) {
-  const { micros, sessions, todayIso, mode, totalWeeks, onSelectSession, onSelectDay, isCurrent = true, extraCompletedSessions = [], blockNameByWeek } = props;
+  const { micros, sessions, todayIso, mode, totalWeeks, onSelectSession, onSelectDay, isCurrent = true, extraCompletedSessions = [], blockNameByWeek, calendarWeeks } = props;
   const variant: Variant = props.variant ?? 'paged';
   // Normalised week-start weekday (0–6); defaults to Monday.
   const weekStartsOn = (((props.weekStartsOn ?? 1) % 7) + 7) % 7;
@@ -107,7 +113,8 @@ export function WeekCalendar(props: Props) {
   );
 
   const maxScheduled = sortedMicros.reduce((m, x) => Math.max(m, x.weekNumber), 0);
-  const weekCount = Math.max(totalWeeks ?? maxScheduled, 1);
+  const weekCount = calendarWeeks?.length
+    ?? Math.max(totalWeeks ?? maxScheduled, 1);
 
   const microByWeek = useMemo(() => {
     const map = new Map<number, Microcycle>();
@@ -137,10 +144,15 @@ export function WeekCalendar(props: Props) {
     return map;
   }, [extraCompletedSessions]);
 
-  // Each week's start date (on the chosen week-start weekday), derived from the
+  // Each week's start date. In date-organized mode (calendarWeeks), the
+  // start date is provided directly; otherwise we derive it from the
   // earliest session in that week's micro.
   const startOfWeekByWeek = useMemo(() => {
     const map = new Map<number, string>();
+    if (calendarWeeks) {
+      calendarWeeks.forEach((w, i) => { map.set(i + 1, w.startDate); });
+      return map;
+    }
     for (const m of sortedMicros) {
       const ss = (sessionsByMicroId.get(m.id) ?? []).slice().sort((a, b) => a.date.localeCompare(b.date));
       if (ss.length === 0) continue;
@@ -148,7 +160,20 @@ export function WeekCalendar(props: Props) {
       map.set(m.weekNumber, addDays(first.date, -((first.dayOfWeek - weekStartsOn + 7) % 7)));
     }
     return map;
-  }, [sortedMicros, sessionsByMicroId, weekStartsOn]);
+  }, [calendarWeeks, sortedMicros, sessionsByMicroId, weekStartsOn]);
+
+  /** All sessions keyed by their ISO date. Used in date-organized mode so
+   *  cells find the right session regardless of which micro it belongs to. */
+  const sessionByDate = useMemo(() => {
+    const map = new Map<string, WorkoutSession>();
+    for (const s of sessions) {
+      // Pending sessions take precedence over completed ones if both fall on
+      // the same date (rare) — but completed wins if no pending is there.
+      const prev = map.get(s.date);
+      if (!prev || (prev.completed && !s.completed)) map.set(s.date, s);
+    }
+    return map;
+  }, [sessions]);
 
   const anchorWeek = [...startOfWeekByWeek.keys()].sort((a, b) => a - b)[0];
   const anchorStart = anchorWeek != null ? startOfWeekByWeek.get(anchorWeek)! : null;
@@ -194,6 +219,11 @@ export function WeekCalendar(props: Props) {
   //     through the block's actual history; "today's week" is irrelevant
   //     to a block that has ended)
   const defaultWeek = useMemo(() => {
+    if (calendarWeeks) {
+      // Date mode: snap to today's week if it's in the list, else the latest.
+      if (currentWeekNum != null) return currentWeekNum;
+      return weekCount; // most recent week last
+    }
     if (!isCurrent) return 1;
     if (currentWeekNum != null) return currentWeekNum;
     const activeMicro = sortedMicros.find((m) => m.status === 'active');
@@ -201,7 +231,7 @@ export function WeekCalendar(props: Props) {
     const withSessions = [...startOfWeekByWeek.keys()].sort((a, b) => a - b);
     if (withSessions.length) return Math.min(withSessions[0]!, weekCount);
     return 1;
-  }, [isCurrent, currentWeekNum, sortedMicros, startOfWeekByWeek, weekCount]);
+  }, [calendarWeeks, isCurrent, currentWeekNum, sortedMicros, startOfWeekByWeek, weekCount]);
 
   const [viewWeek, setViewWeek] = useState(defaultWeek);
   // Until the user pages manually, keep snapping to the default ("this week").
@@ -235,14 +265,26 @@ export function WeekCalendar(props: Props) {
   }
 
   function weekByDay(weekNum: number): (WorkoutSession | null)[] {
-    const micro = microByWeek.get(weekNum) ?? null;
     const arr: (WorkoutSession | null)[] = [null, null, null, null, null, null, null];
+    const startOfWeek = startOfWeekFor(weekNum);
+    if (calendarWeeks) {
+      // Date-organized: look up each cell by its calendar date.
+      if (startOfWeek) {
+        for (let col = 0; col < 7; col++) {
+          const dow = dowForCol(col);
+          const cellDate = addDays(startOfWeek, col);
+          const found = sessionByDate.get(cellDate);
+          if (found) arr[dow] = found;
+        }
+      }
+      return arr;
+    }
+    const micro = microByWeek.get(weekNum) ?? null;
     if (micro) {
       for (const s of sessionsByMicroId.get(micro.id) ?? []) arr[s.dayOfWeek] = s;
     }
     // Overlay completed sessions from other blocks (e.g. cancelled plans)
     // onto any still-empty cells whose calendar date matches an extra.
-    const startOfWeek = startOfWeekFor(weekNum);
     if (startOfWeek && extrasByDate.size > 0) {
       for (let col = 0; col < 7; col++) {
         const dow = dowForCol(col);

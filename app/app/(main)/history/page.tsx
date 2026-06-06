@@ -88,6 +88,7 @@ export default function HistoryPage() {
   // Maps weekNumber → source block name when in 'all' mode. The calendar
   // header uses this to show which block each week belonged to.
   const [blockNameByWeek, setBlockNameByWeek] = useState<Map<number, string> | undefined>(undefined);
+  const [calendarWeeks, setCalendarWeeks] = useState<{ startDate: string; blockName?: string }[] | undefined>(undefined);
 
   // Calendar data: either a single block, or all blocks concatenated with
   // renumbered weeks (sorted by each micro's earliest session date).
@@ -96,50 +97,71 @@ export default function HistoryPage() {
     const load = async () => {
       const repo = getRepository();
       if (selectedMesoId !== 'all') {
-        if (!selectedMesoId) { setMicros([]); setSessions([]); setBlockNameByWeek(undefined); return; }
+        if (!selectedMesoId) {
+          setMicros([]); setSessions([]); setBlockNameByWeek(undefined); setCalendarWeeks(undefined); return;
+        }
         const ms = await repo.listMicrocycles(selectedMesoId);
         ms.sort((a, b) => a.weekNumber - b.weekNumber);
         setMicros(ms);
         const ssArr = await Promise.all(ms.map((m) => repo.listSessionsInMicrocycle(m.id)));
         setSessions(ssArr.flat());
         setBlockNameByWeek(undefined);
+        setCalendarWeeks(undefined);
         return;
       }
-      // 'all' mode — gather every meso's micros + sessions, sort the micros
-      // by their earliest session date, then renumber weekNumber globally
-      // so the WeekCalendar paginates through them in chronological order.
+      // 'all' mode — bucket every session into calendar weeks (Mon-Sun, or
+      // whatever weekStartsOn says), then build a chronological list of
+      // active weeks. Each week's blockName is the most-common parent meso
+      // among its sessions. The calendar's date-organized mode then merges
+      // sessions from multiple blocks that overlap the same calendar week.
       const mesos = await repo.listMesocycles(user.userId);
-      const microsArr = await Promise.all(mesos.map((m) => repo.listMicrocycles(m.id)));
-      const sessionsArr = await Promise.all(
-        microsArr.flat().map((m) => repo.listSessionsInMicrocycle(m.id)),
-      );
-      const allSessFlat = sessionsArr.flat();
-      const allMicrosFlat = microsArr.flat();
-      const earliestByMicro = new Map<string, string>();
-      for (const sess of allSessFlat) {
-        if (!sess.microcycleId) continue;
-        const prev = earliestByMicro.get(sess.microcycleId);
-        if (!prev || sess.date < prev) earliestByMicro.set(sess.microcycleId, sess.date);
+      const mesoNameById = new Map(mesos.map((m) => [m.id, m.name] as const));
+      const all = await repo.listSessions(user.userId, { limit: 1000 });
+      const weekStart = user.weekStartsOn ?? 1;
+      const startOfWeekIso = (iso: string): string => {
+        const d = new Date(iso + 'T00:00:00');
+        const dow = d.getDay();
+        const back = (dow - weekStart + 7) % 7;
+        d.setDate(d.getDate() - back);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
+      };
+      // Bucket sessions by their week's start date.
+      const sessionsByWeekStart = new Map<string, WorkoutSession[]>();
+      for (const sess of all) {
+        const wkStart = startOfWeekIso(sess.date);
+        const arr = sessionsByWeekStart.get(wkStart) ?? [];
+        arr.push(sess);
+        sessionsByWeekStart.set(wkStart, arr);
       }
-      const ordered = [...allMicrosFlat].sort((a, b) => {
-        const ad = earliestByMicro.get(a.id) ?? '';
-        const bd = earliestByMicro.get(b.id) ?? '';
-        return ad.localeCompare(bd);
-      }).filter((m) => earliestByMicro.has(m.id)); // skip micros with no sessions
-      const mesoNameById = new Map(mesos.map((m) => [m.id, m.name]));
+      const weeksSorted = [...sessionsByWeekStart.keys()].sort();
       const nameByWeek = new Map<number, string>();
-      const renumbered: Microcycle[] = ordered.map((m, i) => {
-        const weekNumber = i + 1;
-        const blockName = mesoNameById.get(m.mesocycleId) ?? '';
-        if (blockName) nameByWeek.set(weekNumber, blockName);
-        return { ...m, weekNumber };
+      const calWeeks: { startDate: string; blockName?: string }[] = [];
+      weeksSorted.forEach((wkStart, i) => {
+        const wkSessions = sessionsByWeekStart.get(wkStart)!;
+        // Pick the dominant block: the meso that accounts for the most
+        // sessions in this week. Ties broken by first-seen.
+        const tallies = new Map<string, number>();
+        for (const ss of wkSessions) {
+          const mid = ss.mesocycleId;
+          if (!mid) continue;
+          tallies.set(mid, (tallies.get(mid) ?? 0) + 1);
+        }
+        let topMesoId: string | undefined;
+        let topCount = -1;
+        for (const [mid, n] of tallies) {
+          if (n > topCount) { topCount = n; topMesoId = mid; }
+        }
+        const blockName = topMesoId ? mesoNameById.get(topMesoId) : undefined;
+        if (blockName) nameByWeek.set(i + 1, blockName);
+        calWeeks.push({ startDate: wkStart, blockName });
       });
-      // Sessions reference the original microcycleId — that doesn't change
-      // when we renumber the micros, so the calendar's micro→sessions lookup
-      // keeps working unchanged.
-      setMicros(renumbered);
-      setSessions(allSessFlat);
+      setMicros([]);  // not used in date-organized mode
+      setSessions(all);
       setBlockNameByWeek(nameByWeek);
+      setCalendarWeeks(calWeeks);
     };
     load();
   }, [selectedMesoId, refreshTick, user]);
@@ -250,8 +272,9 @@ export default function HistoryPage() {
             todayIso={todayIso()}
             mode={terminologyMode(user)}
             weekStartsOn={user.weekStartsOn ?? 1}
-            totalWeeks={selectedMeso?.weeks ?? micros.length}
+            totalWeeks={selectedMeso?.weeks ?? (calendarWeeks?.length ?? micros.length)}
             blockNameByWeek={blockNameByWeek}
+            calendarWeeks={calendarWeeks}
             onSelectSession={(id) => setSelectedSessionId(id)}
             onSelectDay={(info) => setAddDay(info)}
           />
