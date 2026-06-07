@@ -8,6 +8,14 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.73.2 — 2026-06-06
+
+- Equipment: floor-based barbell lifts no longer require a rack. Deadlift,
+  Romanian Deadlift, barbell rows (Barbell/Pendlay/T-Bar), shrugs, barbell &
+  EZ-bar curls, and skull crushers are available with just a barbell + plates.
+  Only rack-dependent lifts (back/front squat, bench presses, overhead press,
+  rack pull, good morning) still require a Power/Squat Rack. Test updated.
+
 ## v0.73.1 — 2026-06-06
 
 - Equipment rules corrected per feedback:

@@ -153,6 +153,11 @@ describe('wizard engine', () => {
     // barbell lifts require a rack
     expect(q(baseState({ equipment: { environment: 'home', items: ['Barbell & Plates'] } }))).not.toContain('Back Squat');
     expect(q(baseState({ equipment: { environment: 'home', items: ['Barbell & Plates', 'Power / Squat Rack'] } }))).toContain('Back Squat');
+    // floor lifts don't need a rack — barbell alone is enough
+    const bk = (s: WizardState) => poolFor('back', GLOBAL_EXERCISES, availableEquipment(s), new Set(), new Set(s.equipment.items)).map((e) => e.name);
+    const barOnly = bk(baseState({ equipment: { environment: 'home', items: ['Barbell & Plates'] } }));
+    expect(barOnly).toContain('Deadlift');
+    expect(barOnly).toContain('Barbell Row');
   });
 
   it('custom split honors the per-day muscle layout', () => {
