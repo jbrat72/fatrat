@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { PageTitle, Card, BackButton } from '@/components/ui';
-import { TemplateWizard } from '@/components/plan/TemplateWizard';
+import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
+import { activateWizardProgram } from '@/lib/wizard/persist';
 import { getRepository } from '@/lib/firestore';
 import type { ProgramTemplate, UserMode } from '@/types';
 
@@ -73,14 +74,22 @@ export default function ProgramTemplatesPage() {
         ))}
       </div>
 
-      <TemplateWizard
-        open={wizardOpen}
-        onClose={() => setWizardOpen(false)}
-        onSaved={(mode) => {
-          if (mode === 'activate') router.push('/today');
-          else setRefreshTick((n) => n + 1);
-        }}
-      />
+      {wizardOpen && (
+        <div className="fixed inset-0 z-50 bg-bg overflow-y-auto">
+          <PlanWizardV2
+            user={user}
+            onClose={() => { setWizardOpen(false); setRefreshTick((n) => n + 1); }}
+            onComplete={async (state, program) => {
+              try {
+                await activateWizardProgram(state, program, user);
+                router.push('/today');
+              } catch (err) {
+                alert('Could not save your program: ' + ((err as Error)?.message ?? 'unknown error'));
+              }
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

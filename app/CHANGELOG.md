@@ -8,6 +8,27 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.71.0 — 2026-06-06
+
+- Plan Wizard v2 — persistence + integration (Chunk 3). The new wizard now
+  saves real programs and is wired into the app.
+  - "Create Custom Program" on the Programs page now launches Plan Wizard v2
+    (full-screen). "Start My Program" persists the plan and lands you on Today.
+  - New `lib/wizard/persist.ts`: converts the wizard's reviewed week into an
+    AssignedWeek and reuses the proven `generateCustomProgram` + `buildCustomTemplate`
+    path, so the plan materializes into a Mesocycle + Microcycles + day sessions
+    (volume ramp, RIR targets, deloads) and is also saved as a custom template.
+    Archives any active plan first, exactly like the existing activate flow.
+    Maps wizard split → SplitType, volume framework/periodization → programStyle,
+    rest preference → restSeconds, and equipment → the allowed EquipmentType set.
+  - Edit-this-plan is preserved: the Change Plan sheet still opens the existing
+    TemplateWizard. (Routing the v2 wizard into the edit round-trip is a future
+    step.)
+  - Test added for the wizard→CustomProgramInput mapping.
+  - Known follow-ups: 1RM baseline values entered on Page 14 aren't captured yet
+    (inputs are display-only), so week-1 starts without seeded weights; and the
+    /wizard-v2 preview route remains for QA.
+
 ## v0.70.0 — 2026-06-06
 
 - Plan Wizard v2 (Chunk 2):
