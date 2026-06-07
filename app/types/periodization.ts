@@ -64,6 +64,9 @@ export interface Mesocycle {
   /** Per-muscle volume priority, set by the Template Wizard. Drives tier-aware
    *  soreness adjustment. Absent on older / non-wizard programs. */
   muscleTiers?: Partial<Record<MuscleGroup, MuscleTier>>;
+  /** Equipment profile this plan was built for — Swap/Add filter against it
+   *  (live: editing that profile changes what's available here). */
+  equipmentProfileId?: string;
 }
 
 export interface Microcycle {

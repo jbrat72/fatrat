@@ -8,6 +8,26 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.77.0 — 2026-06-06
+
+- Multiple equipment profiles (e.g. Home + Commercial Gym). A program is built
+  for one profile and references it live.
+  - `profile.equipmentProfiles[]` (named, each a granular checklist) +
+    `defaultEquipmentProfileId`. Legacy single-list / coarse users migrate on
+    read into one "My Gym" profile — no data migration needed.
+  - Settings → My Equipment manages multiple setups: add / rename / delete /
+    set default, each with its own checklist.
+  - Onboarding seeds a default profile from the granular picker.
+  - Plan Wizard's equipment page becomes a selector when you have more than one
+    setup ("Which setup is this program for?"), defaulting to your default; with
+    one setup it stays a read-only summary.
+  - The Mesocycle stores `equipmentProfileId`; in-workout Swap filters against
+    that program's profile (falls back to the default). So adding a pull-up bar
+    to the profile a program was built for makes pull-ups available in that
+    program's swaps immediately — the live behavior, now per-location.
+  - New shared helpers (`getEquipmentProfiles`, `defaultProfileId`,
+    `itemsForProfile`, `newProfileId`) + tests.
+
 ## v0.76.0 — 2026-06-06
 
 - Plan Wizard: Save / resume drafts. A "Save" button in the wizard header

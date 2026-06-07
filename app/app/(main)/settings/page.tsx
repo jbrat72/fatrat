@@ -5,7 +5,8 @@ import { useUser } from '@/components/app';
 import { Button, Card, ModeChip, PageTitle, ChoicePill } from '@/components/ui';
 import { ModeSwitchDialog } from '@/components/settings';
 import { getRepository } from '@/lib/firestore';
-import { EQUIP_GROUPS, equipLabel, inferEquipmentItems } from '@/lib/exercise/equipment';
+import { EQUIP_GROUPS, equipLabel, getEquipmentProfiles, defaultProfileId, newProfileId } from '@/lib/exercise/equipment';
+import type { EquipmentProfile } from '@/types';
 import { toJSON, setsCSV } from '@/lib/export';
 import type { ExportBundle } from '@/lib/export';
 import type { UserMode, Units } from '@/types';
@@ -54,12 +55,18 @@ export default function SettingsPage() {
     await refresh();
   };
 
-  const toggleEquipment = async (item: string) => {
-    const cur = user.equipmentItems ?? inferEquipmentItems(user.equipment);
-    const next = cur.includes(item) ? cur.filter((x) => x !== item) : [...cur, item];
-    await getRepository().upsertProfile({ ...user, equipmentItems: next, updatedAt: new Date().toISOString() });
+  const saveProfiles = async (next: EquipmentProfile[], newDefault?: string) => {
+    const curDefault = defaultProfileId(user);
+    const def = newDefault ?? (next.some((p) => p.id === curDefault) ? curDefault : next[0]?.id);
+    await getRepository().upsertProfile({ ...user, equipmentProfiles: next, defaultEquipmentProfileId: def, updatedAt: new Date().toISOString() });
     await refresh();
   };
+  const eqProfiles = getEquipmentProfiles(user);
+  const eqDefaultId = defaultProfileId(user);
+  const toggleItem = (pid: string, item: string) => saveProfiles(eqProfiles.map((p) => p.id === pid ? { ...p, items: p.items.includes(item) ? p.items.filter((x) => x !== item) : [...p.items, item] } : p));
+  const renameProfile = (pid: string, name: string) => saveProfiles(eqProfiles.map((p) => p.id === pid ? { ...p, name } : p));
+  const addProfile = () => saveProfiles([...eqProfiles, { id: newProfileId(), name: 'New setup', items: [] }]);
+  const deleteProfile = (pid: string) => { if (eqProfiles.length <= 1) return; const next = eqProfiles.filter((p) => p.id !== pid); saveProfiles(next, next.some((p) => p.id === eqDefaultId) ? eqDefaultId : next[0].id); };
 
   const doExport = async (fmt: 'json' | 'csv') => {
     setExporting(true);
@@ -147,15 +154,25 @@ export default function SettingsPage() {
 
         <Card>
           <div className="section-head mb-2">MY EQUIPMENT</div>
-          <p className="text-xs text-ink-dim mb-3">What you own. Your programs and exercise swaps only use these — add a piece (e.g. a pull-up bar) and it becomes available everywhere immediately.</p>
-          {(() => { const owned = user.equipmentItems ?? inferEquipmentItems(user.equipment); return Object.entries(EQUIP_GROUPS).map(([grp, list]) => (
-            <div key={grp} className="mb-3">
-              <div className="text-xs text-ink-mute mb-1.5">{grp}</div>
-              <div className="flex gap-2 flex-wrap">{list.map((i) => (
-                <ChoicePill key={i} value={i} label={equipLabel(i)} selected={owned.includes(i)} onSelect={() => toggleEquipment(i)} />
-              ))}</div>
+          <p className="text-xs text-ink-dim mb-3">Set up each place you train (Home, Gym, Travel…). When you build a program you pick which setup it's for — add a piece (e.g. a pull-up bar) and it shows up in that program's swaps immediately.</p>
+          {eqProfiles.map((pf) => (
+            <div key={pf.id} className="rounded-xl border border-ink-line p-3 mb-3">
+              <div className="flex items-center gap-2 mb-2.5">
+                <input defaultValue={pf.name} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== pf.name) renameProfile(pf.id, v); }} className="flex-1 bg-bg-input border border-ink-line rounded-md px-2.5 py-1.5 text-sm font-semibold" aria-label="Setup name" />
+                {eqDefaultId === pf.id ? <span className="text-[11px] text-accent font-semibold px-1">Default</span> : <button type="button" onClick={() => saveProfiles(eqProfiles, pf.id)} className="text-[11px] text-ink-mute hover:text-ink">Set default</button>}
+                {eqProfiles.length > 1 && <button type="button" onClick={() => deleteProfile(pf.id)} className="text-[11px] text-ink-mute hover:text-danger">Delete</button>}
+              </div>
+              {Object.entries(EQUIP_GROUPS).map(([grp, list]) => (
+                <div key={grp} className="mb-2">
+                  <div className="text-[11px] text-ink-mute uppercase tracking-wide mb-1">{grp}</div>
+                  <div className="flex gap-1.5 flex-wrap">{list.map((i) => (
+                    <ChoicePill key={i} value={i} label={equipLabel(i)} selected={pf.items.includes(i)} onSelect={() => toggleItem(pf.id, i)} />
+                  ))}</div>
+                </div>
+              ))}
             </div>
-          )); })()}
+          ))}
+          <Button variant="ghost" size="sm" onClick={addProfile}>+ Add setup</Button>
         </Card>
 
         <Card>

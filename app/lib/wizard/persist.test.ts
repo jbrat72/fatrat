@@ -18,7 +18,7 @@ function st(): WizardState {
     name: 'My Plan', goal: { primary: 'muscle', secondary: null }, experience: { level: 'intermediate', status: 'consistent' },
     profile: { ageBand: '30', sex: 'male', bodyWeightKg: 84, injuries: [], stubbornAreas: [] },
     schedule: { daysPerWeek: 5, sessionMinutes: 60, startDow: 1, restDays: [3, 6, 0], durationWeeks: 8 },
-    equipment: { environment: 'gym', items: ALL_EQUIPMENT },
+    equipment: { environment: 'gym', items: ALL_EQUIPMENT, profileId: 'default' },
     trainingStyle: { baseStyle: 'bodybuilding', volumeFramework: 'evidence', periodizationStrategy: 'none' },
     split: { type: 'bro' }, prioritization: { tiers: {} },
     setsAndReps: { repRange: 'hypertrophy', setTypes: ['straight'], autoVary: false },

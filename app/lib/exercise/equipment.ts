@@ -7,7 +7,7 @@
  * which combines the coarse `equipment` type with the exercise's granular
  * `requiresEquipment` field (a Flat bench is also satisfied by an Adjustable).
  */
-import type { ExerciseDefinition, EquipmentType, EquipmentAccess } from '@/types';
+import type { ExerciseDefinition, EquipmentType, EquipmentAccess, EquipmentProfile, UserProfile } from '@/types';
 
 export const EQUIP_GROUPS: Record<string, string[]> = {
   'Free Weights': ['Barbell & Plates', 'Dumbbells — Fixed', 'Dumbbells — Adjustable', 'Kettlebells', 'EZ Curl Bar', 'Trap Bar'],
@@ -85,4 +85,26 @@ export function inferEquipmentItems(access: EquipmentAccess[]): string[] {
   }
   // Sensible default if we couldn't infer anything: assume a commercial gym.
   return out.size > 0 ? ALL_EQUIPMENT.filter((x) => out.has(x)) : ALL_EQUIPMENT.slice();
+}
+
+/* ---------------- equipment profiles ---------------- */
+
+let _profN = 0;
+export function newProfileId(): string { _profN += 1; return `eq-${Date.now().toString(36)}-${_profN}`; }
+
+/** The user's equipment profiles, migrating legacy single-list users on read. */
+export function getEquipmentProfiles(user: Pick<UserProfile, 'equipmentProfiles' | 'equipmentItems' | 'equipment'>): EquipmentProfile[] {
+  if (user.equipmentProfiles && user.equipmentProfiles.length) return user.equipmentProfiles;
+  const items = user.equipmentItems ?? inferEquipmentItems(user.equipment);
+  return [{ id: 'default', name: 'My Gym', items }];
+}
+export function defaultProfileId(user: Pick<UserProfile, 'equipmentProfiles' | 'equipmentItems' | 'equipment' | 'defaultEquipmentProfileId'>): string {
+  const ps = getEquipmentProfiles(user);
+  if (user.defaultEquipmentProfileId && ps.some((p) => p.id === user.defaultEquipmentProfileId)) return user.defaultEquipmentProfileId;
+  return ps[0]?.id ?? 'default';
+}
+/** Resolve the granular items for a profile id (falls back to default, then []). */
+export function itemsForProfile(user: Pick<UserProfile, 'equipmentProfiles' | 'equipmentItems' | 'equipment' | 'defaultEquipmentProfileId'>, profileId?: string): string[] {
+  const ps = getEquipmentProfiles(user);
+  return (ps.find((p) => p.id === profileId) ?? ps.find((p) => p.id === defaultProfileId(user)) ?? ps[0])?.items ?? [];
 }

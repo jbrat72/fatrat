@@ -119,11 +119,12 @@ export async function activateWizardProgram(
   for (const mz of mesos) if (mz.status === 'active') await repo.upsertMesocycle({ ...mz, status: 'archived' });
 
   const prog = generateCustomProgram(input);
-  await repo.upsertMesocycle(prog.mesocycle);
+  const meso = { ...prog.mesocycle, equipmentProfileId: state.equipment.profileId };
+  await repo.upsertMesocycle(meso);
   for (const mi of prog.microcycles) await repo.upsertMicrocycle(mi);
   for (const s of prog.sessions) await repo.upsertSession(s);
   await repo.upsertTemplate(buildCustomTemplate(input));
-  return prog.mesocycle;
+  return meso;
 }
 
 let _draftN = 0;

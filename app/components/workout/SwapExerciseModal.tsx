@@ -4,18 +4,21 @@ import { MuscleBadge, Button } from '@/components/ui';
 import { useUser } from '@/components/app';
 import { getRepository } from '@/lib/firestore';
 import { findSimilar } from '@/lib/exercise/findSimilar';
-import { inferEquipmentItems } from '@/lib/exercise/equipment';
+import { itemsForProfile } from '@/lib/exercise/equipment';
 import { EMPTY_EXERCISE_PREFS, personalizeLibrary, isFavorite } from '@/lib/exercise/personalize';
 import type { ExerciseDefinition, UserExercisePrefs } from '@/types';
 
 interface Props {
   open: boolean;
   fromExerciseId: string;
+  /** Equipment profile of the program being trained — swaps filter against it
+   *  (falls back to the user's default profile). */
+  equipmentProfileId?: string;
   onClose: () => void;
   onPick: (next: ExerciseDefinition) => void;
 }
 
-export function SwapExerciseModal({ open, fromExerciseId, onClose, onPick }: Props) {
+export function SwapExerciseModal({ open, fromExerciseId, equipmentProfileId, onClose, onPick }: Props) {
   const { user } = useUser();
   const [library, setLibrary] = useState<ExerciseDefinition[]>([]);
   const [prefs, setPrefs] = useState<UserExercisePrefs>(EMPTY_EXERCISE_PREFS);
@@ -44,7 +47,7 @@ export function SwapExerciseModal({ open, fromExerciseId, onClose, onPick }: Pro
     findSimilar({
       exerciseId: fromExerciseId,
       library,
-      equipmentItems: user.equipmentItems ?? inferEquipmentItems(user.equipment),
+      equipmentItems: itemsForProfile(user, equipmentProfileId),
       excludedNames: user.constraints?.excludedLifts ?? [],
     }),
     prefs,

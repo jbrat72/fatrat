@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
-import { EQUIP_GROUPS, equipLabel, inferEquipmentItems, isBodyweightOnly } from '@/lib/exercise/equipment';
+import { EQUIP_GROUPS, equipLabel, isBodyweightOnly, getEquipmentProfiles, defaultProfileId, itemsForProfile } from '@/lib/exercise/equipment';
 import type { MuscleGroup, UserProfile } from '@/types';
 import type {
   WizardState, WizGoal, WizExperience, WizStatus, WizTier, BaseStyle,
@@ -52,7 +52,8 @@ const INJURY_MAP: Record<string, string> = { 'lower-back': 'lowback', shoulders:
 
 function initState(user: UserProfile): WizardState {
   const injuries = (user.constraints?.injurySites || []).map((s) => INJURY_MAP[s]).filter(Boolean) as string[];
-  const eqItems = user.equipmentItems ?? inferEquipmentItems(user.equipment);
+  const eqProfileId = defaultProfileId(user);
+  const eqItems = itemsForProfile(user, eqProfileId);
   return {
     name: '',
     goal: { primary: null, secondary: null },
@@ -64,7 +65,7 @@ function initState(user: UserProfile): WizardState {
       injuries, stubbornAreas: [],
     },
     schedule: { daysPerWeek: null, sessionMinutes: null, startDow: 1, restDays: [], durationWeeks: null },
-    equipment: { environment: isBodyweightOnly(eqItems) ? 'bodyweight' : 'gym', items: eqItems },
+    equipment: { environment: isBodyweightOnly(eqItems) ? 'bodyweight' : 'gym', items: eqItems, profileId: eqProfileId },
     trainingStyle: { baseStyle: null, volumeFramework: null, periodizationStrategy: null },
     split: { type: null },
     prioritization: { tiers: {} },
@@ -381,17 +382,19 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
         <div className="flex flex-wrap gap-2">{[{ id: 4, label: '4 weeks' }, { id: 6, label: '6 weeks' }, { id: 8, label: '8 weeks' }, { id: 12, label: '12 weeks' }, { id: 'ongoing', label: 'Ongoing' }].map((o) => chip(state.schedule.durationWeeks === o.id, o.label, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.schedule.durationWeeks = o.id as number | 'ongoing'; }), String(o.id)))}</div></div>
     </>),
     4: () => {
+      const profiles = getEquipmentProfiles(user);
       const items = state.equipment.items;
       const groups = Object.entries(EQUIP_GROUPS).map(([grp, list]) => [grp, list.filter((i) => items.includes(i))] as [string, string[]]).filter(([, l]) => l.length > 0);
+      const summary = items.length === 0
+        ? note('info', 'This setup has no equipment — your program will use bodyweight movements.')
+        : <div className="rounded-2xl border border-ink-line bg-bg-card p-4">
+            {groups.map(([grp, list]) => (<div key={grp} className="mb-2.5"><div className="text-[12px] text-ink-mute mb-1">{grp}</div><div className="flex flex-wrap gap-1.5">{list.map((i) => <span key={i} className="rounded-full border border-ink-line bg-bg-input px-2.5 py-1 text-[12px]">{equipLabel(i)}</span>)}</div></div>))}
+          </div>;
       return (<>
-        <Eyebrow n={5} title="Equipment" sub="Pulled from your profile — your program only uses gear you own. To change it, update Settings → My Equipment." />
-        {items.length === 0
-          ? note('info', 'No equipment on your profile — your program will use bodyweight movements. Add equipment in Settings → My Equipment to unlock more.')
-          : <div className="rounded-2xl border border-ink-line bg-bg-card p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-dim mb-2">From your profile</div>
-              {groups.map(([grp, list]) => (<div key={grp} className="mb-2.5"><div className="text-[12px] text-ink-mute mb-1">{grp}</div><div className="flex flex-wrap gap-1.5">{list.map((i) => <span key={i} className="rounded-full border border-ink-line bg-bg-input px-2.5 py-1 text-[12px]">{equipLabel(i)}</span>)}</div></div>))}
-            </div>}
-        {note('info', 'To add or remove equipment (e.g. a pull-up bar), go to Settings → My Equipment. Changes apply everywhere — including when you swap exercises mid-program.')}
+        <Eyebrow n={5} title="Equipment" sub={profiles.length > 1 ? 'Which setup is this program for? (You have more than one.)' : 'Pulled from your profile — your program only uses gear you own.'} />
+        {profiles.length > 1 && <div className="grid gap-2.5 mb-1">{profiles.map((pr) => cardChoice(state.equipment.profileId === pr.id, () => update((s) => { s.equipment.profileId = pr.id; s.equipment.items = pr.items; s.equipment.environment = isBodyweightOnly(pr.items) ? 'bodyweight' : 'gym'; }), pr.name, `${pr.items.length} item${pr.items.length === 1 ? '' : 's'}`))}</div>}
+        {profiles.length > 1 ? <><SecHead>Selected setup</SecHead>{summary}</> : summary}
+        {note('info', 'Manage your equipment setups in Settings → My Equipment. Changes apply everywhere — including when you swap exercises mid-program.')}
       </>);
     },
     5: () => {

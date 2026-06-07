@@ -50,7 +50,7 @@ export interface WizardState {
     restDays: number[];          // day-of-week indices
     durationWeeks: number | 'ongoing' | null;
   };
-  equipment: { environment: string | null; items: string[] };
+  equipment: { environment: string | null; items: string[]; profileId: string };
   trainingStyle: {
     baseStyle: BaseStyle | null;
     volumeFramework: VolumeFramework | null;

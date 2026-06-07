@@ -21,7 +21,7 @@ function baseState(over: Partial<WizardState> = {}): WizardState {
     experience: { level: 'intermediate', status: 'consistent' },
     profile: { ageBand: '30', sex: 'male', bodyWeightKg: 84, injuries: [], stubbornAreas: [] },
     schedule: { daysPerWeek: 5, sessionMinutes: 60, startDow: 1, restDays: [3, 6, 0], durationWeeks: 8 },
-    equipment: { environment: 'gym', items: ALL_EQUIPMENT },
+    equipment: { environment: 'gym', items: ALL_EQUIPMENT, profileId: 'default' },
     trainingStyle: { baseStyle: 'bodybuilding', volumeFramework: 'fixed', periodizationStrategy: 'none' },
     split: { type: 'bro' },
     prioritization: { tiers: {} },
@@ -62,7 +62,7 @@ describe('wizard engine', () => {
   });
 
   it('filters by equipment: dumbbell home gym produces no barbell lifts', () => {
-    const s = baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Bench — Adjustable'] }, split: { type: 'ul2' }, schedule: { daysPerWeek: 4, sessionMinutes: 60, startDow: 1, restDays: [3, 5, 6, 0], durationWeeks: 8 } });
+    const s = baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Bench — Adjustable'], profileId: 'default' }, split: { type: 'ul2' }, schedule: { daysPerWeek: 4, sessionMinutes: 60, startDow: 1, restDays: [3, 5, 6, 0], durationWeeks: 8 } });
     const avail = availableEquipment(s);
     expect(avail.has('barbell')).toBe(false);
     const { wk, loadCount } = representativeWeek(s);
@@ -100,7 +100,7 @@ describe('wizard engine', () => {
 
   it('equipment-specific bodyweight moves are gated by the granular checklist', () => {
     // home gym WITHOUT ab wheel / pull-up bar
-    const s = baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Bench — Adjustable'] } });
+    const s = baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Bench — Adjustable'], profileId: 'default' } });
     const items = s.equipment.items;
     const core = poolFor('core', GLOBAL_EXERCISES, items, new Set()).map((e) => e.name);
     expect(core).not.toContain('Ab Wheel Rollout');     // needs Ab Wheel
@@ -109,7 +109,7 @@ describe('wizard engine', () => {
     const back = poolFor('back', GLOBAL_EXERCISES, items, new Set()).map((e) => e.name);
     expect(back).not.toContain('Pull-up');              // needs Pull-Up Bar
     // now WITH ab wheel + pull-up bar
-    const s2 = baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Ab Wheel', 'Pull-Up Bar'] } });
+    const s2 = baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Ab Wheel', 'Pull-Up Bar'], profileId: 'default' } });
     const core2 = poolFor('core', GLOBAL_EXERCISES, s2.equipment.items, new Set()).map((e) => e.name);
     expect(core2).toContain('Ab Wheel Rollout');
   });
@@ -137,26 +137,26 @@ describe('wizard engine', () => {
   it('requiresEquipment gates machines and benches by the checklist', () => {
     const q = (s: WizardState) => poolFor('quads', GLOBAL_EXERCISES, s.equipment.items, new Set()).map((e) => e.name);
     const ch = (s: WizardState) => poolFor('chest', GLOBAL_EXERCISES, s.equipment.items, new Set()).map((e) => e.name);
-    expect(q(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Leg Press'] } }))).toContain('Leg Press');
-    expect(q(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable'] } }))).not.toContain('Leg Press');
+    expect(q(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Leg Press'], profileId: 'default' } }))).toContain('Leg Press');
+    expect(q(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable'], profileId: 'default' } }))).not.toContain('Leg Press');
     // adjustable bench satisfies flat; also unlocks incline
-    const adj = ch(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Bench — Adjustable'] } }));
+    const adj = ch(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Bench — Adjustable'], profileId: 'default' } }));
     expect(adj).toContain('Dumbbell Bench Press');
     expect(adj).toContain('Incline Dumbbell Bench Press');
     // flat bench only: flat ok, incline excluded
-    const flat = ch(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Bench — Flat'] } }));
+    const flat = ch(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Bench — Flat'], profileId: 'default' } }));
     expect(flat).toContain('Dumbbell Bench Press');
     expect(flat).not.toContain('Incline Dumbbell Bench Press');
     // owning the full equipment list unlocks machines, etc.
-    expect(q(baseState({ equipment: { environment: 'gym', items: ALL_EQUIPMENT } }))).toContain('Leg Press');
+    expect(q(baseState({ equipment: { environment: 'gym', items: ALL_EQUIPMENT, profileId: 'default' } }))).toContain('Leg Press');
     // dumbbell flat press is floor-capable — no bench required
-    expect(ch(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable'] } }))).toContain('Dumbbell Bench Press');
+    expect(ch(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable'], profileId: 'default' } }))).toContain('Dumbbell Bench Press');
     // barbell lifts require a rack
-    expect(q(baseState({ equipment: { environment: 'home', items: ['Barbell & Plates'] } }))).not.toContain('Back Squat');
-    expect(q(baseState({ equipment: { environment: 'home', items: ['Barbell & Plates', 'Power / Squat Rack'] } }))).toContain('Back Squat');
+    expect(q(baseState({ equipment: { environment: 'home', items: ['Barbell & Plates'], profileId: 'default' } }))).not.toContain('Back Squat');
+    expect(q(baseState({ equipment: { environment: 'home', items: ['Barbell & Plates', 'Power / Squat Rack'], profileId: 'default' } }))).toContain('Back Squat');
     // floor lifts don't need a rack — barbell alone is enough
     const bk = (s: WizardState) => poolFor('back', GLOBAL_EXERCISES, s.equipment.items, new Set()).map((e) => e.name);
-    const barOnly = bk(baseState({ equipment: { environment: 'home', items: ['Barbell & Plates'] } }));
+    const barOnly = bk(baseState({ equipment: { environment: 'home', items: ['Barbell & Plates'], profileId: 'default' } }));
     expect(barOnly).toContain('Deadlift');
     expect(barOnly).toContain('Barbell Row');
   });

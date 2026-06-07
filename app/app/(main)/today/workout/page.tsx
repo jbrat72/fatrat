@@ -544,6 +544,7 @@ export default function WorkoutPage() {
       <ExerciseHistorySheet exerciseId={historyFor ?? ''} open={historyFor !== null} onClose={() => setHistoryFor(null)} />
 
       <SwapExerciseModal
+        equipmentProfileId={meso?.equipmentProfileId}
         open={swapFor !== null}
         fromExerciseId={swapFor != null ? session.exercises[swapFor]?.exerciseId ?? '' : ''}
         onClose={() => setSwapFor(null)}

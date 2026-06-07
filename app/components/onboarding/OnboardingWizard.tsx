@@ -146,7 +146,8 @@ export function OnboardingWizard() {
       daysPerWeek: d.daysPerWeek,
       timePerSessionMin: d.timePerSessionMin,
       equipment: coarseFromItems(d.equipmentItems),
-      equipmentItems: d.equipmentItems,
+      equipmentProfiles: [{ id: 'default', name: 'My Gym', items: d.equipmentItems }],
+      defaultEquipmentProfileId: 'default',
       constraints: (d.injurySites.length || d.injuryNotes || d.excludedLifts)
         ? {
             injurySites: d.injurySites.length ? d.injurySites : undefined,

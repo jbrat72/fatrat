@@ -54,6 +54,14 @@ export interface Constraints {
   excludedLifts?: string[];         // e.g., ["overhead press"]
 }
 
+export interface EquipmentProfile {
+  id: string;
+  /** User-facing name, e.g. "Home", "Commercial Gym". */
+  name: string;
+  /** Granular Page-5 checklist labels owned at this location. */
+  items: string[];
+}
+
 export interface UserProfile {
   userId: string;
   displayName: string;
@@ -74,10 +82,14 @@ export interface UserProfile {
   daysPerWeek: number;        // 2..7
   timePerSessionMin: 30 | 45 | 60 | 75 | 90;
   equipment: EquipmentAccess[];
-  /** Granular owned-equipment list (Page-5 checklist labels) — the single
-   *  source of truth for exercise availability. Seeded from `equipment` via
-   *  inferEquipmentItems() when absent. */
+  /** Legacy single granular list — superseded by `equipmentProfiles`, kept as a
+   *  migration source for users created before profiles existed. */
   equipmentItems?: string[];
+  /** Named equipment setups (e.g. Home, Commercial Gym). A program is built for
+   *  one of these and references it by id. */
+  equipmentProfiles?: EquipmentProfile[];
+  /** Which profile is used by default (wizard pre-selects it). */
+  defaultEquipmentProfileId?: string;
 
   constraints?: Constraints;
   strengthBaseline?: StrengthBaseline;
