@@ -7,11 +7,11 @@ import type { ExerciseDefinition } from '@/types';
  */
 export const GLOBAL_EXERCISES: ExerciseDefinition[] = [
   // ---- Chest ----
-  { id: 'bench-press-barbell', name: 'Barbell Bench Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps','shoulders'], equipment: 'barbell', patterns: ['compound','push'], requiresEquipment: ['Bench — Flat'] },
-  { id: 'bench-press-incline-barbell', name: 'Incline Barbell Bench Press', primaryMuscle: 'chest', secondaryMuscles: ['shoulders','triceps'], equipment: 'barbell', patterns: ['compound','push'], requiresEquipment: ['Bench — Adjustable'] },
-  { id: 'bench-press-dumbbell', name: 'Dumbbell Bench Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps','shoulders'], equipment: 'dumbbell', patterns: ['compound','push'], requiresEquipment: ['Bench — Flat'] },
+  { id: 'bench-press-barbell', name: 'Barbell Bench Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps','shoulders'], equipment: 'barbell', patterns: ['compound','push'], requiresEquipment: ['Bench — Flat', 'Power / Squat Rack'] },
+  { id: 'bench-press-incline-barbell', name: 'Incline Barbell Bench Press', primaryMuscle: 'chest', secondaryMuscles: ['shoulders','triceps'], equipment: 'barbell', patterns: ['compound','push'], requiresEquipment: ['Bench — Adjustable', 'Power / Squat Rack'] },
+  { id: 'bench-press-dumbbell', name: 'Dumbbell Bench Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps','shoulders'], equipment: 'dumbbell', patterns: ['compound','push'] },
   { id: 'bench-press-incline-dumbbell', name: 'Incline Dumbbell Bench Press', primaryMuscle: 'chest', secondaryMuscles: ['shoulders','triceps'], equipment: 'dumbbell', patterns: ['compound','push'], requiresEquipment: ['Bench — Adjustable'] },
-  { id: 'bench-press-decline-barbell', name: 'Decline Barbell Bench Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps'], equipment: 'barbell', patterns: ['compound','push'], requiresEquipment: ['Bench — Adjustable'] },
+  { id: 'bench-press-decline-barbell', name: 'Decline Barbell Bench Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps'], equipment: 'barbell', patterns: ['compound','push'], requiresEquipment: ['Bench — Adjustable', 'Power / Squat Rack'] },
   { id: 'bench-press-smith', name: 'Smith Machine Bench Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps','shoulders'], equipment: 'smith', patterns: ['compound','push'] },
   { id: 'chest-press-machine', name: 'Machine Chest Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps'], equipment: 'machine', patterns: ['compound','push'], requiresEquipment: ['Chest/Shoulder Press Machine'] },
   { id: 'chest-fly-cable', name: 'Cable Chest Fly', primaryMuscle: 'chest', equipment: 'cable', patterns: ['isolation','push'] },
@@ -23,27 +23,27 @@ export const GLOBAL_EXERCISES: ExerciseDefinition[] = [
   { id: 'band-chest-press', name: 'Band Chest Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps'], equipment: 'band', patterns: ['compound','push'] },
 
   // ---- Back ----
-  { id: 'deadlift', name: 'Deadlift', primaryMuscle: 'back', secondaryMuscles: ['hamstrings','glutes'], equipment: 'barbell', patterns: ['compound','hinge','pull'] },
-  { id: 'rack-pull', name: 'Rack Pull', primaryMuscle: 'back', secondaryMuscles: ['hamstrings','glutes'], equipment: 'barbell', patterns: ['compound','hinge','pull'] },
+  { id: 'deadlift', name: 'Deadlift', primaryMuscle: 'back', secondaryMuscles: ['hamstrings','glutes'], equipment: 'barbell', patterns: ['compound','hinge','pull'], requiresEquipment: ['Power / Squat Rack'] },
+  { id: 'rack-pull', name: 'Rack Pull', primaryMuscle: 'back', secondaryMuscles: ['hamstrings','glutes'], equipment: 'barbell', patterns: ['compound','hinge','pull'], requiresEquipment: ['Power / Squat Rack'] },
   { id: 'pull-up', name: 'Pull-up', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'bodyweight', patterns: ['compound','pull'], metric: 'reps', requiresEquipment: ['Pull-Up Bar'] },
   { id: 'chin-up', name: 'Chin-up', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'bodyweight', patterns: ['compound','pull'], metric: 'reps', requiresEquipment: ['Pull-Up Bar'] },
   { id: 'inverted-row', name: 'Inverted Row', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'bodyweight', patterns: ['compound','pull'], metric: 'weight-reps', requiresEquipment: ['Pull-Up Bar'] },
   { id: 'lat-pulldown', name: 'Lat Pulldown', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'cable', patterns: ['compound','pull'] },
   { id: 'pulldown-machine', name: 'Machine Pulldown', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'machine', patterns: ['compound','pull'], requiresEquipment: ['Lat Pulldown / Row'] },
   { id: 'straight-arm-pulldown', name: 'Straight-Arm Pulldown', primaryMuscle: 'back', equipment: 'cable', patterns: ['isolation','pull'] },
-  { id: 'row-barbell', name: 'Barbell Row', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'barbell', patterns: ['compound','pull'] },
-  { id: 'row-pendlay', name: 'Pendlay Row', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'barbell', patterns: ['compound','pull'] },
+  { id: 'row-barbell', name: 'Barbell Row', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'barbell', patterns: ['compound','pull'], requiresEquipment: ['Power / Squat Rack'] },
+  { id: 'row-pendlay', name: 'Pendlay Row', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'barbell', patterns: ['compound','pull'], requiresEquipment: ['Power / Squat Rack'] },
   { id: 'row-dumbbell', name: 'One-Arm Dumbbell Row', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'dumbbell', patterns: ['compound','pull'] },
   { id: 'row-cable-seated', name: 'Seated Cable Row', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'cable', patterns: ['compound','pull'] },
   { id: 'row-machine', name: 'Machine Row', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'machine', patterns: ['compound','pull'], requiresEquipment: ['Lat Pulldown / Row'] },
-  { id: 'row-t-bar', name: 'T-Bar Row', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'barbell', patterns: ['compound','pull'] },
+  { id: 'row-t-bar', name: 'T-Bar Row', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'barbell', patterns: ['compound','pull'], requiresEquipment: ['Power / Squat Rack'] },
   { id: 'face-pull', name: 'Face Pull', primaryMuscle: 'back', secondaryMuscles: ['shoulders'], equipment: 'cable', patterns: ['isolation','pull'] },
   { id: 'band-pull-apart', name: 'Band Pull-Apart', primaryMuscle: 'back', secondaryMuscles: ['shoulders'], equipment: 'band', patterns: ['isolation','pull'] },
-  { id: 'shrug-barbell', name: 'Barbell Shrug', primaryMuscle: 'back', equipment: 'barbell', patterns: ['isolation','pull'] },
+  { id: 'shrug-barbell', name: 'Barbell Shrug', primaryMuscle: 'back', equipment: 'barbell', patterns: ['isolation','pull'], requiresEquipment: ['Power / Squat Rack'] },
   { id: 'shrug-dumbbell', name: 'Dumbbell Shrug', primaryMuscle: 'back', equipment: 'dumbbell', patterns: ['isolation','pull'] },
 
   // ---- Shoulders ----
-  { id: 'ohp-barbell', name: 'Overhead Press (Barbell)', primaryMuscle: 'shoulders', secondaryMuscles: ['triceps'], equipment: 'barbell', patterns: ['compound','push'] },
+  { id: 'ohp-barbell', name: 'Overhead Press (Barbell)', primaryMuscle: 'shoulders', secondaryMuscles: ['triceps'], equipment: 'barbell', patterns: ['compound','push'], requiresEquipment: ['Power / Squat Rack'] },
   { id: 'ohp-dumbbell', name: 'Seated Dumbbell Press', primaryMuscle: 'shoulders', secondaryMuscles: ['triceps'], equipment: 'dumbbell', patterns: ['compound','push'], requiresEquipment: ['Bench — Adjustable'] },
   { id: 'ohp-smith', name: 'Smith Machine Shoulder Press', primaryMuscle: 'shoulders', secondaryMuscles: ['triceps'], equipment: 'smith', patterns: ['compound','push'] },
   { id: 'shoulder-press-machine', name: 'Machine Shoulder Press', primaryMuscle: 'shoulders', secondaryMuscles: ['triceps'], equipment: 'machine', patterns: ['compound','push'], requiresEquipment: ['Chest/Shoulder Press Machine'] },
@@ -59,8 +59,8 @@ export const GLOBAL_EXERCISES: ExerciseDefinition[] = [
   { id: 'upright-row-cable', name: 'Cable Upright Row', primaryMuscle: 'shoulders', equipment: 'cable', patterns: ['compound','pull'] },
 
   // ---- Biceps ----
-  { id: 'curl-barbell', name: 'Barbell Curl', primaryMuscle: 'biceps', equipment: 'barbell', patterns: ['isolation','pull'] },
-  { id: 'curl-ez-bar', name: 'EZ-Bar Curl', primaryMuscle: 'biceps', equipment: 'barbell', patterns: ['isolation','pull'] },
+  { id: 'curl-barbell', name: 'Barbell Curl', primaryMuscle: 'biceps', equipment: 'barbell', patterns: ['isolation','pull'], requiresEquipment: ['Power / Squat Rack'] },
+  { id: 'curl-ez-bar', name: 'EZ-Bar Curl', primaryMuscle: 'biceps', equipment: 'barbell', patterns: ['isolation','pull'], requiresEquipment: ['Power / Squat Rack'] },
   { id: 'curl-dumbbell', name: 'Dumbbell Curl', primaryMuscle: 'biceps', equipment: 'dumbbell', patterns: ['isolation','pull'] },
   { id: 'curl-incline-dumbbell', name: 'Incline Dumbbell Curl', primaryMuscle: 'biceps', equipment: 'dumbbell', patterns: ['isolation','pull'], requiresEquipment: ['Bench — Adjustable'] },
   { id: 'hammer-curl', name: 'Hammer Curl', primaryMuscle: 'biceps', secondaryMuscles: ['forearms'], equipment: 'dumbbell', patterns: ['isolation','pull'] },
@@ -72,12 +72,12 @@ export const GLOBAL_EXERCISES: ExerciseDefinition[] = [
   // ---- Triceps ----
   { id: 'tricep-pushdown-cable', name: 'Cable Triceps Pushdown', primaryMuscle: 'triceps', equipment: 'cable', patterns: ['isolation','push'] },
   { id: 'tricep-pushdown-rope', name: 'Rope Triceps Pushdown', primaryMuscle: 'triceps', equipment: 'cable', patterns: ['isolation','push'] },
-  { id: 'skull-crusher', name: 'Skull Crusher', primaryMuscle: 'triceps', equipment: 'barbell', patterns: ['isolation','push'], requiresEquipment: ['Bench — Flat'] },
+  { id: 'skull-crusher', name: 'Skull Crusher', primaryMuscle: 'triceps', equipment: 'barbell', patterns: ['isolation','push'], requiresEquipment: ['Power / Squat Rack'] },
   { id: 'overhead-tricep-dumbbell', name: 'Overhead Triceps Extension', primaryMuscle: 'triceps', equipment: 'dumbbell', patterns: ['isolation','push'] },
   { id: 'overhead-tricep-cable', name: 'Cable Overhead Extension', primaryMuscle: 'triceps', equipment: 'cable', patterns: ['isolation','push'] },
   { id: 'tricep-kickback', name: 'Triceps Kickback', primaryMuscle: 'triceps', equipment: 'dumbbell', patterns: ['isolation','push'] },
   { id: 'tricep-extension-machine', name: 'Machine Triceps Extension', primaryMuscle: 'triceps', equipment: 'machine', patterns: ['isolation','push'], requiresEquipment: ['Gym Machine'] },
-  { id: 'close-grip-bench', name: 'Close-Grip Bench Press', primaryMuscle: 'triceps', secondaryMuscles: ['chest'], equipment: 'barbell', patterns: ['compound','push'], requiresEquipment: ['Bench — Flat'] },
+  { id: 'close-grip-bench', name: 'Close-Grip Bench Press', primaryMuscle: 'triceps', secondaryMuscles: ['chest'], equipment: 'barbell', patterns: ['compound','push'], requiresEquipment: ['Bench — Flat', 'Power / Squat Rack'] },
   { id: 'dip', name: 'Dip', primaryMuscle: 'triceps', secondaryMuscles: ['chest'], equipment: 'bodyweight', patterns: ['compound','push'], metric: 'reps', requiresEquipment: ['Dip Station'] },
   { id: 'bench-dip', name: 'Bench Dip', primaryMuscle: 'triceps', equipment: 'bodyweight', patterns: ['compound','push'], metric: 'reps' },
   { id: 'tricep-band-pushdown', name: 'Band Triceps Pushdown', primaryMuscle: 'triceps', equipment: 'band', patterns: ['isolation','push'] },
@@ -86,13 +86,13 @@ export const GLOBAL_EXERCISES: ExerciseDefinition[] = [
   { id: 'wrist-curl-cable', name: 'Cable Wrist Curl', primaryMuscle: 'forearms', equipment: 'cable', patterns: ['isolation'] },
   { id: 'wrist-curl-dumbbell', name: 'Dumbbell Wrist Curl', primaryMuscle: 'forearms', equipment: 'dumbbell', patterns: ['isolation'] },
   { id: 'reverse-wrist-curl', name: 'Reverse Wrist Curl', primaryMuscle: 'forearms', equipment: 'dumbbell', patterns: ['isolation'] },
-  { id: 'reverse-curl', name: 'Reverse Curl', primaryMuscle: 'forearms', secondaryMuscles: ['biceps'], equipment: 'barbell', patterns: ['isolation','pull'] },
+  { id: 'reverse-curl', name: 'Reverse Curl', primaryMuscle: 'forearms', secondaryMuscles: ['biceps'], equipment: 'barbell', patterns: ['isolation','pull'], requiresEquipment: ['Power / Squat Rack'] },
   { id: 'farmer-carry', name: "Farmer's Carry", primaryMuscle: 'forearms', secondaryMuscles: ['core'], equipment: 'dumbbell', patterns: ['carry'], metric: 'weight-time' },
   { id: 'wrist-roller', name: 'Wrist Roller', primaryMuscle: 'forearms', equipment: 'cable', patterns: ['isolation'] },
 
   // ---- Quads / Legs ----
-  { id: 'squat-back-barbell', name: 'Back Squat', primaryMuscle: 'quads', secondaryMuscles: ['glutes','hamstrings'], equipment: 'barbell', patterns: ['compound','squat'] },
-  { id: 'squat-front-barbell', name: 'Front Squat', primaryMuscle: 'quads', secondaryMuscles: ['core'], equipment: 'barbell', patterns: ['compound','squat'] },
+  { id: 'squat-back-barbell', name: 'Back Squat', primaryMuscle: 'quads', secondaryMuscles: ['glutes','hamstrings'], equipment: 'barbell', patterns: ['compound','squat'], requiresEquipment: ['Power / Squat Rack'] },
+  { id: 'squat-front-barbell', name: 'Front Squat', primaryMuscle: 'quads', secondaryMuscles: ['core'], equipment: 'barbell', patterns: ['compound','squat'], requiresEquipment: ['Power / Squat Rack'] },
   { id: 'squat-smith', name: 'Smith Machine Squat', primaryMuscle: 'quads', secondaryMuscles: ['glutes'], equipment: 'smith', patterns: ['compound','squat'] },
   { id: 'hack-squat', name: 'Hack Squat', primaryMuscle: 'quads', secondaryMuscles: ['glutes'], equipment: 'machine', patterns: ['compound','squat'], requiresEquipment: ['Hack Squat'] },
   { id: 'leg-press', name: 'Leg Press', primaryMuscle: 'quads', secondaryMuscles: ['glutes'], equipment: 'machine', patterns: ['compound','squat'], requiresEquipment: ['Leg Press'] },
@@ -105,16 +105,16 @@ export const GLOBAL_EXERCISES: ExerciseDefinition[] = [
   { id: 'sissy-squat', name: 'Sissy Squat', primaryMuscle: 'quads', equipment: 'bodyweight', patterns: ['isolation','squat'], metric: 'reps' },
 
   // ---- Hamstrings ----
-  { id: 'rdl-barbell', name: 'Romanian Deadlift', primaryMuscle: 'hamstrings', secondaryMuscles: ['glutes','back'], equipment: 'barbell', patterns: ['compound','hinge'] },
+  { id: 'rdl-barbell', name: 'Romanian Deadlift', primaryMuscle: 'hamstrings', secondaryMuscles: ['glutes','back'], equipment: 'barbell', patterns: ['compound','hinge'], requiresEquipment: ['Power / Squat Rack'] },
   { id: 'rdl-dumbbell', name: 'Dumbbell RDL', primaryMuscle: 'hamstrings', secondaryMuscles: ['glutes'], equipment: 'dumbbell', patterns: ['compound','hinge'] },
   { id: 'single-leg-rdl', name: 'Single-Leg RDL', primaryMuscle: 'hamstrings', secondaryMuscles: ['glutes'], equipment: 'dumbbell', patterns: ['compound','hinge'] },
-  { id: 'good-morning', name: 'Good Morning', primaryMuscle: 'hamstrings', secondaryMuscles: ['glutes','back'], equipment: 'barbell', patterns: ['compound','hinge'] },
+  { id: 'good-morning', name: 'Good Morning', primaryMuscle: 'hamstrings', secondaryMuscles: ['glutes','back'], equipment: 'barbell', patterns: ['compound','hinge'], requiresEquipment: ['Power / Squat Rack'] },
   { id: 'leg-curl-seated', name: 'Seated Leg Curl', primaryMuscle: 'hamstrings', equipment: 'machine', patterns: ['isolation'], requiresEquipment: ['Leg Curl/Extension'] },
   { id: 'leg-curl-lying', name: 'Lying Leg Curl', primaryMuscle: 'hamstrings', equipment: 'machine', patterns: ['isolation'], requiresEquipment: ['Leg Curl/Extension'] },
   { id: 'nordic-curl', name: 'Nordic Hamstring Curl', primaryMuscle: 'hamstrings', equipment: 'bodyweight', patterns: ['isolation'], metric: 'reps' },
 
   // ---- Glutes ----
-  { id: 'hip-thrust', name: 'Hip Thrust', primaryMuscle: 'glutes', secondaryMuscles: ['hamstrings'], equipment: 'barbell', patterns: ['compound','hinge'], requiresEquipment: ['Bench — Flat'] },
+  { id: 'hip-thrust', name: 'Hip Thrust', primaryMuscle: 'glutes', secondaryMuscles: ['hamstrings'], equipment: 'barbell', patterns: ['compound','hinge'], requiresEquipment: ['Bench — Flat', 'Power / Squat Rack'] },
   { id: 'hip-thrust-machine', name: 'Machine Hip Thrust', primaryMuscle: 'glutes', secondaryMuscles: ['hamstrings'], equipment: 'machine', patterns: ['compound','hinge'], requiresEquipment: ['Gym Machine'] },
   { id: 'glute-bridge', name: 'Glute Bridge', primaryMuscle: 'glutes', equipment: 'bodyweight', patterns: ['isolation','hinge'], metric: 'reps' },
   { id: 'cable-pull-through', name: 'Cable Pull-Through', primaryMuscle: 'glutes', secondaryMuscles: ['hamstrings'], equipment: 'cable', patterns: ['compound','hinge'] },
@@ -170,8 +170,8 @@ export const GLOBAL_EXERCISES: ExerciseDefinition[] = [
   { id: 'pullup-negative', name: 'Negative Pull-up', primaryMuscle: 'back', secondaryMuscles: ['biceps'], equipment: 'bodyweight', patterns: ['compound','pull'], metric: 'reps', requiresEquipment: ['Pull-Up Bar'] },
 
   // ---- Additions from a TRX-style chart (rotating presses, partials, swimmers, lunges, etc.) ----
-  { id: 'chest-press-rotating-dumbbell', name: 'Rotating Dumbbell Chest Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps','shoulders'], equipment: 'dumbbell', patterns: ['compound','push'], requiresEquipment: ['Bench — Flat'] },
-  { id: 'skull-crusher-single-arm', name: 'Single-Arm Skull Crusher', primaryMuscle: 'triceps', equipment: 'dumbbell', patterns: ['isolation','push'], requiresEquipment: ['Bench — Flat'] },
+  { id: 'chest-press-rotating-dumbbell', name: 'Rotating Dumbbell Chest Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps','shoulders'], equipment: 'dumbbell', patterns: ['compound','push'] },
+  { id: 'skull-crusher-single-arm', name: 'Single-Arm Skull Crusher', primaryMuscle: 'triceps', equipment: 'dumbbell', patterns: ['isolation','push'] },
   { id: 'row-wide-grip-dumbbell', name: 'Wide-Grip Dumbbell Row', primaryMuscle: 'back', secondaryMuscles: ['shoulders'], equipment: 'dumbbell', patterns: ['compound','pull'] },
   { id: 'pullover-dumbbell', name: 'Dumbbell Pullover', primaryMuscle: 'back', secondaryMuscles: ['chest'], equipment: 'dumbbell', patterns: ['isolation','pull'], requiresEquipment: ['Bench — Flat'] },
   { id: 'reverse-fly-dumbbell', name: 'Reverse Fly', primaryMuscle: 'back', secondaryMuscles: ['shoulders'], equipment: 'dumbbell', patterns: ['isolation','pull'] },
@@ -185,8 +185,8 @@ export const GLOBAL_EXERCISES: ExerciseDefinition[] = [
   { id: 'squat-pulse-bodyweight', name: 'Pulse Squat', primaryMuscle: 'quads', equipment: 'bodyweight', patterns: ['isolation','squat'], metric: 'reps' },
 
   // ---- Additional dumbbell/bodyweight variants for the TRX-chart movements ----
-  { id: 'bench-press-decline-dumbbell', name: 'Decline Dumbbell Bench Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps'], equipment: 'dumbbell', patterns: ['compound','push'], requiresEquipment: ['Bench — Adjustable'] },
-  { id: 'skull-crusher-dumbbell', name: 'Dumbbell Skull Crusher', primaryMuscle: 'triceps', equipment: 'dumbbell', patterns: ['isolation','push'], requiresEquipment: ['Bench — Flat'] },
+  { id: 'bench-press-decline-dumbbell', name: 'Decline Dumbbell Bench Press', primaryMuscle: 'chest', secondaryMuscles: ['triceps'], equipment: 'dumbbell', patterns: ['compound','push'] },
+  { id: 'skull-crusher-dumbbell', name: 'Dumbbell Skull Crusher', primaryMuscle: 'triceps', equipment: 'dumbbell', patterns: ['isolation','push'] },
   { id: 'triceps-press-dumbbell', name: 'Dumbbell Triceps Press', primaryMuscle: 'triceps', secondaryMuscles: ['chest'], equipment: 'dumbbell', patterns: ['compound','push'] },
   { id: 'curl-top-half-dumbbell', name: 'Top-Half Dumbbell Curl', primaryMuscle: 'biceps', equipment: 'dumbbell', patterns: ['isolation','pull'] },
   { id: 'curl-bottom-half-dumbbell', name: 'Bottom-Half Dumbbell Curl', primaryMuscle: 'biceps', equipment: 'dumbbell', patterns: ['isolation','pull'] },

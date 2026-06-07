@@ -148,6 +148,11 @@ describe('wizard engine', () => {
     expect(flat).not.toContain('Incline Dumbbell Bench Press');
     // commercial gym has everything regardless of items
     expect(q(baseState({ equipment: { environment: 'commercial', items: [] } }))).toContain('Leg Press');
+    // dumbbell flat press is floor-capable — no bench required
+    expect(ch(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable'] } }))).toContain('Dumbbell Bench Press');
+    // barbell lifts require a rack
+    expect(q(baseState({ equipment: { environment: 'home', items: ['Barbell & Plates'] } }))).not.toContain('Back Squat');
+    expect(q(baseState({ equipment: { environment: 'home', items: ['Barbell & Plates', 'Power / Squat Rack'] } }))).toContain('Back Squat');
   });
 
   it('custom split honors the per-day muscle layout', () => {

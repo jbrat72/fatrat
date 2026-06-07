@@ -8,6 +8,16 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.73.1 — 2026-06-06
+
+- Equipment rules corrected per feedback:
+  - Dumbbell flat and decline presses are floor-capable — they no longer
+    require a bench. Incline dumbbell work still needs an adjustable bench;
+    dumbbell flyes/pullovers still need a flat bench.
+  - All barbell exercises now require a Power/Squat Rack (reverses the earlier
+    "barbell implies a rack" default). Barbell bench variants need a bench too.
+  - Tests updated.
+
 ## v0.73.0 — 2026-06-06
 
 - Plan Wizard v2 — edit flow, no phases, precise equipment.
