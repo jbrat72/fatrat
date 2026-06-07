@@ -244,5 +244,8 @@ export function mockRepository(): DataRepository {
       store().customTemplates[t.id] = clone(t); persist();
       return clone(t);
     },
+    async deleteTemplate(id) {
+      delete store().customTemplates[id]; persist();
+    },
   };
 }

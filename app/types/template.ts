@@ -74,5 +74,9 @@ export interface ProgramTemplate {
   muscleTiers?: Partial<Record<MuscleGroup, MuscleTier>>;
   /** User-chosen rest between sets (seconds). */
   restSeconds?: number;
+  /** True for a Plan Wizard draft the user saved to finish later. */
+  isDraft?: boolean;
+  /** Serialized WizardState (JSON) so a draft can be reopened and resumed. */
+  draftState?: string;
   weeks: TemplateWeek[];
 }

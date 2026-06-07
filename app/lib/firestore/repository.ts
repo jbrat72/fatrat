@@ -67,4 +67,5 @@ export interface DataRepository {
   getTemplate(id: string): Promise<ProgramTemplate | null>;
   /** Save a custom template (created by the Template Wizard). */
   upsertTemplate(t: ProgramTemplate): Promise<ProgramTemplate>;
+  deleteTemplate(id: string): Promise<void>;
 }

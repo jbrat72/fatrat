@@ -89,14 +89,33 @@ const isBeginnerScratch = (s: WizardState) => s.experience.level === 'beginner' 
 export interface PlanWizardV2Props {
   user: UserProfile;
   initialName?: string;
+  /** Resume a saved draft — full WizardState takes precedence over initialName. */
+  initialState?: WizardState;
+  /** Resume the edited Page-16 program alongside initialState. */
+  initialProgram?: Record<number, GeneratedDay[]>;
   onClose?: () => void;
   onComplete?: (state: WizardState, program: Record<number, GeneratedDay[]>) => void;
+  /** Save the current state as a resumable draft; returns the draft id. */
+  onSaveDraft?: (state: WizardState, program: Record<number, GeneratedDay[]>, existingId?: string) => Promise<string>;
 }
 
-export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWizardV2Props) {
-  const [state, setState] = useState<WizardState>(() => { const s = initState(user); if (initialName) s.name = initialName; return s; });
+export function PlanWizardV2({ user, initialName, initialState, initialProgram, onClose, onComplete, onSaveDraft }: PlanWizardV2Props) {
+  const [state, setState] = useState<WizardState>(() => {
+    if (initialState) return structuredClone(initialState);
+    const s = initState(user); if (initialName) s.name = initialName; return s;
+  });
+  const [saving, setSaving] = useState(false);
+  const [savedTick, setSavedTick] = useState(false);
+  const savedIdRef = useRef<string | undefined>(undefined);
+  async function saveDraft() {
+    if (!onSaveDraft || saving) return;
+    setSaving(true);
+    try { savedIdRef.current = await onSaveDraft(state, program, savedIdRef.current); setSavedTick(true); setTimeout(() => setSavedTick(false), 2000); }
+    catch (e) { alert('Could not save draft: ' + ((e as Error)?.message ?? '')); }
+    finally { setSaving(false); }
+  }
   const [page, setPage] = useState(0);
-  const [program, setProgram] = useState<Record<number, GeneratedDay[]>>({});
+  const [program, setProgram] = useState<Record<number, GeneratedDay[]>>(() => initialProgram ?? {});
   const [seen, setSeen] = useState(false);
   const seenPages = useRef<Set<number>>(new Set());
   const pageRef = useRef<HTMLDivElement>(null);
@@ -615,14 +634,21 @@ export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWiz
   return (
     <div ref={scrollRef} className="max-w-[720px] mx-auto h-screen overflow-y-auto pb-[140px]">
       <div className="sticky top-0 z-20 bg-bg/90 backdrop-blur border-b border-ink-line px-[18px] pt-3.5 pb-3">
-        <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 font-bold tracking-wide"><span className="w-2.5 h-2.5 rounded bg-accent" />FATRAT · Plan Wizard</div><div className="text-[12px] text-ink-dim font-mono">{page + 1} / {TOTAL}</div></div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 font-bold tracking-wide"><span className="w-2.5 h-2.5 rounded bg-accent" />FATRAT · Plan Wizard</div>
+          <div className="flex items-center gap-3">
+            {onSaveDraft && <button type="button" onClick={saveDraft} disabled={saving} className="text-[12px] font-semibold text-accent-hot disabled:opacity-50">{saving ? 'Saving…' : savedTick ? 'Saved ✓' : 'Save'}</button>}
+            <div className="text-[12px] text-ink-dim font-mono">{page + 1} / {TOTAL}</div>
+            {onClose && <button type="button" onClick={() => onClose()} aria-label="Close" className="text-ink-mute hover:text-ink text-lg leading-none px-1">✕</button>}
+          </div>
+        </div>
         <div className="h-1 rounded-full bg-ink-line mt-3 overflow-hidden"><i className="block h-full bg-accent rounded-full transition-all" style={{ width: ((page + 1) / TOTAL * 100) + '%' }} /></div>
       </div>
       <div ref={pageRef} className="px-[18px] pt-5">{pages[page]()}</div>
       <div className="fixed left-0 right-0 bottom-0 z-30 bg-bg/95 backdrop-blur border-t border-ink-line">
         <div className="text-[11px] text-ink-mute text-center pt-1.5 font-mono min-h-[18px]">{!seen ? 'Scroll down to see the whole page ↓' : !isValid() ? 'Make a selection to continue' : ''}</div>
         <div className="max-w-[720px] mx-auto px-[18px] pb-3.5 pt-2 flex gap-2.5">
-          {page === 0 ? <Button variant="ghost" onClick={() => onClose?.()}>Close</Button> : <Button variant="ghost" onClick={back}>Back</Button>}
+          <Button variant="ghost" onClick={back} className={page === 0 ? 'invisible' : ''}>Back</Button>
           <Button block disabled={!isValid() || !seen} onClick={next}>{genBtn ? '⚡ Generate My Program' : lastBtn ? 'Start My Program' : 'Next'}</Button>
         </div>
       </div>

@@ -9,7 +9,7 @@ import { terminologyMode, usesAdvancedTerminology } from '@/lib/periodization';
 import type { Mesocycle, Microcycle, WorkoutSession } from '@/types';
 import { ChangePlanSheet } from '@/components/plan/ChangePlanSheet';
 import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
-import { activateWizardProgram } from '@/lib/wizard/persist';
+import { activateWizardProgram, saveWizardDraft } from '@/lib/wizard/persist';
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -125,6 +125,7 @@ export default function MesoDetailPage() {
           <PlanWizardV2
             user={user}
             initialName={meso.name}
+            onSaveDraft={async (st, pr, id) => (await saveWizardDraft(st, user, pr, id)).id}
             onClose={() => setEditV2Open(false)}
             onComplete={async (state, program) => {
               try { await activateWizardProgram(state, program, user); router.push('/today'); }

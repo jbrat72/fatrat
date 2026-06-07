@@ -242,5 +242,10 @@ export function firestoreRepository(): DataRepository {
       await setDoc(subDoc(uid, 'templates', t.id), stripUndefined(t));
       return t;
     },
+    async deleteTemplate(id) {
+      const uid = currentUid();
+      const { deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(subDoc(uid, 'templates', id));
+    },
   };
 }

@@ -14,6 +14,7 @@ import {
   generateCustomProgram, buildCustomTemplate,
   type CustomProgramInput, type AssignedWeek,
 } from '@/lib/program/templateProgram';
+import type { ProgramTemplate } from '@/types';
 import type { ExerciseDefinition, Mesocycle, MuscleTier, SplitType, UserProfile } from '@/types';
 import type { WizardState, GeneratedDay } from './types';
 import { availableEquipment, durationWeeks } from './engine';
@@ -123,4 +124,40 @@ export async function activateWizardProgram(
   for (const s of prog.sessions) await repo.upsertSession(s);
   await repo.upsertTemplate(buildCustomTemplate(input));
   return prog.mesocycle;
+}
+
+let _draftN = 0;
+function draftId(): string { _draftN += 1; return `tpl-draft-${Date.now().toString(36)}-${_draftN}`; }
+
+/**
+ * Save the wizard's current state as a resumable draft (a ProgramTemplate
+ * carrying the serialized WizardState). Does NOT activate anything. Pass the
+ * previously-returned id to keep updating the same draft. If the program has
+ * been generated, the draft also gets full week data so it's viewable.
+ */
+export async function saveWizardDraft(
+  state: WizardState, user: UserProfile, program?: Record<number, GeneratedDay[]>, existingId?: string,
+): Promise<ProgramTemplate> {
+  const repo = getRepository();
+  const days = program?.[0] || [];
+  let base: ProgramTemplate;
+  if (days.length > 0) {
+    const library = await repo.listGlobalExercises();
+    base = buildCustomTemplate(buildWizardInput(state, days, user, library));
+  } else {
+    base = {
+      id: '', name: state.name.trim() || 'Untitled draft', description: 'Draft — finish it in the wizard',
+      kind: 'program', daysPerWeek: state.schedule.daysPerWeek ?? 3, split: splitTypeOf(state.split.type),
+      defaultPhase: 'hypertrophy', progressionScheme: 'rir-based', programStyle: 'periodization',
+      minMode: 'BASIC', isCustom: true, createdBy: user.displayName, muscleTiers: state.prioritization.tiers, weeks: [],
+    };
+  }
+  const tpl: ProgramTemplate = {
+    ...base,
+    id: existingId || base.id || draftId(),
+    name: state.name.trim() || 'Untitled draft',
+    kind: 'program', isDraft: true, draftState: JSON.stringify({ state, program: program ?? {} }), isCustom: true,
+  };
+  await repo.upsertTemplate(tpl);
+  return tpl;
 }

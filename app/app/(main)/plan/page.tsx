@@ -5,7 +5,7 @@ import { useUser } from '@/components/app';
 import { PageTitle, Card, Button, ModeChip, MuscleBadge } from '@/components/ui';
 import { VolumeDashboard } from '@/components/plan/VolumeDashboard';
 import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
-import { activateWizardProgram } from '@/lib/wizard/persist';
+import { activateWizardProgram, saveWizardDraft } from '@/lib/wizard/persist';
 import { ChangePlanSheet } from '@/components/plan/ChangePlanSheet';
 import { WeekCalendar, CalendarLegend } from '@/components/history';
 import { CardioLogModal } from '@/components/today';
@@ -109,6 +109,7 @@ export default function PlanPage() {
             <PlanWizardV2
               user={user}
               initialName={editName ?? undefined}
+              onSaveDraft={async (st, pr, id) => (await saveWizardDraft(st, user, pr, id)).id}
               onClose={() => { setWizardOpen(false); setEditName(null); }}
               onComplete={async (st, pr) => {
                 try { await activateWizardProgram(st, pr, user); setWizardOpen(false); setEditName(null); setRefreshTick((n) => n + 1); }
@@ -391,6 +392,7 @@ export default function PlanPage() {
             <PlanWizardV2
               user={user}
               initialName={editName ?? undefined}
+              onSaveDraft={async (st, pr, id) => (await saveWizardDraft(st, user, pr, id)).id}
               onClose={() => { setWizardOpen(false); setEditName(null); }}
               onComplete={async (st, pr) => {
                 try { await activateWizardProgram(st, pr, user); setWizardOpen(false); setEditName(null); setRefreshTick((n) => n + 1); }

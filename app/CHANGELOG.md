@@ -8,6 +8,20 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.76.0 — 2026-06-06
+
+- Plan Wizard: Save / resume drafts. A "Save" button in the wizard header
+  stores the current state as a draft without activating anything; a ✕ closes
+  the wizard from any page. Saving again updates the same draft.
+  - Drafts serialize the full WizardState plus any Page-16 exercise edits, so
+    resuming restores exactly where you left off.
+  - Programs page lists saved drafts ("DRAFT" cards) with Resume and Discard.
+    Activating a resumed draft cleans it up automatically.
+  - New `repo.deleteTemplate(id)` (interface + mock + Firestore). Draft state is
+    carried on `ProgramTemplate` via new `isDraft` / `draftState` fields; drafts
+    are excluded from the normal programs list.
+  - Save is available from the create flow and the edit-this-plan flow.
+
 ## v0.75.1 — 2026-06-06
 
 - Onboarding now captures the granular equipment list (the same Settings →
