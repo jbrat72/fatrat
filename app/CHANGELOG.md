@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.75.1 — 2026-06-06
+
+- Onboarding now captures the granular equipment list (the same Settings →
+  My Equipment checklist) and writes it to profile.equipmentItems; the legacy
+  coarse `equipment` field is derived from it. Leaving everything unchecked =
+  bodyweight only.
+- Plan Wizard equipment page copy made explicit that equipment is pulled from
+  the profile and edited in Settings → My Equipment.
+
 ## v0.75.0 — 2026-06-06
 
 - Equipment is now a single source of truth on the profile, editable in

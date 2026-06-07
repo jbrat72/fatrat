@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, ChoiceCard, ChoicePill, TextField, PageTitle, ModeChip } from '@/components/ui';
+import { EQUIP_GROUPS, equipLabel, coarseFromItems } from '@/lib/exercise/equipment';
 import type {
   UserMode,
   UserProfile,
@@ -37,6 +38,7 @@ interface Draft {
   daysPerWeek: number;
   timePerSessionMin: 30 | 45 | 60 | 75 | 90;
   equipment: EquipmentAccess[];
+  equipmentItems: string[];
 
   injurySites: CommonInjurySite[];
   injuryNotes: string;
@@ -64,6 +66,7 @@ const EMPTY_DRAFT: Draft = {
   daysPerWeek: 3,
   timePerSessionMin: 60,
   equipment: [],
+  equipmentItems: [],
   injurySites: [],
   injuryNotes: '',
   excludedLifts: '',
@@ -82,17 +85,6 @@ const GOAL_LABELS: Record<PrimaryGoal, string> = {
   'sport-specific':  'Sport-specific performance',
 };
 
-const EQUIPMENT_LABELS: Record<EquipmentAccess, string> = {
-  'commercial-gym': 'Full commercial gym',
-  'home-gym':       'Home gym (barbell + rack)',
-  'dumbbells-only': 'Dumbbells only',
-  'bodyweight':     'Bodyweight only',
-  'bodyweight-bands':       'Bodyweight + bands',
-  'bodyweight-kettlebells': 'Bodyweight + kettlebells',
-  'bodyweight-dumbbells':   'Bodyweight + dumbbells',
-  'bands':          'Resistance bands',
-  'limited-hotel':  'Limited / hotel gym',
-};
 
 const INJURY_LABELS: Record<CommonInjurySite, string> = {
   'lower-back': 'Lower back',
@@ -122,7 +114,7 @@ export function OnboardingWizard() {
       case 0: return d.displayName.trim().length > 0 && d.heightCm != null && d.weightKg != null && d.sex !== '';
       case 1: return d.experience !== '' && d.familiarity !== '';
       case 2: return d.primaryGoal !== '';
-      case 3: return d.daysPerWeek >= 2 && d.equipment.length > 0;
+      case 3: return d.daysPerWeek >= 2;
       case 4: return true; // constraints — optional
       case 5: return true; // baseline — optional
       case 6: return d.chosenMode !== '';
@@ -153,7 +145,8 @@ export function OnboardingWizard() {
       targetLabel: d.targetLabel || undefined,
       daysPerWeek: d.daysPerWeek,
       timePerSessionMin: d.timePerSessionMin,
-      equipment: d.equipment,
+      equipment: coarseFromItems(d.equipmentItems),
+      equipmentItems: d.equipmentItems,
       constraints: (d.injurySites.length || d.injuryNotes || d.excludedLifts)
         ? {
             injurySites: d.injurySites.length ? d.injurySites : undefined,
@@ -326,13 +319,18 @@ export function OnboardingWizard() {
                 </div>
               </div>
               <div>
-                <div className="section-head mb-2">Equipment access</div>
-                <div className="flex gap-2 flex-wrap">
-                  {(Object.keys(EQUIPMENT_LABELS) as EquipmentAccess[]).map((e) => (
-                    <ChoicePill key={e} value={e} label={EQUIPMENT_LABELS[e]} selected={d.equipment.includes(e)} onSelect={() => update('equipment', toggleArr(d.equipment, e))} />
-                  ))}
-                </div>
-                <p className="text-xs text-ink-mute mt-2">Pick all that apply.</p>
+                <div className="section-head mb-2">Equipment you own</div>
+                {Object.entries(EQUIP_GROUPS).map(([grp, list]) => (
+                  <div key={grp} className="mb-3">
+                    <div className="text-xs text-ink-mute mb-1.5">{grp}</div>
+                    <div className="flex gap-2 flex-wrap">
+                      {list.map((i) => (
+                        <ChoicePill key={i} value={i} label={equipLabel(i)} selected={d.equipmentItems.includes(i)} onSelect={() => update('equipmentItems', toggleArr(d.equipmentItems, i))} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-ink-mute mt-2">Pick everything you have access to — leave all unchecked for bodyweight only. You can change this anytime in Settings → My Equipment.</p>
               </div>
             </div>
           </section>

@@ -365,7 +365,7 @@ export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWiz
       const items = state.equipment.items;
       const groups = Object.entries(EQUIP_GROUPS).map(([grp, list]) => [grp, list.filter((i) => items.includes(i))] as [string, string[]]).filter(([, l]) => l.length > 0);
       return (<>
-        <Eyebrow n={5} title="Equipment" sub="Your program is built from the equipment on your profile." />
+        <Eyebrow n={5} title="Equipment" sub="Pulled from your profile — your program only uses gear you own. To change it, update Settings → My Equipment." />
         {items.length === 0
           ? note('info', 'No equipment on your profile — your program will use bodyweight movements. Add equipment in Settings → My Equipment to unlock more.')
           : <div className="rounded-2xl border border-ink-line bg-bg-card p-4">

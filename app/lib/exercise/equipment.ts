@@ -53,6 +53,19 @@ export function isBodyweightOnly(items: string[]): boolean {
   return [...t].every((x) => x === 'bodyweight');
 }
 
+/** Best-effort coarse EquipmentAccess from a granular list (keeps the legacy
+ *  `profile.equipment` field meaningful; granular is the real source of truth). */
+export function coarseFromItems(items: string[]): EquipmentAccess[] {
+  if (items.length === 0) return ['bodyweight'];
+  const t = availableTypes(items);
+  if (t.has('machine') || t.has('cable') || t.has('smith')) return ['commercial-gym'];
+  if (t.has('barbell')) return ['home-gym'];
+  if (t.has('dumbbell')) return ['dumbbells-only'];
+  if (t.has('kettlebell')) return ['bodyweight-kettlebells'];
+  if (t.has('band')) return ['bodyweight-bands'];
+  return ['bodyweight'];
+}
+
 /** Seed a granular list from the profile's coarse equipment access (migration). */
 export function inferEquipmentItems(access: EquipmentAccess[]): string[] {
   const out = new Set<string>();
