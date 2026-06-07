@@ -50,7 +50,13 @@ export const DAY_MUSCLES: Record<string, MuscleGroup[]> = {
 /** Per-training-day layout: a label + its muscle list. Handles custom splits. */
 export function dayLayout(state: WizardState): { type: string; muscles: MuscleGroup[] }[] {
   if (state.split.type === 'custom' && state.split.customDays) {
-    return state.split.customDays.map((ms, i) => ({ type: ms.length ? ms.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(' / ') : `Day ${i + 1}`, muscles: ms }));
+    const LEGS: MuscleGroup[] = ['quads', 'hamstrings', 'glutes', 'calves'];
+    const capw = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    return state.split.customDays.map((ms, i) => {
+      const hasLegs = LEGS.every((l) => ms.includes(l));
+      const parts = hasLegs ? ['Legs', ...ms.filter((m) => !LEGS.includes(m)).map(capw)] : ms.map(capw);
+      return { type: parts.length ? parts.join(' / ') : `Day ${i + 1}`, muscles: ms };
+    });
   }
   const seq = SPLIT_SEQ[state.split.type || ''] || ['Full Body', 'Full Body'];
   return seq.map((t) => ({ type: t, muscles: DAY_MUSCLES[t] || DAY_MUSCLES['Full Body'] }));

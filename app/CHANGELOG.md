@@ -8,6 +8,18 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.74.1 — 2026-06-06
+
+- Plan Wizard v2 scroll + custom-split fixes:
+  - Fixed "Next" not starting at the top, and selections not scrolling to the
+    next section. The wizard now renders inside a real overlay whose own div is
+    the scroll container; all scroll logic (scroll-to-top on page change,
+    scroll-to-next-section, and the "scrolled to bottom" gate) targets that
+    container instead of window/document, which don't scroll in the overlay.
+  - Page 7 custom builder groups the lower body as a single "Legs" chip
+    (quads + hamstrings + glutes + calves) instead of four separate ones. The
+    split preview and generated day labels collapse those four to "Legs" too.
+
 ## v0.74.0 — 2026-06-06
 
 - New logos. Phone/PWA app icon is now the white-on-black logo (regenerated

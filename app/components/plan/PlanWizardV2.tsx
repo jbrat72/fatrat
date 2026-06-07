@@ -98,6 +98,7 @@ export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWiz
   const [seen, setSeen] = useState(false);
   const seenPages = useRef<Set<number>>(new Set());
   const pageRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const pendingScroll = useRef<number | null>(null);
 
   const update = (fn: (s: WizardState) => void) => setState((s) => { const n: WizardState = structuredClone(s); fn(n); return n; });
@@ -219,10 +220,13 @@ export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWiz
 
   /* ---------- nav + gating ---------- */
   useEffect(() => {
-    const onScroll = () => { if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 12) { setSeen(true); seenPages.current.add(page); } };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    const el = scrollRef.current; if (!el) return;
+    const onScroll = () => { if (el.scrollTop + el.clientHeight >= el.scrollHeight - 12) { setSeen(true); seenPages.current.add(page); } };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
   }, [page]);
+  // New page starts at the top of the wizard's own scroll container.
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [page]);
   // after render of a page/selection: scroll to next section + auto-seen for short pages
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -230,18 +234,18 @@ export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWiz
       const idx = pendingScroll.current; pendingScroll.current = null;
       requestAnimationFrame(() => requestAnimationFrame(() => scrollToSection(idx)));
     }
-    const fits = document.body.scrollHeight <= window.innerHeight + 8;
+    const el = scrollRef.current; const fits = el ? el.scrollHeight <= el.clientHeight + 8 : true;
     if (fits || seenPages.current.has(page)) setSeen(true);
   }, [state, page]);
   function sectionAnchors(): HTMLElement[] {
     const p = pageRef.current; if (!p) return [];
     return Array.prototype.filter.call(p.children, (c: Element) => c.classList && (c.classList.contains('wz-sec') || c.classList.contains('wz-field'))) as HTMLElement[];
   }
-  function nextSectionIdx(el: HTMLElement): number { const ct = el.getBoundingClientRect().top + window.scrollY; let idx = 0; sectionAnchors().forEach((a) => { if (a.getBoundingClientRect().top + window.scrollY <= ct + 1) idx++; }); return idx; }
-  function scrollToSection(idx: number) { const secs = sectionAnchors(); const el = secs[idx]; if (!el) return; const top = el.getBoundingClientRect().top + window.scrollY - 84; window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }
+  function nextSectionIdx(el: HTMLElement): number { const ct = el.getBoundingClientRect().top; let idx = 0; sectionAnchors().forEach((a) => { if (a.getBoundingClientRect().top <= ct + 1) idx++; }); return idx; }
+  function scrollToSection(idx: number) { const c = scrollRef.current; const secs = sectionAnchors(); const el = secs[idx]; if (!c || !el) return; const top = el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 84; c.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }
 
-  function goTo(i: number) { setSeen(seenPages.current.has(i)); setPage(i); window.scrollTo(0, 0); }
-  function next() { if (!isValid()) return; if (page === 14) { setProgram({}); setPage(15); window.scrollTo(0, 0); setSeen(seenPages.current.has(15)); return; } if (page < TOTAL - 1) goTo(page + 1); else onComplete?.(state, program); }
+  function goTo(i: number) { setSeen(seenPages.current.has(i)); setPage(i); }
+  function next() { if (!isValid()) return; if (page === 14) { setProgram({}); setSeen(seenPages.current.has(15)); setPage(15); return; } if (page < TOTAL - 1) goTo(page + 1); else onComplete?.(state, program); }
   function back() { if (page > 0) goTo(page - 1); }
 
   /* selection that advances to next section */
@@ -499,16 +503,20 @@ export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWiz
       <p className="text-[12px] text-ink-dim mb-2">Tap muscle groups to assign them to each training day. Core is added separately on the Core page.</p>
       {dows.map((dow, i) => (<div key={i} className="mb-3">
         <div className="text-[13px] font-semibold mb-1.5">{DOW_FULL[dow]}{((state.split.customDays?.[i]?.length) || 0) === 0 ? <span className="text-ink-mute font-normal"> — empty</span> : null}</div>
-        <div className="flex flex-wrap gap-1.5">{WIZARD_MUSCLES.map((m) => chip((state.split.customDays?.[i] || []).includes(m), cap(m), () => update((s) => { if (!s.split.customDays) s.split.customDays = []; while (s.split.customDays.length < dows.length) s.split.customDays.push([]); toggle(s.split.customDays[i], m); }), m))}</div>
+        <div className="flex flex-wrap gap-1.5">{CUSTOM_GROUPS.map((g) => { const day = state.split.customDays?.[i] || []; const on = g.muscles.every((m) => day.includes(m)); return chip(on, g.label, () => update((s) => { if (!s.split.customDays) s.split.customDays = []; while (s.split.customDays.length < dows.length) s.split.customDays.push([]); const d = s.split.customDays[i]; if (g.muscles.every((m) => d.includes(m))) s.split.customDays[i] = d.filter((m) => !g.muscles.includes(m)); else g.muscles.forEach((m) => { if (!d.includes(m)) d.push(m); }); }), g.id); })}</div>
       </div>))}
     </div>;
   }
   function splitPreview(id: string) {
     const sd = state.schedule.startDow; const rest = state.schedule.restDays; let wi = 0;
     const cd = state.split.customDays || [];
-    const labelFor = (workIdx: number) => id === 'custom'
-      ? ((cd[workIdx] || []).map((m) => cap(m).slice(0, 3)).join('/') || '—')
-      : ((SPLIT_SEQ[id] || [])[workIdx] || '—');
+    const labelFor = (workIdx: number) => {
+      if (id !== 'custom') return (SPLIT_SEQ[id] || [])[workIdx] || '—';
+      const ms = cd[workIdx] || []; const legs = ['quads', 'hamstrings', 'glutes', 'calves'];
+      const hasLegs = legs.every((l) => ms.includes(l as MuscleGroup));
+      const shown = hasLegs ? ['Legs', ...ms.filter((m) => !legs.includes(m)).map((m) => cap(m))] : ms.map((m) => cap(m));
+      return shown.map((s) => s.slice(0, 3)).join('/') || '—';
+    };
     return <div className="grid grid-cols-7 gap-1 mt-2">{Array.from({ length: 7 }, (_, p) => { const dow = (sd + p) % 7; const isRest = rest.includes(dow); const lbl = isRest ? 'rest' : labelFor(wi++); return <div key={p} className={`rounded-md p-1.5 text-center text-[10px] min-h-[48px] ${isRest ? 'border border-dashed border-ink-line text-ink-mute' : 'border border-accent-dim'}`}><div className="font-bold text-ink-dim text-[9px] uppercase">{DOW_ABBR[dow]}</div><div className="mt-1 font-semibold leading-tight">{lbl}</div></div>; })}</div>;
   }
   function restPicker() {
@@ -601,7 +609,7 @@ export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWiz
   /* ---------- chrome ---------- */
   const genBtn = page === 14; const lastBtn = page === 15;
   return (
-    <div className="max-w-[720px] mx-auto min-h-screen pb-[130px]">
+    <div ref={scrollRef} className="max-w-[720px] mx-auto h-screen overflow-y-auto pb-[140px]">
       <div className="sticky top-0 z-20 bg-bg/90 backdrop-blur border-b border-ink-line px-[18px] pt-3.5 pb-3">
         <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 font-bold tracking-wide"><span className="w-2.5 h-2.5 rounded bg-accent" />FATRAT · Plan Wizard</div><div className="text-[12px] text-ink-dim font-mono">{page + 1} / {TOTAL}</div></div>
         <div className="h-1 rounded-full bg-ink-line mt-3 overflow-hidden"><i className="block h-full bg-accent rounded-full transition-all" style={{ width: ((page + 1) / TOTAL * 100) + '%' }} /></div>
@@ -634,6 +642,15 @@ function AddRow({ muscles, onAdd }: { muscles: string[]; onAdd: (m: string) => v
 function toggle<T>(arr: T[], v: T) { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
 function itemsForEngine(s: WizardState): Set<string> | undefined { return s.equipment.environment === 'commercial' ? undefined : new Set(s.equipment.items); }
 
+const CUSTOM_GROUPS: { id: string; label: string; muscles: MuscleGroup[] }[] = [
+  { id: 'chest', label: 'Chest', muscles: ['chest'] },
+  { id: 'back', label: 'Back', muscles: ['back'] },
+  { id: 'shoulders', label: 'Shoulders', muscles: ['shoulders'] },
+  { id: 'biceps', label: 'Biceps', muscles: ['biceps'] },
+  { id: 'triceps', label: 'Triceps', muscles: ['triceps'] },
+  { id: 'forearms', label: 'Forearms', muscles: ['forearms'] },
+  { id: 'legs', label: 'Legs', muscles: ['quads', 'hamstrings', 'glutes', 'calves'] },
+];
 const GOALS: { id: WizGoal; label: string; desc: string }[] = [
   { id: 'muscle', label: 'Build Muscle', desc: 'Maximize muscle size, fullness, and definition.' },
   { id: 'strength', label: 'Build Strength', desc: 'Lift heavier. Build raw, functional strength.' },
