@@ -8,6 +8,29 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.73.0 — 2026-06-06
+
+- Plan Wizard v2 — edit flow, no phases, precise equipment.
+  - Edit-this-plan now opens Plan Wizard v2 (not the old TemplateWizard). It is
+    seeded with the plan's name; you rebuild from there, and saving archives the
+    current plan and starts the new one. Wired on both /plan and the meso detail
+    page. "Build a custom program" on /plan also uses v2 now.
+  - Removed Block Periodization entirely — a multi-week plan IS a block; users
+    make separate plans for later phases. Dropped the periodization "block"
+    option, all phase tabs and phase language on Page 16, and the related
+    progression locks. Periodization strategy is now None / DUP / Weekly.
+  - Granular equipment: new `requiresEquipment` field on exercises (Page-5
+    checklist labels needed beyond the coarse type). Populated across the
+    library — machine sub-types (leg press vs pec deck vs lat pulldown, etc.),
+    pull-up bar / dip / ab-wheel moves, and bench-dependent lifts. Per your
+    calls: free-weight pressing requires a bench (incline/decline → adjustable;
+    an adjustable bench also satisfies flat); barbell squat/bench do NOT require
+    a separate rack. Orphan selectorized machines (hip abduction, etc.) are
+    commercial-gym only. Optional equipment (e.g. Russian Twist) requires
+    nothing. Commercial Gym has everything. Replaces the old special-case hack.
+  - Tests: equipment gating (machines, benches, commercial), and the existing
+    suites updated.
+
 ## v0.72.0 — 2026-06-06
 
 - Plan Wizard v2 — 1RM baselines now persist (follow-up to Chunk 3).

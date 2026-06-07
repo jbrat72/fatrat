@@ -17,7 +17,7 @@ export type WizTier = 'maintain' | 'grow' | 'emphasize';
 export type BaseStyle =
   | 'powerlifting' | 'bodybuilding' | 'hit' | 'powerbuilding' | 'fullbody' | 'calisthenics';
 export type VolumeFramework = 'fixed' | 'evidence' | 'auto' | 'med';
-export type PeriodizationStrategy = 'none' | 'block' | 'dup' | 'weekly';
+export type PeriodizationStrategy = 'none' | 'dup' | 'weekly';
 export type RepRange = 'strength' | 'hypertrophy' | 'endurance' | 'mixed';
 export type CoreMethod = 'block' | 'day' | 'superset' | 'compound' | 'none';
 export type RestPref = 'short' | 'moderate' | 'long' | 'auto';

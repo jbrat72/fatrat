@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { useUser } from '@/components/app';
 import { PageTitle, Card, Button, ModeChip, MuscleBadge } from '@/components/ui';
 import { VolumeDashboard } from '@/components/plan/VolumeDashboard';
-import { TemplateWizard } from '@/components/plan/TemplateWizard';
-import { mesocycleToTemplate } from '@/lib/program/mesoToTemplate';
+import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
+import { activateWizardProgram } from '@/lib/wizard/persist';
 import { ChangePlanSheet } from '@/components/plan/ChangePlanSheet';
 import { WeekCalendar, CalendarLegend } from '@/components/history';
 import { CardioLogModal } from '@/components/today';
@@ -49,7 +49,7 @@ export default function PlanPage() {
   const [wizardOpen, setWizardOpen] = useState(false);
   // When set, the wizard opens pre-populated with the user's current plan
   // ("Edit this plan" path from the Change Plan sheet).
-  const [editTemplate, setEditTemplate] = useState<ReturnType<typeof mesocycleToTemplate> | null>(null);
+  const [editName, setEditName] = useState<string | null>(null);
   const [changeSheet, setChangeSheet] = useState(false);
   const [moveSheet, setMoveSheet] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -100,15 +100,23 @@ export default function PlanPage() {
             </p>
             <div className="flex gap-2 flex-wrap">
               <Link href="/plan/templates"><Button block>Pick a program</Button></Link>
-              <Button variant="ghost" onClick={() => setWizardOpen(true)}>Build a custom template</Button>
+              <Button variant="ghost" onClick={() => { setEditName(null); setWizardOpen(true); }}>Build a custom program</Button>
             </div>
           </Card>
         </div>
-        <TemplateWizard
-          open={wizardOpen}
-          onClose={() => setWizardOpen(false)}
-          onSaved={() => setRefreshTick((n) => n + 1)}
-        />
+{wizardOpen && user && (
+          <div className="fixed inset-0 z-50 bg-bg overflow-y-auto">
+            <PlanWizardV2
+              user={user}
+              initialName={editName ?? undefined}
+              onClose={() => { setWizardOpen(false); setEditName(null); }}
+              onComplete={async (st, pr) => {
+                try { await activateWizardProgram(st, pr, user); setWizardOpen(false); setEditName(null); setRefreshTick((n) => n + 1); }
+                catch (e) { alert('Could not save your program: ' + ((e as Error)?.message ?? 'unknown error')); }
+              }}
+            />
+          </div>
+        )}
       </div>
     );
   }
@@ -264,10 +272,9 @@ export default function PlanPage() {
         onClose={() => setChangeSheet(false)}
         onChanged={() => setRefreshTick((n) => n + 1)}
         onEdit={() => {
-          // Build a template snapshot of the current plan and hand it to the
-          // wizard. Saving via "Make it active" archives the current plan
-          // and starts a fresh one — same flow as Cancel + start a new plan.
-          setEditTemplate(mesocycleToTemplate(meso, micros, sessions));
+          // Edit rebuilds the plan in Plan Wizard v2, seeded with its name.
+          // Saving archives the current plan and starts a fresh one.
+          setEditName(meso.name);
           setChangeSheet(false);
           setWizardOpen(true);
         }}
@@ -379,12 +386,19 @@ export default function PlanPage() {
         />
       )}
 
-      <TemplateWizard
-        open={wizardOpen}
-        onClose={() => { setWizardOpen(false); setEditTemplate(null); }}
-        initialTemplate={editTemplate}
-        onSaved={() => { setRefreshTick((n) => n + 1); setEditTemplate(null); }}
-      />
+{wizardOpen && user && (
+          <div className="fixed inset-0 z-50 bg-bg overflow-y-auto">
+            <PlanWizardV2
+              user={user}
+              initialName={editName ?? undefined}
+              onClose={() => { setWizardOpen(false); setEditName(null); }}
+              onComplete={async (st, pr) => {
+                try { await activateWizardProgram(st, pr, user); setWizardOpen(false); setEditName(null); setRefreshTick((n) => n + 1); }
+                catch (e) { alert('Could not save your program: ' + ((e as Error)?.message ?? 'unknown error')); }
+              }}
+            />
+          </div>
+        )}
     </div>
   );
 }

@@ -133,6 +133,23 @@ describe('wizard engine', () => {
     expect(new Set(coreByDay).size).toBeGreaterThan(1);
   });
 
+  it('requiresEquipment gates machines and benches by the checklist', () => {
+    const q = (s: WizardState) => poolFor('quads', GLOBAL_EXERCISES, availableEquipment(s), new Set(), new Set(s.equipment.items)).map((e) => e.name);
+    const ch = (s: WizardState) => poolFor('chest', GLOBAL_EXERCISES, availableEquipment(s), new Set(), new Set(s.equipment.items)).map((e) => e.name);
+    expect(q(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Leg Press'] } }))).toContain('Leg Press');
+    expect(q(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable'] } }))).not.toContain('Leg Press');
+    // adjustable bench satisfies flat; also unlocks incline
+    const adj = ch(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Bench — Adjustable'] } }));
+    expect(adj).toContain('Dumbbell Bench Press');
+    expect(adj).toContain('Incline Dumbbell Bench Press');
+    // flat bench only: flat ok, incline excluded
+    const flat = ch(baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Bench — Flat'] } }));
+    expect(flat).toContain('Dumbbell Bench Press');
+    expect(flat).not.toContain('Incline Dumbbell Bench Press');
+    // commercial gym has everything regardless of items
+    expect(q(baseState({ equipment: { environment: 'commercial', items: [] } }))).toContain('Leg Press');
+  });
+
   it('custom split honors the per-day muscle layout', () => {
     const s = baseState({
       split: { type: 'custom', customDays: [['chest', 'back'], ['quads', 'hamstrings']] },

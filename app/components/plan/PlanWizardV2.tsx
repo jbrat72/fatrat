@@ -20,7 +20,7 @@ import type {
 import { WIZARD_MUSCLES } from '@/lib/wizard/types';
 import {
   SPLIT_SEQ, availableEquipment, weekStructure,
-  muscleSetsForWeek, timesPerWeek, isBlock, durationWeeks,
+  muscleSetsForWeek, timesPerWeek, durationWeeks,
   poolFor, generateWeek,
 } from '@/lib/wizard/engine';
 
@@ -86,14 +86,14 @@ const isBeginnerScratch = (s: WizardState) => s.experience.level === 'beginner' 
 
 export interface PlanWizardV2Props {
   user: UserProfile;
+  initialName?: string;
   onClose?: () => void;
   onComplete?: (state: WizardState, program: Record<number, GeneratedDay[]>) => void;
 }
 
-export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
-  const [state, setState] = useState<WizardState>(() => initState(user));
+export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWizardV2Props) {
+  const [state, setState] = useState<WizardState>(() => { const s = initState(user); if (initialName) s.name = initialName; return s; });
   const [page, setPage] = useState(0);
-  const [curPhase, setCurPhase] = useState(0);
   const [program, setProgram] = useState<Record<number, GeneratedDay[]>>({});
   const [seen, setSeen] = useState(false);
   const seenPages = useRef<Set<number>>(new Set());
@@ -136,9 +136,8 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
   }
   const volumeAllowed = (id: VolumeFramework) => state.trainingStyle.baseStyle === 'hit' ? id === 'med' : !(state.experience.level === 'beginner' && id === 'auto');
   function defaultPeriodization(): PeriodizationStrategy {
-    const bs = state.trainingStyle.baseStyle, wks = durationWeeks(state);
+    const bs = state.trainingStyle.baseStyle;
     if (state.experience.level === 'beginner' || bs === 'hit') return 'none';
-    if (state.goal.primary === 'athletic' && wks >= 6) return 'block';
     if (bs === 'powerbuilding') return 'dup';
     return 'none';
   }
@@ -147,7 +146,6 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
     if (state.experience.level === 'beginner') return id === 'none';
     if (bs === 'hit') return id === 'none';
     if (state.experience.level === 'novice') return id === 'none' || id === 'dup';
-    if (id === 'block' && wks < 6) return false;
     return true;
   }
   function allowedSplits() {
@@ -184,7 +182,7 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
       if (p === 9 && !s.restAndTempo.restPreference) { const bs = s.trainingStyle.baseStyle, g = s.goal.primary; s.restAndTempo.restPreference = (bs === 'powerlifting' || g === 'strength') ? 'long' : (g === 'transform' || g === 'leanout' || g === 'fitness' || g === 'muscle') ? 'moderate' : 'auto'; }
       if (p === 10 && !s.core.method) { const bs = s.trainingStyle.baseStyle; s.core.method = bs === 'bodybuilding' ? 'block' : (bs === 'fullbody' || bs === 'hit') ? 'superset' : s.goal.primary === 'athletic' ? 'superset' : 'block'; s.core.frequency = s.experience.level === 'beginner' ? '2x' : s.goal.primary === 'athletic' ? '3x' : 'everyother'; }
       if (p === 11 && s.cardio.included === null) { const g = s.goal.primary; if (g === 'transform') Object.assign(s.cardio, { included: 'yes', type: ['hiit', 'liss'], frequency: 3, placement: 'offdays', durationMinutes: 20 }); else if (g === 'leanout') Object.assign(s.cardio, { included: 'yes', type: ['liss'], frequency: 3, placement: 'offdays', durationMinutes: 30 }); else if (g === 'athletic') Object.assign(s.cardio, { included: 'yes', type: ['circuit'], frequency: 2, placement: 'separate', durationMinutes: 20 }); else if (g === 'fitness') Object.assign(s.cardio, { included: 'yes', type: ['liss', 'hiit'], frequency: 3, placement: 'separate', durationMinutes: 30 }); else if (g === 'muscle' || g === 'strength') s.cardio.included = 'no'; }
-      if (p === 12 && !s.progression.type) { const lv = effLevel(s); s.progression.type = s.experience.level === 'beginner' ? 'linear' : levelRank(lv) >= 3 ? 'rpe' : 'double'; if (s.trainingStyle.periodizationStrategy === 'block') s.progression.type = 'percent'; if (s.trainingStyle.periodizationStrategy === 'dup') s.progression.type = 'undulating'; if (s.trainingStyle.baseStyle === 'hit') s.progression.type = 'double'; if (!s.progression.deloadProtocol) { s.progression.deloadProtocol = 'scheduled'; s.progression.deloadFrequency = 4; s.progression.deloadStyle = 'volume'; } }
+      if (p === 12 && !s.progression.type) { const lv = effLevel(s); s.progression.type = s.experience.level === 'beginner' ? 'linear' : levelRank(lv) >= 3 ? 'rpe' : 'double'; if (s.trainingStyle.periodizationStrategy === 'dup') s.progression.type = 'undulating'; if (s.trainingStyle.baseStyle === 'hit') s.progression.type = 'double'; if (!s.progression.deloadProtocol) { s.progression.deloadProtocol = 'scheduled'; s.progression.deloadFrequency = 4; s.progression.deloadStyle = 'volume'; } }
     });
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -208,14 +206,14 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
   useEffect(() => {
     if (page !== 15) return;
     const { cols, loadCount } = weekStructure(state);
-    const block = isBlock(state); const loads = cols.filter((c) => c.kind === 'load'); const phase = block ? curPhase : 0;
-    const wk = block ? (loads[[0, Math.floor((loads.length - 1) / 2), loads.length - 1][phase]] || loads[0]) : (loads[0] || cols[0]);
-    if (wk && !program[phase]) {
+    const loads = cols.filter((c) => c.kind === 'load');
+    const wk = loads[0] || cols[0];
+    if (wk && !program[0]) {
       const days = generateWeek(state, lib, wk, loadCount).map((d) => ({ ...d, exercises: d.exercises.map((e) => ({ ...e })) }));
-      setProgram((pr) => ({ ...pr, [phase]: days }));
+      setProgram({ 0: days });
     }
     /* eslint-disable-next-line */
-  }, [page, curPhase, program]);
+  }, [page, program]);
 
   /* ---------- generation for page 16 ---------- */
 
@@ -382,8 +380,7 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
           {state.trainingStyle.baseStyle === 'hit' && note('info', 'HIT locks volume to Minimum Effective Dose — it rejects the volume paradigm by design.')}
           <SecHead>Periodization strategy</SecHead>
           <div className="grid gap-2.5">{PERIODIZATIONS.filter((p) => periodizationAllowed(p.id)).map((p) => cardChoice(state.trainingStyle.periodizationStrategy === p.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.trainingStyle.periodizationStrategy = p.id; }), <>{p.label} {p.id === defaultPeriodization() ? badge('rec', 'Default') : null}</>, p.desc))}</div>
-          {durationWeeks(state) < 6 && state.experience.level !== 'beginner' && state.trainingStyle.baseStyle !== 'hit' && note('info', 'Block periodization is hidden — it needs at least a 6-week program to divide into phases.')}
-        </>}
+          </>}
       </>);
     },
     6: () => {
@@ -395,7 +392,6 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
           {state.split.type === sp.id ? restPicker() : null}
           {state.split.type === sp.id && sp.id === 'custom' ? customBuilder() : null}
         </div>))}</div>
-        {isBlock(state) && note('info', 'Exercises and rep ranges change across phases, but the split structure stays consistent.')}
         {state.split.type === 'custom' && (state.split.customDays || []).some((d) => d.length === 0) && note('warn', 'Assign at least one muscle group to every training day to continue.')}
       </>);
     },
@@ -461,7 +457,7 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
     </>),
     12: () => (<>
       <Eyebrow n={13} title="Progression model" sub="How load, volume and intensity advance over time." />
-      <div className="grid gap-2.5">{PROGRESSIONS.map((p) => { const lv = levelRank(effLevel(state)); const blockP = isBlock(state); const dis = lv < p.min || (blockP && !['percent', 'undulating'].includes(p.id)); return cardChoice(state.progression.type === p.id, (e) => { if (dis) return; selectSingle(e.currentTarget as HTMLElement, (s) => { s.progression.type = p.id; }); }, <>{p.label} {p.min > 0 ? badge('lvl', ['', '', 'Intermediate+', 'Advanced'][p.min]) : null}</>, p.desc); })}</div>
+      <div className="grid gap-2.5">{PROGRESSIONS.map((p) => { const lv = levelRank(effLevel(state)); const dis = lv < p.min; return cardChoice(state.progression.type === p.id, (e) => { if (dis) return; selectSingle(e.currentTarget as HTMLElement, (s) => { s.progression.type = p.id; }); }, <>{p.label} {p.min > 0 ? badge('lvl', ['', '', 'Intermediate+', 'Advanced'][p.min]) : null}</>, p.desc); })}</div>
       <SecHead>Deload protocol</SecHead>
       <div className="grid gap-2.5">{[{ id: 'scheduled', label: 'Scheduled Deload', desc: 'Auto-reduce every Nth week' }, { id: 'reactive', label: 'Reactive Deload', desc: 'Triggered when performance stalls' }, { id: 'none', label: 'No Deload', desc: 'Not recommended past 4 weeks' }].map((o) => cardChoice(state.progression.deloadProtocol === o.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.progression.deloadProtocol = o.id as 'scheduled' | 'reactive' | 'none'; }), o.label, o.desc))}</div>
       {state.progression.deloadProtocol === 'scheduled' && <><SecHead>Frequency</SecHead><div className="flex flex-wrap gap-2">{[3, 4, 5, 6].map((n) => chip(state.progression.deloadFrequency === n, 'Every ' + n + 'th wk', () => update((s) => { s.progression.deloadFrequency = n; }), n))}</div></>}
@@ -564,11 +560,10 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
   function poolDefs(muscle: MuscleGroup) { return poolFor(muscle, lib, availableEquipment(state), new Set(), itemsForEngine(state)); }
   const fmtPresc = (e: GeneratedExercise) => `${e.sets}×${e.reps}${e.metric === 'time' || e.metric === 'weight-time' ? 's' : ''}`;
   function renderExercises() {
-    const block = isBlock(state); const phase = block ? curPhase : 0;
+    const phase = 0;
     const days = program[phase] || [];
     return (<>
       <Eyebrow n={16} title="Your program" sub="Pick a different movement from any dropdown, or add/remove exercises. Core is listed like any other muscle group." />
-      {block && <div className="flex flex-wrap gap-1.5 mb-3">{['Phase 1: Hypertrophy', 'Phase 2: Strength', 'Phase 3: Peak'].map((p, i) => <button key={i} type="button" onClick={() => setCurPhase(i)} className={`rounded-lg border px-3 py-2 text-[12px] ${i === curPhase ? 'bg-accent border-accent text-white' : 'bg-bg-card border-ink-line text-ink-dim'}`}>{p}</button>)}</div>}
       {days.map((d, di) => {
         const daySets = d.exercises.reduce((a, e) => a + e.sets, 0);
         const addMuscles = d.dayMuscles.filter((m) => m === 'core' || state.prioritization.tiers[m] != null) as string[];
@@ -637,7 +632,7 @@ function AddRow({ muscles, onAdd }: { muscles: string[]; onAdd: (m: string) => v
   </div>;
 }
 function toggle<T>(arr: T[], v: T) { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
-function itemsForEngine(s: WizardState): Set<string> | undefined { return (s.equipment.environment === 'commercial' && s.equipment.items.length === 0) ? undefined : new Set(s.equipment.items); }
+function itemsForEngine(s: WizardState): Set<string> | undefined { return s.equipment.environment === 'commercial' ? undefined : new Set(s.equipment.items); }
 
 const GOALS: { id: WizGoal; label: string; desc: string }[] = [
   { id: 'muscle', label: 'Build Muscle', desc: 'Maximize muscle size, fullness, and definition.' },
@@ -687,7 +682,6 @@ const VOL_FRAMEWORKS: { id: VolumeFramework; label: string; desc: string }[] = [
 ];
 const PERIODIZATIONS: { id: PeriodizationStrategy; label: string; desc: string }[] = [
   { id: 'none', label: 'None / Straight Run', desc: 'Same structure & exercises throughout.' },
-  { id: 'block', label: 'Block Periodization', desc: 'Distinct phases; exercises & rep ranges change between blocks.' },
   { id: 'dup', label: 'Daily Undulating (DUP)', desc: 'Rep ranges vary session to session; same exercises.' },
   { id: 'weekly', label: 'Weekly Undulating', desc: 'Rep ranges vary week to week; same exercises.' },
 ];

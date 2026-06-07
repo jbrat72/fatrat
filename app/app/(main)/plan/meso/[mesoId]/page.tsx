@@ -8,8 +8,8 @@ import { getRepository } from '@/lib/firestore';
 import { terminologyMode, usesAdvancedTerminology } from '@/lib/periodization';
 import type { Mesocycle, Microcycle, WorkoutSession } from '@/types';
 import { ChangePlanSheet } from '@/components/plan/ChangePlanSheet';
-import { TemplateWizard } from '@/components/plan/TemplateWizard';
-import { mesocycleToTemplate } from '@/lib/program/mesoToTemplate';
+import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
+import { activateWizardProgram } from '@/lib/wizard/persist';
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -21,10 +21,7 @@ export default function MesoDetailPage() {
   const [micros, setMicros] = useState<Microcycle[]>([]);
   const [sessionsByMicro, setSessionsByMicro] = useState<Record<string, WorkoutSession[]>>({});
   const [changeOpen, setChangeOpen] = useState(false);
-  const [wizardOpen, setWizardOpen] = useState(false);
-  // When set, the wizard opens pre-populated with the user's current plan
-  // ("Edit this plan" path from the Change Plan sheet).
-  const [editTemplate, setEditTemplate] = useState<ReturnType<typeof mesocycleToTemplate> | null>(null);
+  const [editV2Open, setEditV2Open] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
@@ -117,20 +114,25 @@ export default function MesoDetailPage() {
         onClose={() => setChangeOpen(false)}
         onChanged={() => setRefreshTick((n) => n + 1)}
         onEdit={() => {
-          // Build a template snapshot of the current plan and hand it to the
-          // wizard. Saving via "Make it active" archives the current plan
-          // and starts a fresh one.
-          setEditTemplate(mesocycleToTemplate(meso, micros, Object.values(sessionsByMicro).flat()));
+          // Editing rebuilds the plan in Plan Wizard v2, seeded with its name.
+          // Saving archives the current plan and starts a fresh one.
           setChangeOpen(false);
-          setWizardOpen(true);
+          setEditV2Open(true);
         }}
       />
-      <TemplateWizard
-        open={wizardOpen}
-        onClose={() => { setWizardOpen(false); setEditTemplate(null); }}
-        initialTemplate={editTemplate}
-        onSaved={() => { setRefreshTick((n) => n + 1); setEditTemplate(null); }}
-      />
+      {editV2Open && user && (
+        <div className="fixed inset-0 z-50 bg-bg overflow-y-auto">
+          <PlanWizardV2
+            user={user}
+            initialName={meso.name}
+            onClose={() => setEditV2Open(false)}
+            onComplete={async (state, program) => {
+              try { await activateWizardProgram(state, program, user); router.push('/today'); }
+              catch (err) { alert('Could not save: ' + ((err as Error)?.message ?? 'unknown error')); }
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

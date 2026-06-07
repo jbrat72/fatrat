@@ -54,6 +54,11 @@ export interface ExerciseDefinition {
   patterns: MovementPattern[];
   /** How sets are measured. Defaults to 'weight-reps' when omitted. */
   metric?: ExerciseMetric;
+  /** Granular equipment (Page-5 checklist labels) REQUIRED beyond the coarse
+   *  `equipment` type. e.g. a leg-press machine, a bench, a pull-up bar. All
+   *  listed items must be present (an Adjustable bench also satisfies Flat).
+   *  Optional/unnecessary equipment is omitted (e.g. a Russian Twist needs none). */
+  requiresEquipment?: string[];
   /** True = custom user-created exercise; false = global library entry. */
   isCustom?: boolean;
   ownerUserId?: string; // only set when isCustom
