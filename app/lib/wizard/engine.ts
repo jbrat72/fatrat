@@ -13,7 +13,7 @@
  *
  * Mirrors the approved mockup. No React, no Firestore.
  */
-import type { ExerciseDefinition, EquipmentType, MuscleGroup } from '@/types';
+import type { ExerciseDefinition, EquipmentType, MuscleGroup, ExerciseMetric } from '@/types';
 import { DEFAULT_LANDMARKS } from '@/lib/periodization';
 import {
   WIZARD_MUSCLES, type WizardState, type WizTier, type WeekCol,
@@ -46,6 +46,15 @@ export const DAY_MUSCLES: Record<string, MuscleGroup[]> = {
   'Chest': ['chest'], 'Back': ['back'], 'Shoulders': ['shoulders'], 'Arms': ['biceps', 'triceps', 'forearms'],
   'Chest+Back': ['chest', 'back'], 'Shoulders+Arms': ['shoulders', 'biceps', 'triceps'],
 };
+
+/** Per-training-day layout: a label + its muscle list. Handles custom splits. */
+export function dayLayout(state: WizardState): { type: string; muscles: MuscleGroup[] }[] {
+  if (state.split.type === 'custom' && state.split.customDays) {
+    return state.split.customDays.map((ms, i) => ({ type: ms.length ? ms.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(' / ') : `Day ${i + 1}`, muscles: ms }));
+  }
+  const seq = SPLIT_SEQ[state.split.type || ''] || ['Full Body', 'Full Body'];
+  return seq.map((t) => ({ type: t, muscles: DAY_MUSCLES[t] || DAY_MUSCLES['Full Body'] }));
+}
 
 /* ---------------- equipment ---------------- */
 
@@ -123,13 +132,33 @@ export function muscleSetsForWeek(state: WizardState, m: MuscleGroup, wk: WeekCo
 
 /** How many times per week a muscle is trained, per the chosen split. */
 export function timesPerWeek(state: WizardState): Partial<Record<MuscleGroup, number>> {
-  const seq = SPLIT_SEQ[state.split.type || ''] || [];
   const t: Partial<Record<MuscleGroup, number>> = {};
-  seq.forEach((type) => (DAY_MUSCLES[type] || []).forEach((m) => { t[m] = (t[m] || 0) + 1; }));
+  dayLayout(state).forEach((d) => d.muscles.forEach((m) => { t[m] = (t[m] || 0) + 1; }));
   return t;
 }
 
 /* ---------------- exercise selection ---------------- */
+
+/**
+ * Some movements are tagged 'bodyweight' in the library but actually need a
+ * specific piece of equipment. Map them to the granular Page-5 checklist label
+ * so they only appear when the user actually has it. (Commercial pre-checks
+ * everything, so this is transparent there.)
+ */
+const SPECIAL_EQUIP_BY_ID: Record<string, string> = {
+  'ab-wheel': 'Ab Wheel',
+  'hanging-leg-raise': 'Pull-Up Bar',
+  'pull-up': 'Pull-Up Bar', 'chin-up': 'Pull-Up Bar', 'pullup-wide': 'Pull-Up Bar',
+  'pullup-neutral': 'Pull-Up Bar', 'pullup-commando': 'Pull-Up Bar',
+  'pullup-archer': 'Pull-Up Bar', 'pullup-negative': 'Pull-Up Bar',
+  'dip': 'Dip Station', 'bench-dip': 'Dip Station',
+};
+function specialEquipOk(e: ExerciseDefinition, items?: Set<string>): boolean {
+  const req = SPECIAL_EQUIP_BY_ID[e.id];
+  if (!req) return true;
+  if (!items) return true; // caller didn't supply granular items — don't filter
+  return items.has(req);
+}
 
 function repsFor(state: WizardState, anchor: boolean): number {
   const rr = state.setsAndReps.repRange;
@@ -138,14 +167,19 @@ function repsFor(state: WizardState, anchor: boolean): number {
   if (rr === 'mixed') return anchor ? 5 : 10;
   return anchor ? 8 : 10; // hypertrophy / default
 }
+const isTimeBased = (m?: ExerciseMetric) => m === 'time' || m === 'weight-time';
+/** Per-set count for an exercise: seconds for time-based, reps otherwise. */
+function countFor(state: WizardState, e: ExerciseDefinition, anchor: boolean): number {
+  return isTimeBased(e.metric) ? 30 : repsFor(state, anchor);
+}
 
 /** Equipment-valid exercises for a muscle, compounds first (anchors lead). */
 export function poolFor(
   m: MuscleGroup, library: ExerciseDefinition[], avail: Set<EquipmentType>, hidden: Set<string>,
+  items?: Set<string>,
 ): ExerciseDefinition[] {
   const ok = library.filter((e) =>
-    e.primaryMuscle === m && avail.has(e.equipment) && !hidden.has(e.id) &&
-    (e.metric == null || e.metric === 'weight-reps' || e.metric === 'reps'));
+    e.primaryMuscle === m && avail.has(e.equipment) && !hidden.has(e.id) && specialEquipOk(e, items));
   const isCompound = (e: ExerciseDefinition) => e.patterns?.includes('compound');
   return ok.sort((a, b) => Number(isCompound(b)) - Number(isCompound(a)));
 }
@@ -172,7 +206,8 @@ export function generateWeek(
 ): GeneratedDay[] {
   const avail = availableEquipment(state);
   const hidden = new Set(opts?.hidden || []);
-  const seq = SPLIT_SEQ[state.split.type || ''] || ['Full Body', 'Full Body'];
+  const items = (state.equipment.environment === 'commercial' && state.equipment.items.length === 0) ? undefined : new Set(state.equipment.items);
+  const layout = dayLayout(state);
   const tpw = timesPerWeek(state);
   const dows = workDows(state);
   const emph = WIZARD_MUSCLES.filter((m) => state.prioritization.tiers[m] === 'emphasize');
@@ -187,15 +222,14 @@ export function generateWeek(
   }
   const occ: Partial<Record<MuscleGroup, number>> = {};
 
-  const days = seq.map((type, di): GeneratedDay => {
-    const muscles = DAY_MUSCLES[type] || DAY_MUSCLES['Full Body'];
+  const days = layout.map((day, di): GeneratedDay => {
     const exercises: GeneratedExercise[] = [];
-    muscles.forEach((m) => {
+    day.muscles.forEach((m) => {
       if (state.prioritization.tiers[m] == null || !alloc[m]) return;
       const idx = occ[m] || 0; occ[m] = idx + 1;
       const setsToday = (alloc[m] as number[])[idx] || 0;
       if (setsToday <= 0) return;
-      const pool = poolFor(m, library, avail, hidden);
+      const pool = poolFor(m, library, avail, hidden, items);
       if (pool.length === 0) return;
       const nEx = Math.max(1, Math.round(setsToday / DEFAULT_SETS));
       const b = Math.floor(setsToday / nEx), r = setsToday - b * nEx;
@@ -203,30 +237,31 @@ export function generateWeek(
         const sets = b + (i < r ? 1 : 0); if (sets <= 0) continue;
         const e = pool[(i + di) % pool.length];
         const anchor = isAnchor(e) && i === 0;
-        exercises.push({ exerciseId: e.id, name: e.name, muscle: m, sets, reps: repsFor(state, anchor), anchor });
+        exercises.push({ exerciseId: e.id, name: e.name, muscle: m, sets, reps: countFor(state, e, anchor), metric: e.metric || 'weight-reps', anchor });
       }
     });
-    return { dow: dows[di], type, emphasis: di === 0 && emph.length ? `${emph[0]} emphasis` : '', exercises };
+    return { dow: dows[di], type: day.type, dayMuscles: day.muscles, emphasis: di === 0 && emph.length ? `${emph[0]} emphasis` : '', exercises };
   });
 
-  // core as its own group
+  // core as its own group — rotated day to day so it varies
   const cm = state.core.method;
   if (cm && cm !== 'none' && cm !== 'compound') {
     const n = ({ '1-2': 2, '2-3': 3, '3-4': 4 } as Record<string, number>)[state.core.blockExercises] || 3;
     const lowback = state.profile.injuries.includes('lowback');
-    let corePool = poolFor('core', library, avail, hidden);
-    if (lowback) corePool = corePool.filter((e) => !e.patterns?.includes('hinge')); // crude flexion guard
+    let corePool = poolFor('core', library, avail, hidden, items);
+    if (lowback) corePool = corePool.filter((e) => !e.patterns?.includes('hinge'));
     const targets = cm === 'day' ? (days[0] ? [days[0]] : []) : days;
-    targets.forEach((d) => {
-      for (let i = 0; i < n && i < corePool.length; i++) {
-        const e = corePool[i];
-        exercisesPush(d, { exerciseId: e.id, name: e.name, muscle: 'core', sets: 3, reps: 12, anchor: false });
+    targets.forEach((d, di) => {
+      if (corePool.length === 0) return;
+      if (!d.dayMuscles.includes('core')) d.dayMuscles.push('core');
+      for (let i = 0; i < n; i++) {
+        const e = corePool[(di * n + i) % corePool.length];
+        d.exercises.push({ exerciseId: e.id, name: e.name, muscle: 'core', sets: 3, reps: countFor(state, e, false), metric: e.metric || 'weight-reps', anchor: false });
       }
     });
   }
   return days;
 }
-function exercisesPush(d: GeneratedDay, ex: GeneratedExercise) { d.exercises.push(ex); }
 
 /** Representative load week for display (mid-block for Block periodization). */
 export function representativeWeek(state: WizardState): { wk: WeekCol; loadCount: number } {

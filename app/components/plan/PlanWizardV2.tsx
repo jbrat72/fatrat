@@ -8,18 +8,18 @@
  * yet — "Start My Program" calls onComplete with the final state + generated
  * program; Chunk 3 wires materialization to Firestore + Edit-this-plan.
  */
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
 import type { MuscleGroup, UserProfile } from '@/types';
 import type {
   WizardState, WizGoal, WizExperience, WizStatus, WizTier, BaseStyle,
   VolumeFramework, PeriodizationStrategy, RepRange, CoreMethod, RestPref,
-  GeneratedDay,
+  GeneratedDay, GeneratedExercise,
 } from '@/lib/wizard/types';
 import { WIZARD_MUSCLES } from '@/lib/wizard/types';
 import {
-  SPLIT_SEQ, DAY_MUSCLES, availableEquipment, weekStructure,
+  SPLIT_SEQ, availableEquipment, weekStructure,
   muscleSetsForWeek, timesPerWeek, isBlock, durationWeeks,
   poolFor, generateWeek,
 } from '@/lib/wizard/engine';
@@ -228,7 +228,10 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
   // after render of a page/selection: scroll to next section + auto-seen for short pages
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (pendingScroll.current != null) { scrollToSection(pendingScroll.current); pendingScroll.current = null; }
+    if (pendingScroll.current != null) {
+      const idx = pendingScroll.current; pendingScroll.current = null;
+      requestAnimationFrame(() => requestAnimationFrame(() => scrollToSection(idx)));
+    }
     const fits = document.body.scrollHeight <= window.innerHeight + 8;
     if (fits || seenPages.current.has(page)) setSeen(true);
   }, [state, page]);
@@ -259,7 +262,7 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
       case 3: return !!s.schedule.daysPerWeek && !!s.schedule.sessionMinutes && !!s.schedule.durationWeeks;
       case 4: return !!s.equipment.environment;
       case 5: return !!s.trainingStyle.baseStyle && !!s.trainingStyle.volumeFramework && !!s.trainingStyle.periodizationStrategy;
-      case 6: return !!s.split.type;
+      case 6: if (!s.split.type) return false; if (s.split.type === 'custom') return !!s.split.customDays && s.split.customDays.length > 0 && s.split.customDays.every((d) => d.length > 0); return true;
       case 7: return true;
       case 8: return !!s.setsAndReps.repRange && (s.trainingStyle.baseStyle === 'hit' || s.setsAndReps.setTypes.length > 0);
       case 9: return s.trainingStyle.baseStyle === 'hit' || !!s.restAndTempo.restPreference;
@@ -361,7 +364,7 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
         <Eyebrow n={5} title="Equipment access" sub="Filters the exercise library to what you can actually do." />
         <div className="grid gap-2.5">{ENVIRONMENTS.map((o) => cardChoice(env === o.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.equipment.environment = o.id; if (o.id === 'commercial') s.equipment.items = ALL_EQUIP.slice(); else if (o.id === 'hotel') s.equipment.items = ['Resistance Bands']; else if (o.id !== 'bodyweight') s.equipment.items = []; }), o.label, o.desc))}</div>
         {env && env !== 'bodyweight' && Object.entries(EQUIP_GROUPS).map(([grp, items]) => (
-          <div key={grp}><SecHead>{grp}</SecHead><div className="flex flex-wrap gap-2">{items.map((i) => chip(state.equipment.items.includes(i), i, () => update((s) => toggle(s.equipment.items, i)), i))}</div></div>
+          <Fragment key={grp}><SecHead>{grp}</SecHead><div className="flex flex-wrap gap-2">{items.map((i) => chip(state.equipment.items.includes(i), i, () => update((s) => toggle(s.equipment.items, i)), i))}</div></Fragment>
         ))}
         {env === 'bodyweight' && note('ok', 'Bodyweight selected — Calisthenics boosted, 1RM replaced with bodyweight milestones.')}
       </>);
@@ -384,11 +387,16 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
       </>);
     },
     6: () => {
-      const list = allowedSplits();
+      const list = [...allowedSplits(), { id: 'custom', label: 'Custom — build each day', sub: 'Assign muscle groups to each training day yourself', boosted: false }];
       return (<>
         <Eyebrow n={7} title="Training split & rest days" sub={`How muscle groups spread across your ${state.schedule.daysPerWeek} days. Only feasible options shown.`} />
-        <div className="grid gap-2.5">{list.map((sp) => (<div key={sp.id}>{cardChoice(state.split.type === sp.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.split.type = sp.id; }), <>{sp.label} {sp.boosted ? badge('rec', 'Top pick') : null}</>, sp.sub, state.split.type === sp.id ? splitPreview(sp.id) : null)}{state.split.type === sp.id ? restPicker() : null}</div>))}</div>
+        <div className="grid gap-2.5">{list.map((sp) => (<div key={sp.id}>
+          {cardChoice(state.split.type === sp.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.split.type = sp.id; if (sp.id === 'custom') { const n = s.schedule.daysPerWeek || 0; if (!s.split.customDays || s.split.customDays.length !== n) s.split.customDays = Array.from({ length: n }, () => [] as MuscleGroup[]); } }), <>{sp.label} {sp.boosted ? badge('rec', 'Top pick') : null}</>, sp.sub, state.split.type === sp.id ? splitPreview(sp.id) : null)}
+          {state.split.type === sp.id ? restPicker() : null}
+          {state.split.type === sp.id && sp.id === 'custom' ? customBuilder() : null}
+        </div>))}</div>
         {isBlock(state) && note('info', 'Exercises and rep ranges change across phases, but the split structure stays consistent.')}
+        {state.split.type === 'custom' && (state.split.customDays || []).some((d) => d.length === 0) && note('warn', 'Assign at least one muscle group to every training day to continue.')}
       </>);
     },
     7: () => {
@@ -469,10 +477,15 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
             {chip(state.baselines.calibrationWeek, (state.baselines.calibrationWeek ? '✓ ' : '+ ') + 'Add a calibration week to find my 1RM', () => update((s) => { s.baselines.calibrationWeek = !s.baselines.calibrationWeek; if (s.baselines.calibrationWeek) s.baselines.allConservative = false; }))}
           </div>
           {state.baselines.calibrationWeek && note('ok', 'Week 1 becomes a calibration week — each lift is set to “Calculated during calibration week,” and the program runs one week longer.')}
-          {lifts.map((l) => (<div key={l} className="rounded-2xl border border-ink-line bg-bg-card p-3.5 mb-2.5">
-            <div className="font-semibold text-[14px] mb-1">{l}</div>
-            {state.baselines.calibrationWeek ? <div className="text-[13px] text-ink-dim">Calculated during calibration week</div> : <div className="flex flex-wrap gap-2">{[['known', 'Known 1RM'], ['working', 'Recent set'], ['conservative', 'Start conservative']].map(([id, lab]) => chip((state.baselines.methods[l] || (state.baselines.allConservative ? 'conservative' : 'working')) === id, lab, () => update((s) => { s.baselines.methods[l] = id as 'known' | 'working' | 'conservative'; }), id))}</div>}
-          </div>))}
+          {lifts.map((l) => { const method = state.baselines.calibrationWeek ? 'calibration' : (state.baselines.methods[l] || (state.baselines.allConservative ? 'conservative' : 'working')); const unit = user.units === 'metric' ? 'kg' : 'lb'; const inp = 'w-full rounded-lg border border-ink-line bg-bg-input px-3 py-2.5 text-[15px] font-mono'; return (<div key={l} className="rounded-2xl border border-ink-line bg-bg-card p-3.5 mb-2.5">
+            <div className="font-semibold text-[14px] mb-1.5">{l}</div>
+            {state.baselines.calibrationWeek ? <div className="text-[13px] text-ink-dim">Calculated during calibration week</div> : <>
+              <div className="flex flex-wrap gap-2">{[['known', 'Known 1RM'], ['working', 'Recent set'], ['conservative', 'Start conservative']].map(([id, lab]) => chip(method === id, lab, () => update((s) => { s.baselines.methods[l] = id as 'known' | 'working' | 'conservative'; }), id))}</div>
+              {method === 'known' && <input className={inp + ' mt-2.5'} inputMode="numeric" placeholder={`1RM (${unit})`} />}
+              {method === 'working' && <><div className="flex items-center gap-2 mt-2.5"><input className={inp} style={{ flex: 2 }} inputMode="numeric" placeholder={`weight (${unit})`} /><span className="text-ink-mute">×</span><input className={inp} style={{ flex: 1 }} inputMode="numeric" placeholder="reps" /></div><div className="text-[12px] text-ink-mute mt-1.5">Best from a 3–8 rep set. We estimate your 1RM from this.</div></>}
+              {method === 'conservative' && <div className="text-[12px] text-ink-mute mt-1.5">We’ll assign a safe body-weight-relative starting weight for your level.</div>}
+            </>}
+          </div>); })}
         </>}
         {bodyweight && note('info', 'We’ll assess push-ups, pull-ups, plank and squat depth to set starting progression levels.')}
       </>);
@@ -482,9 +495,25 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
   };
 
   /* ---------- page 7 sub-renders ---------- */
+  function workDowList(): number[] { const sd = state.schedule.startDow, rest = state.schedule.restDays; const out: number[] = []; for (let p = 0; p < 7; p++) { const dow = (sd + p) % 7; if (!rest.includes(dow)) out.push(dow); } return out; }
+  function customBuilder() {
+    const dows = workDowList();
+    return <div className="rounded-2xl border border-ink-line bg-bg-card p-3 mt-0.5">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-dim mb-1">Build each day</div>
+      <p className="text-[12px] text-ink-dim mb-2">Tap muscle groups to assign them to each training day. Core is added separately on the Core page.</p>
+      {dows.map((dow, i) => (<div key={i} className="mb-3">
+        <div className="text-[13px] font-semibold mb-1.5">{DOW_FULL[dow]}{((state.split.customDays?.[i]?.length) || 0) === 0 ? <span className="text-ink-mute font-normal"> — empty</span> : null}</div>
+        <div className="flex flex-wrap gap-1.5">{WIZARD_MUSCLES.map((m) => chip((state.split.customDays?.[i] || []).includes(m), cap(m), () => update((s) => { if (!s.split.customDays) s.split.customDays = []; while (s.split.customDays.length < dows.length) s.split.customDays.push([]); toggle(s.split.customDays[i], m); }), m))}</div>
+      </div>))}
+    </div>;
+  }
   function splitPreview(id: string) {
-    const seq = SPLIT_SEQ[id] || []; const sd = state.schedule.startDow; const rest = state.schedule.restDays; let wi = 0;
-    return <div className="grid grid-cols-7 gap-1 mt-2">{Array.from({ length: 7 }, (_, p) => { const dow = (sd + p) % 7; const isRest = rest.includes(dow); const lbl = isRest ? 'rest' : (seq[wi++] || '—'); return <div key={p} className={`rounded-md p-1.5 text-center text-[10px] min-h-[48px] ${isRest ? 'border border-dashed border-ink-line text-ink-mute' : 'border border-accent-dim'}`}><div className="font-bold text-ink-dim text-[9px] uppercase">{DOW_ABBR[dow]}</div><div className="mt-1 font-semibold leading-tight">{lbl}</div></div>; })}</div>;
+    const sd = state.schedule.startDow; const rest = state.schedule.restDays; let wi = 0;
+    const cd = state.split.customDays || [];
+    const labelFor = (workIdx: number) => id === 'custom'
+      ? ((cd[workIdx] || []).map((m) => cap(m).slice(0, 3)).join('/') || '—')
+      : ((SPLIT_SEQ[id] || [])[workIdx] || '—');
+    return <div className="grid grid-cols-7 gap-1 mt-2">{Array.from({ length: 7 }, (_, p) => { const dow = (sd + p) % 7; const isRest = rest.includes(dow); const lbl = isRest ? 'rest' : labelFor(wi++); return <div key={p} className={`rounded-md p-1.5 text-center text-[10px] min-h-[48px] ${isRest ? 'border border-dashed border-ink-line text-ink-mute' : 'border border-accent-dim'}`}><div className="font-bold text-ink-dim text-[9px] uppercase">{DOW_ABBR[dow]}</div><div className="mt-1 font-semibold leading-tight">{lbl}</div></div>; })}</div>;
   }
   function restPicker() {
     const sd = state.schedule.startDow, d = state.schedule.daysPerWeek || 0;
@@ -532,36 +561,33 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
   }
 
   /* ---------- page 16 exercises ---------- */
-  function corePoolNames(): string[] {
-    const avail = availableEquipment(state);
-    return poolFor('core', lib, avail, new Set()).map((e) => e.name);
-  }
+  function poolDefs(muscle: MuscleGroup) { return poolFor(muscle, lib, availableEquipment(state), new Set(), itemsForEngine(state)); }
+  const fmtPresc = (e: GeneratedExercise) => `${e.sets}×${e.reps}${e.metric === 'time' || e.metric === 'weight-time' ? 's' : ''}`;
   function renderExercises() {
     const block = isBlock(state); const phase = block ? curPhase : 0;
     const days = program[phase] || [];
-    const avail = availableEquipment(state);
     return (<>
       <Eyebrow n={16} title="Your program" sub="Pick a different movement from any dropdown, or add/remove exercises. Core is listed like any other muscle group." />
       {block && <div className="flex flex-wrap gap-1.5 mb-3">{['Phase 1: Hypertrophy', 'Phase 2: Strength', 'Phase 3: Peak'].map((p, i) => <button key={i} type="button" onClick={() => setCurPhase(i)} className={`rounded-lg border px-3 py-2 text-[12px] ${i === curPhase ? 'bg-accent border-accent text-white' : 'bg-bg-card border-ink-line text-ink-dim'}`}>{p}</button>)}</div>}
       {days.map((d, di) => {
         const daySets = d.exercises.reduce((a, e) => a + e.sets, 0);
-        const addMuscles = (DAY_MUSCLES[d.type] || []).filter((m) => state.prioritization.tiers[m] != null) as string[];
-        if (['block', 'superset', 'day'].includes(state.core.method || '')) addMuscles.push('core');
+        const addMuscles = d.dayMuscles.filter((m) => m === 'core' || state.prioritization.tiers[m] != null) as string[];
         return <div key={di} className="rounded-2xl border border-ink-line overflow-hidden mb-2.5">
           <div className="flex justify-between items-center px-4 py-3 bg-bg-elev font-bold text-[14px]">{DOW_FULL[d.dow]} — {d.type}<span className="text-[11px] text-ink-dim font-medium">{d.emphasis ? d.emphasis + ' · ' : ''}{daySets} sets</span></div>
           {d.exercises.map((e, ei) => {
-            const opts = e.muscle === 'core' ? corePoolNames() : poolFor(e.muscle as MuscleGroup, lib, avail, new Set()).map((x) => x.name);
-            const list = opts.includes(e.name) ? opts : [e.name, ...opts];
+            const defs = poolDefs(e.muscle);
+            const names = defs.map((x) => x.name);
+            const list = names.includes(e.name) ? names : [e.name, ...names];
             return <div key={ei} className="flex items-center gap-2.5 px-4 py-2.5 border-t border-ink-line text-[13px]">
               <span className="w-[72px] shrink-0 text-[12px] font-semibold text-ink-dim">{cap(e.muscle)}{e.anchor ? ' 🔒' : ''}</span>
-              <select className="flex-1 min-w-0 rounded-lg border border-ink-line bg-bg-input px-2.5 py-2 text-[13px]" value={e.name} onChange={(ev) => setProgram((pr) => { const c = structuredClone(pr); c[phase][di].exercises[ei].name = ev.target.value; return c; })}>{list.map((o) => <option key={o} value={o}>{o}</option>)}</select>
-              <span className="font-mono text-[12px] text-ink-dim">{e.sets}×{e.reps}</span>
+              <select className="flex-1 min-w-0 rounded-lg border border-ink-line bg-bg-input px-2.5 py-2 text-[13px]" value={e.name} onChange={(ev) => setProgram((pr) => { const c = structuredClone(pr); const ex = c[phase][di].exercises[ei]; const def = defs.find((x) => x.name === ev.target.value); ex.name = ev.target.value; if (def) { const tb = def.metric === 'time' || def.metric === 'weight-time'; const wasTb = ex.metric === 'time' || ex.metric === 'weight-time'; ex.metric = def.metric || 'weight-reps'; ex.reps = tb ? 30 : (wasTb ? 10 : ex.reps); } return c; })}>{list.map((o) => <option key={o} value={o}>{o}</option>)}</select>
+              <span className="font-mono text-[12px] text-ink-dim">{fmtPresc(e)}</span>
               <button type="button" onClick={() => setProgram((pr) => { const c = structuredClone(pr); c[phase][di].exercises.splice(ei, 1); return c; })} className="w-8 shrink-0 rounded-md border border-ink-line text-ink-mute hover:border-danger hover:text-danger">✕</button>
             </div>;
           })}
           <AddRow muscles={addMuscles} onAdd={(m) => setProgram((pr) => {
-            const c = structuredClone(pr); const nm = m === 'core' ? corePoolNames()[0] : (poolFor(m as MuscleGroup, lib, avail, new Set())[0]?.name);
-            if (nm) c[phase][di].exercises.push({ exerciseId: null, name: nm, muscle: m as MuscleGroup, sets: 3, reps: 10, anchor: false });
+            const c = structuredClone(pr); const def = poolDefs(m as MuscleGroup)[0];
+            if (def) { const tb = def.metric === 'time' || def.metric === 'weight-time'; c[phase][di].exercises.push({ exerciseId: def.id, name: def.name, muscle: m as MuscleGroup, sets: 3, reps: tb ? 30 : 10, metric: def.metric || 'weight-reps', anchor: false }); }
             return c;
           })} />
         </div>;
@@ -571,9 +597,9 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
 
   function programLifts(): string[] {
     if (state.equipment.environment === 'bodyweight') return [];
-    const avail = availableEquipment(state);
+    const avail = availableEquipment(state); const items = itemsForEngine(state);
     const out: string[] = [];
-    (['quads', 'chest', 'back', 'hamstrings', 'shoulders'] as MuscleGroup[]).forEach((m) => { const p = poolFor(m, lib, avail, new Set()).find((e) => e.patterns?.includes('compound')); if (p) out.push(p.name); });
+    (['quads', 'chest', 'back', 'hamstrings', 'shoulders'] as MuscleGroup[]).forEach((m) => { const p = poolFor(m, lib, avail, new Set(), items).find((e) => e.patterns?.includes('compound')); if (p) out.push(p.name); });
     return out;
   }
 
@@ -611,6 +637,7 @@ function AddRow({ muscles, onAdd }: { muscles: string[]; onAdd: (m: string) => v
   </div>;
 }
 function toggle<T>(arr: T[], v: T) { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
+function itemsForEngine(s: WizardState): Set<string> | undefined { return (s.equipment.environment === 'commercial' && s.equipment.items.length === 0) ? undefined : new Set(s.equipment.items); }
 
 const GOALS: { id: WizGoal; label: string; desc: string }[] = [
   { id: 'muscle', label: 'Build Muscle', desc: 'Maximize muscle size, fullness, and definition.' },

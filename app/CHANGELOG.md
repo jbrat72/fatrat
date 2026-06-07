@@ -8,6 +8,46 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.70.0 — 2026-06-06
+
+- Plan Wizard v2 (Chunk 2):
+  - Time-based exercises now display correctly. Each generated exercise carries
+    its library `metric`; time/weight-time moves (Plank, Side Plank, carries)
+    show as `sets×Ns` (e.g. 3×30s) instead of `sets×reps`. Swapping or adding
+    an exercise updates the metric/units to match the new movement.
+  - Core now varies day to day — core exercises rotate through the pool by day
+    index instead of repeating the same picks every session.
+  - New custom split: Page 7 has a "Custom — build each day" option that lets
+    you assign muscle groups to each training day yourself (e.g. Mon chest/back,
+    Tue biceps/triceps, Wed shoulders). The engine generates and the volume card
+    reconciles from this per-day layout via a new `dayLayout()`.
+  - Engine tests added for time metrics, core day-to-day variation, and custom
+    splits.
+
+## v0.69.3 — 2026-06-06
+
+- Plan Wizard v2 (Chunk 2): Page 5 (Equipment) now scrolls down to the
+  equipment checklist after you pick a training environment. The group headers
+  were wrapped in per-group divs, so they weren't direct children of the page
+  container the scroll logic scans; rendering them as fragments restores the
+  auto-scroll target.
+
+## v0.69.2 — 2026-06-06
+
+- Plan Wizard v2 review fixes (Chunk 2):
+  - Page 6 (Training Style) now scrolls to the next section after the first
+    selection — the auto-scroll runs on a double rAF so it fires after the
+    base-style choice reveals the Volume/Periodization sections.
+  - Page 14 (Baselines) now shows the right inputs per method: a weight field
+    for "Known 1RM", and weight × reps for "Recent set".
+  - Page 16 exercise pools fixed: (a) time-based core holds (Plank, Side Plank)
+    were being filtered out by a metric guard — removed, so they appear now;
+    (b) bodyweight-tagged moves that actually need equipment (Ab Wheel, pull-up
+    bar, dip station) are gated behind the Page-5 checklist, so they no longer
+    appear when you didn't select that equipment. Commercial gyms still get
+    everything (and respect explicit unchecks).
+  - Engine tests added for both behaviors.
+
 ## v0.69.1 — 2026-06-06
 
 - Fixed blank screen at `/wizard-v2`: the preview route returned null whenever

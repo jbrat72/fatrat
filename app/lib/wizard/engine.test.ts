@@ -4,9 +4,15 @@ import type { WizardState } from './types';
 import { WIZARD_MUSCLES } from './types';
 import {
   weekStructure, muscleSetsForWeek, generateWeek, availableEquipment,
-  representativeWeek, isVolumeRamped,
+  representativeWeek, isVolumeRamped, poolFor,
 } from './engine';
 
+function defaultRest(startDow: number, d: number): number[] {
+  const DO: Record<number, number[]> = { 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 4], 5: [0, 1, 2, 4, 5], 6: [0, 1, 2, 3, 4, 5], 7: [0, 1, 2, 3, 4, 5, 6] };
+  const work = new Set(DO[d] || []); const rest: number[] = [];
+  for (let off = 0; off < 7; off++) if (!work.has(off)) rest.push((startDow + off) % 7);
+  return rest;
+}
 function baseState(over: Partial<WizardState> = {}): WizardState {
   const s: WizardState = {
     name: 'Test',
@@ -81,5 +87,62 @@ describe('wizard engine', () => {
     const first = muscleSetsForWeek(s, 'chest', loads[0], loadCount);
     const last = muscleSetsForWeek(s, 'chest', loads[loads.length - 1], loadCount);
     expect(last).toBeGreaterThan(first);
+  });
+
+  it('core pool includes time-based holds (plank, side plank)', () => {
+    const s = baseState();
+    const names = poolFor('core', GLOBAL_EXERCISES, availableEquipment(s), new Set()).map((e) => e.name);
+    expect(names).toContain('Plank');
+    expect(names).toContain('Side Plank');
+    expect(names).toContain('Decline Sit-up');
+  });
+
+  it('equipment-specific bodyweight moves are gated by the granular checklist', () => {
+    // home gym WITHOUT ab wheel / pull-up bar
+    const s = baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Bench — Adjustable'] } });
+    const avail = availableEquipment(s); const items = new Set(s.equipment.items);
+    const core = poolFor('core', GLOBAL_EXERCISES, avail, new Set(), items).map((e) => e.name);
+    expect(core).not.toContain('Ab Wheel Rollout');     // needs Ab Wheel
+    expect(core).not.toContain('Hanging Leg Raise');    // needs Pull-Up Bar
+    expect(core).toContain('Plank');                    // pure bodyweight — still there
+    const back = poolFor('back', GLOBAL_EXERCISES, avail, new Set(), items).map((e) => e.name);
+    expect(back).not.toContain('Pull-up');              // needs Pull-Up Bar
+    // now WITH ab wheel + pull-up bar
+    const s2 = baseState({ equipment: { environment: 'home', items: ['Dumbbells — Adjustable', 'Ab Wheel', 'Pull-Up Bar'] } });
+    const core2 = poolFor('core', GLOBAL_EXERCISES, availableEquipment(s2), new Set(), new Set(s2.equipment.items)).map((e) => e.name);
+    expect(core2).toContain('Ab Wheel Rollout');
+  });
+
+  it('time-based core exercises carry a time metric (seconds, not reps)', () => {
+    const s = baseState(); // bro split, core method 'block'
+    const { wk, loadCount } = representativeWeek(s);
+    const days = generateWeek(s, GLOBAL_EXERCISES, wk, loadCount);
+    const coreEx = days.flatMap((d) => d.exercises).filter((e) => e.muscle === 'core');
+    const plank = coreEx.find((e) => e.name === 'Plank');
+    if (plank) { expect(plank.metric).toBe('time'); expect(plank.reps).toBe(30); }
+    const lib = new Map(GLOBAL_EXERCISES.map((e) => [e.id, e]));
+    coreEx.forEach((e) => { if (e.exerciseId) expect(e.metric).toBe(lib.get(e.exerciseId)!.metric ?? 'weight-reps'); });
+  });
+
+  it('core varies day to day (not the same exercises every day)', () => {
+    const s = baseState({ split: { type: 'fb3' }, schedule: { daysPerWeek: 3, sessionMinutes: 60, startDow: 1, restDays: defaultRest(1, 3), durationWeeks: 8 } });
+    const { wk, loadCount } = representativeWeek(s);
+    const days = generateWeek(s, GLOBAL_EXERCISES, wk, loadCount);
+    const coreByDay = days.map((d) => d.exercises.filter((e) => e.muscle === 'core').map((e) => e.name).join(','));
+    // at least two days should differ
+    expect(new Set(coreByDay).size).toBeGreaterThan(1);
+  });
+
+  it('custom split honors the per-day muscle layout', () => {
+    const s = baseState({
+      split: { type: 'custom', customDays: [['chest', 'back'], ['quads', 'hamstrings']] },
+      core: { method: 'none', frequency: null, blockExercises: '2-3', days: [] },
+      schedule: { daysPerWeek: 2, sessionMinutes: 60, startDow: 1, restDays: defaultRest(1, 2), durationWeeks: 8 },
+    });
+    const { wk, loadCount } = representativeWeek(s);
+    const days = generateWeek(s, GLOBAL_EXERCISES, wk, loadCount);
+    expect(days.length).toBe(2);
+    expect(new Set(days[0].exercises.map((e) => e.muscle))).toEqual(new Set(['chest', 'back']));
+    expect(new Set(days[1].exercises.map((e) => e.muscle))).toEqual(new Set(['quads', 'hamstrings']));
   });
 });

@@ -6,7 +6,7 @@
  * program. Profile-derived fields (age band, sex, bodyweight, injuries) are
  * copied in read-only from the user's FATRAT profile when the wizard opens.
  */
-import type { MuscleGroup } from '@/types';
+import type { MuscleGroup, ExerciseMetric } from '@/types';
 
 export type WizGoal =
   | 'muscle' | 'strength' | 'transform' | 'leanout' | 'fitness' | 'athletic';
@@ -56,7 +56,7 @@ export interface WizardState {
     volumeFramework: VolumeFramework | null;
     periodizationStrategy: PeriodizationStrategy | null;
   };
-  split: { type: string | null };
+  split: { type: string | null; customDays?: MuscleGroup[][] };
   prioritization: { tiers: Partial<Record<MuscleGroup, WizTier>> };
   setsAndReps: { repRange: RepRange | null; setTypes: string[]; autoVary: boolean };
   restAndTempo: { restPreference: RestPref | null; tempoEnabled: boolean; tempoStyle: string | null };
@@ -84,7 +84,9 @@ export interface GeneratedExercise {
   name: string;
   muscle: MuscleGroup;
   sets: number;
+  /** rep count for rep-based metrics; seconds for time-based metrics. */
   reps: number;
+  metric: ExerciseMetric;     // 'weight-reps' | 'reps' | 'time' | 'weight-time'
   anchor: boolean;            // primary compound the progression tracks
 }
 
@@ -92,5 +94,6 @@ export interface GeneratedDay {
   dow: number;                // day-of-week index
   type: string;               // e.g. 'Push', 'Chest', 'Upper', 'Full Body'
   emphasis: string;
+  dayMuscles: MuscleGroup[];  // muscles assigned to this day (for the add-exercise picker)
   exercises: GeneratedExercise[];
 }
