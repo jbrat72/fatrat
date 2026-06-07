@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
+import { ALL_EQUIPMENT } from '@/lib/exercise/equipment';
 import type { UserProfile } from '@/types';
 import type { WizardState } from './types';
 import { WIZARD_MUSCLES } from './types';
@@ -17,7 +18,7 @@ function st(): WizardState {
     name: 'My Plan', goal: { primary: 'muscle', secondary: null }, experience: { level: 'intermediate', status: 'consistent' },
     profile: { ageBand: '30', sex: 'male', bodyWeightKg: 84, injuries: [], stubbornAreas: [] },
     schedule: { daysPerWeek: 5, sessionMinutes: 60, startDow: 1, restDays: [3, 6, 0], durationWeeks: 8 },
-    equipment: { environment: 'commercial', items: [] },
+    equipment: { environment: 'gym', items: ALL_EQUIPMENT },
     trainingStyle: { baseStyle: 'bodybuilding', volumeFramework: 'evidence', periodizationStrategy: 'none' },
     split: { type: 'bro' }, prioritization: { tiers: {} },
     setsAndReps: { repRange: 'hypertrophy', setTypes: ['straight'], autoVary: false },

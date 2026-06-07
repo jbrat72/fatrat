@@ -5,6 +5,7 @@ import { useUser } from '@/components/app';
 import { Button, Card, ModeChip, PageTitle, ChoicePill } from '@/components/ui';
 import { ModeSwitchDialog } from '@/components/settings';
 import { getRepository } from '@/lib/firestore';
+import { EQUIP_GROUPS, equipLabel, inferEquipmentItems } from '@/lib/exercise/equipment';
 import { toJSON, setsCSV } from '@/lib/export';
 import type { ExportBundle } from '@/lib/export';
 import type { UserMode, Units } from '@/types';
@@ -50,6 +51,13 @@ export default function SettingsPage() {
 
   const setSoundsEnabled = async (soundsEnabled: boolean) => {
     await getRepository().upsertProfile({ ...user, soundsEnabled, updatedAt: new Date().toISOString() });
+    await refresh();
+  };
+
+  const toggleEquipment = async (item: string) => {
+    const cur = user.equipmentItems ?? inferEquipmentItems(user.equipment);
+    const next = cur.includes(item) ? cur.filter((x) => x !== item) : [...cur, item];
+    await getRepository().upsertProfile({ ...user, equipmentItems: next, updatedAt: new Date().toISOString() });
     await refresh();
   };
 
@@ -135,6 +143,19 @@ export default function SettingsPage() {
             <ChoicePill value="6" label="Saturday" selected={(user.weekStartsOn ?? 1) === 6} onSelect={() => setWeekStart(6)} />
           </div>
           <div className="text-xs text-ink-dim mt-2">Display only — it does not change when workouts are scheduled.</div>
+        </Card>
+
+        <Card>
+          <div className="section-head mb-2">MY EQUIPMENT</div>
+          <p className="text-xs text-ink-dim mb-3">What you own. Your programs and exercise swaps only use these — add a piece (e.g. a pull-up bar) and it becomes available everywhere immediately.</p>
+          {(() => { const owned = user.equipmentItems ?? inferEquipmentItems(user.equipment); return Object.entries(EQUIP_GROUPS).map(([grp, list]) => (
+            <div key={grp} className="mb-3">
+              <div className="text-xs text-ink-mute mb-1.5">{grp}</div>
+              <div className="flex gap-2 flex-wrap">{list.map((i) => (
+                <ChoicePill key={i} value={i} label={equipLabel(i)} selected={owned.includes(i)} onSelect={() => toggleEquipment(i)} />
+              ))}</div>
+            </div>
+          )); })()}
         </Card>
 
         <Card>

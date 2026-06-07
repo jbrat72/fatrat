@@ -8,6 +8,28 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.75.0 — 2026-06-06
+
+- Equipment is now a single source of truth on the profile, editable in
+  Settings — and changes apply everywhere live (no program rebuild).
+  - New `profile.equipmentItems: string[]` (granular Page-5 labels). Seeded
+    lazily from the existing coarse `equipment` via `inferEquipmentItems()`
+    (home-gym → barbell+rack+dumbbells+bench+pull-up, commercial → everything,
+    etc.) — no migration needed; it's derived on read until first edited.
+  - New shared `lib/exercise/equipment.ts`: `availableTypes`, `canUseExercise`
+    (coarse type + `requiresEquipment`, with the Adjustable→Flat bench rule),
+    `inferEquipmentItems`, equipment groups. One filter used everywhere.
+  - Settings → "My Equipment": a granular checklist. Add a pull-up bar there and
+    pull-ups immediately appear in the in-workout Swap picker and in the wizard's
+    Add-exercise list — because availability is computed live from the profile,
+    not baked into the saved program.
+  - Plan Wizard: the equipment page is now read-only ("from your profile") and
+    the wizard generates against `profile.equipmentItems`. The in-checklist step
+    is gone.
+  - Swap (`findSimilar`) now filters by the granular list instead of the coarse
+    enum, so swap alternatives respect exactly what you own.
+  - Tests updated to the items-based model.
+
 ## v0.74.1 — 2026-06-06
 
 - Plan Wizard v2 scroll + custom-split fixes:

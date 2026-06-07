@@ -15,6 +15,7 @@
  */
 import type { ExerciseDefinition, EquipmentType, MuscleGroup, ExerciseMetric } from '@/types';
 import { DEFAULT_LANDMARKS } from '@/lib/periodization';
+import { availableTypes, canUseExercise } from '@/lib/exercise/equipment';
 import {
   WIZARD_MUSCLES, type WizardState, type WizTier, type WeekCol,
   type GeneratedDay, type GeneratedExercise,
@@ -67,24 +68,7 @@ export function dayLayout(state: WizardState): { type: string; muscles: MuscleGr
 /** Map the granular Page-5 environment + checklist to the coarse EquipmentType
  *  set the exercise library is tagged with. Bodyweight is always available. */
 export function availableEquipment(state: WizardState): Set<EquipmentType> {
-  const env = state.equipment.environment;
-  const all: EquipmentType[] = ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight', 'kettlebell', 'band', 'smith'];
-  if (env === 'commercial') return new Set(all);
-  if (env === 'bodyweight') return new Set<EquipmentType>(['bodyweight']);
-  const s = new Set<EquipmentType>(['bodyweight']);
-  const items = state.equipment.items || [];
-  const has = (label: string) => items.includes(label);
-  if (env === 'hotel') { s.add('band'); s.add('dumbbell'); }
-  if (has('Barbell & Plates') || has('EZ Curl Bar') || has('Trap Bar')) s.add('barbell');
-  if (has('Dumbbells — Fixed') || has('Dumbbells — Adjustable')) s.add('dumbbell');
-  if (has('Kettlebells')) s.add('kettlebell');
-  if (has('Resistance Bands')) s.add('band');
-  if (has('Smith Machine')) s.add('smith');
-  if (has('Cable Machine') || has('Functional Trainer')) s.add('cable');
-  for (const m of ['Leg Press', 'Lat Pulldown / Row', 'Chest/Shoulder Press Machine', 'Leg Curl/Extension', 'Pec Deck', 'Hack Squat']) {
-    if (has(m)) { s.add('machine'); break; }
-  }
-  return s;
+  return availableTypes(state.equipment.items || []);
 }
 
 /* ---------------- volume model ---------------- */
@@ -142,18 +126,6 @@ export function timesPerWeek(state: WizardState): Partial<Record<MuscleGroup, nu
 
 /* ---------------- exercise selection ---------------- */
 
-/**
- * Granular equipment gate. Each exercise may list `requiresEquipment` (Page-5
- * checklist labels) it needs beyond its coarse `equipment` type. `items` is the
- * user's selected checklist (undefined = Commercial Gym = has everything). An
- * Adjustable bench also satisfies a Flat-bench requirement.
- */
-function requiresEquipmentOk(e: ExerciseDefinition, items?: Set<string>): boolean {
-  const req = e.requiresEquipment;
-  if (!req || req.length === 0) return true;
-  if (!items) return true; // Commercial gym — everything available
-  return req.every((label) => items.has(label) || (label === 'Bench — Flat' && items.has('Bench — Adjustable')));
-}
 
 function repsFor(state: WizardState, anchor: boolean): number {
   const rr = state.setsAndReps.repRange;
@@ -170,11 +142,9 @@ function countFor(state: WizardState, e: ExerciseDefinition, anchor: boolean): n
 
 /** Equipment-valid exercises for a muscle, compounds first (anchors lead). */
 export function poolFor(
-  m: MuscleGroup, library: ExerciseDefinition[], avail: Set<EquipmentType>, hidden: Set<string>,
-  items?: Set<string>,
+  m: MuscleGroup, library: ExerciseDefinition[], items: string[], hidden: Set<string> = new Set(),
 ): ExerciseDefinition[] {
-  const ok = library.filter((e) =>
-    e.primaryMuscle === m && avail.has(e.equipment) && !hidden.has(e.id) && requiresEquipmentOk(e, items));
+  const ok = library.filter((e) => e.primaryMuscle === m && !hidden.has(e.id) && canUseExercise(e, items));
   const isCompound = (e: ExerciseDefinition) => e.patterns?.includes('compound');
   return ok.sort((a, b) => Number(isCompound(b)) - Number(isCompound(a)));
 }
@@ -199,9 +169,8 @@ export function generateWeek(
   state: WizardState, library: ExerciseDefinition[], wk: WeekCol, loadCount: number,
   opts?: { hidden?: string[] },
 ): GeneratedDay[] {
-  const avail = availableEquipment(state);
   const hidden = new Set(opts?.hidden || []);
-  const items = state.equipment.environment === 'commercial' ? undefined : new Set(state.equipment.items);
+  const items = state.equipment.items || [];
   const layout = dayLayout(state);
   const tpw = timesPerWeek(state);
   const dows = workDows(state);
@@ -224,7 +193,7 @@ export function generateWeek(
       const idx = occ[m] || 0; occ[m] = idx + 1;
       const setsToday = (alloc[m] as number[])[idx] || 0;
       if (setsToday <= 0) return;
-      const pool = poolFor(m, library, avail, hidden, items);
+      const pool = poolFor(m, library, items, hidden);
       if (pool.length === 0) return;
       const nEx = Math.max(1, Math.round(setsToday / DEFAULT_SETS));
       const b = Math.floor(setsToday / nEx), r = setsToday - b * nEx;
@@ -243,7 +212,7 @@ export function generateWeek(
   if (cm && cm !== 'none' && cm !== 'compound') {
     const n = ({ '1-2': 2, '2-3': 3, '3-4': 4 } as Record<string, number>)[state.core.blockExercises] || 3;
     const lowback = state.profile.injuries.includes('lowback');
-    let corePool = poolFor('core', library, avail, hidden, items);
+    let corePool = poolFor('core', library, items, hidden);
     if (lowback) corePool = corePool.filter((e) => !e.patterns?.includes('hinge'));
     const targets = cm === 'day' ? (days[0] ? [days[0]] : []) : days;
     targets.forEach((d, di) => {

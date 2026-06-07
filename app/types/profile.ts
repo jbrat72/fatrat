@@ -74,6 +74,10 @@ export interface UserProfile {
   daysPerWeek: number;        // 2..7
   timePerSessionMin: 30 | 45 | 60 | 75 | 90;
   equipment: EquipmentAccess[];
+  /** Granular owned-equipment list (Page-5 checklist labels) — the single
+   *  source of truth for exercise availability. Seeded from `equipment` via
+   *  inferEquipmentItems() when absent. */
+  equipmentItems?: string[];
 
   constraints?: Constraints;
   strengthBaseline?: StrengthBaseline;

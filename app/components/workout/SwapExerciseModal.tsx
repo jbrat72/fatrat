@@ -4,6 +4,7 @@ import { MuscleBadge, Button } from '@/components/ui';
 import { useUser } from '@/components/app';
 import { getRepository } from '@/lib/firestore';
 import { findSimilar } from '@/lib/exercise/findSimilar';
+import { inferEquipmentItems } from '@/lib/exercise/equipment';
 import { EMPTY_EXERCISE_PREFS, personalizeLibrary, isFavorite } from '@/lib/exercise/personalize';
 import type { ExerciseDefinition, UserExercisePrefs } from '@/types';
 
@@ -43,7 +44,7 @@ export function SwapExerciseModal({ open, fromExerciseId, onClose, onPick }: Pro
     findSimilar({
       exerciseId: fromExerciseId,
       library,
-      userEquipment: user.equipment,
+      equipmentItems: user.equipmentItems ?? inferEquipmentItems(user.equipment),
       excludedNames: user.constraints?.excludedLifts ?? [],
     }),
     prefs,

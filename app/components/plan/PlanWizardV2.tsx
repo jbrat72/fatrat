@@ -8,9 +8,10 @@
  * yet — "Start My Program" calls onComplete with the final state + generated
  * program; Chunk 3 wires materialization to Firestore + Edit-this-plan.
  */
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
+import { EQUIP_GROUPS, equipLabel, inferEquipmentItems, isBodyweightOnly } from '@/lib/exercise/equipment';
 import type { MuscleGroup, UserProfile } from '@/types';
 import type {
   WizardState, WizGoal, WizExperience, WizStatus, WizTier, BaseStyle,
@@ -19,7 +20,7 @@ import type {
 } from '@/lib/wizard/types';
 import { WIZARD_MUSCLES } from '@/lib/wizard/types';
 import {
-  SPLIT_SEQ, availableEquipment, weekStructure,
+  SPLIT_SEQ, weekStructure,
   muscleSetsForWeek, timesPerWeek, durationWeeks,
   poolFor, generateWeek,
 } from '@/lib/wizard/engine';
@@ -51,6 +52,7 @@ const INJURY_MAP: Record<string, string> = { 'lower-back': 'lowback', shoulders:
 
 function initState(user: UserProfile): WizardState {
   const injuries = (user.constraints?.injurySites || []).map((s) => INJURY_MAP[s]).filter(Boolean) as string[];
+  const eqItems = user.equipmentItems ?? inferEquipmentItems(user.equipment);
   return {
     name: '',
     goal: { primary: null, secondary: null },
@@ -62,7 +64,7 @@ function initState(user: UserProfile): WizardState {
       injuries, stubbornAreas: [],
     },
     schedule: { daysPerWeek: null, sessionMinutes: null, startDow: 1, restDays: [], durationWeeks: null },
-    equipment: { environment: null, items: [] },
+    equipment: { environment: isBodyweightOnly(eqItems) ? 'bodyweight' : 'gym', items: eqItems },
     trainingStyle: { baseStyle: null, volumeFramework: null, periodizationStrategy: null },
     split: { type: null },
     prioritization: { tiers: {} },
@@ -172,7 +174,6 @@ export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWiz
   function onEnter(p: number) {
     update((s) => {
       if (p === 3 && s.schedule.daysPerWeek && s.schedule.restDays.length === 0) s.schedule.restDays = defaultRestDays(s.schedule.startDow, s.schedule.daysPerWeek);
-      if (p === 4) { if (s.equipment.environment === 'commercial' && s.equipment.items.length === 0) s.equipment.items = ALL_EQUIP.slice(); if (s.equipment.environment === 'hotel' && s.equipment.items.length === 0) s.equipment.items = ['Resistance Bands']; }
       if (p === 6 && s.schedule.restDays.length === 0 && s.schedule.daysPerWeek) s.schedule.restDays = defaultRestDays(s.schedule.startDow, s.schedule.daysPerWeek);
       if (p === 7 && Object.keys(s.prioritization.tiers).length === 0) WIZARD_MUSCLES.forEach((m) => (s.prioritization.tiers[m] = defaultTier(m)));
       if (p === 8) {
@@ -262,7 +263,7 @@ export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWiz
       case 1: return !!s.experience.level && !!s.experience.status;
       case 2: return true;
       case 3: return !!s.schedule.daysPerWeek && !!s.schedule.sessionMinutes && !!s.schedule.durationWeeks;
-      case 4: return !!s.equipment.environment;
+      case 4: return true;
       case 5: return !!s.trainingStyle.baseStyle && !!s.trainingStyle.volumeFramework && !!s.trainingStyle.periodizationStrategy;
       case 6: if (!s.split.type) return false; if (s.split.type === 'custom') return !!s.split.customDays && s.split.customDays.length > 0 && s.split.customDays.every((d) => d.length > 0); return true;
       case 7: return true;
@@ -361,14 +362,17 @@ export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWiz
         <div className="flex flex-wrap gap-2">{[{ id: 4, label: '4 weeks' }, { id: 6, label: '6 weeks' }, { id: 8, label: '8 weeks' }, { id: 12, label: '12 weeks' }, { id: 'ongoing', label: 'Ongoing' }].map((o) => chip(state.schedule.durationWeeks === o.id, o.label, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.schedule.durationWeeks = o.id as number | 'ongoing'; }), String(o.id)))}</div></div>
     </>),
     4: () => {
-      const env = state.equipment.environment;
+      const items = state.equipment.items;
+      const groups = Object.entries(EQUIP_GROUPS).map(([grp, list]) => [grp, list.filter((i) => items.includes(i))] as [string, string[]]).filter(([, l]) => l.length > 0);
       return (<>
-        <Eyebrow n={5} title="Equipment access" sub="Filters the exercise library to what you can actually do." />
-        <div className="grid gap-2.5">{ENVIRONMENTS.map((o) => cardChoice(env === o.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.equipment.environment = o.id; if (o.id === 'commercial') s.equipment.items = ALL_EQUIP.slice(); else if (o.id === 'hotel') s.equipment.items = ['Resistance Bands']; else if (o.id !== 'bodyweight') s.equipment.items = []; }), o.label, o.desc))}</div>
-        {env && env !== 'bodyweight' && Object.entries(EQUIP_GROUPS).map(([grp, items]) => (
-          <Fragment key={grp}><SecHead>{grp}</SecHead><div className="flex flex-wrap gap-2">{items.map((i) => chip(state.equipment.items.includes(i), i, () => update((s) => toggle(s.equipment.items, i)), i))}</div></Fragment>
-        ))}
-        {env === 'bodyweight' && note('ok', 'Bodyweight selected — Calisthenics boosted, 1RM replaced with bodyweight milestones.')}
+        <Eyebrow n={5} title="Equipment" sub="Your program is built from the equipment on your profile." />
+        {items.length === 0
+          ? note('info', 'No equipment on your profile — your program will use bodyweight movements. Add equipment in Settings → My Equipment to unlock more.')
+          : <div className="rounded-2xl border border-ink-line bg-bg-card p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-dim mb-2">From your profile</div>
+              {groups.map(([grp, list]) => (<div key={grp} className="mb-2.5"><div className="text-[12px] text-ink-mute mb-1">{grp}</div><div className="flex flex-wrap gap-1.5">{list.map((i) => <span key={i} className="rounded-full border border-ink-line bg-bg-input px-2.5 py-1 text-[12px]">{equipLabel(i)}</span>)}</div></div>))}
+            </div>}
+        {note('info', 'To add or remove equipment (e.g. a pull-up bar), go to Settings → My Equipment. Changes apply everywhere — including when you swap exercises mid-program.')}
       </>);
     },
     5: () => {
@@ -565,7 +569,7 @@ export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWiz
   }
 
   /* ---------- page 16 exercises ---------- */
-  function poolDefs(muscle: MuscleGroup) { return poolFor(muscle, lib, availableEquipment(state), new Set(), itemsForEngine(state)); }
+  function poolDefs(muscle: MuscleGroup) { return poolFor(muscle, lib, itemsForEngine(state)); }
   const fmtPresc = (e: GeneratedExercise) => `${e.sets}×${e.reps}${e.metric === 'time' || e.metric === 'weight-time' ? 's' : ''}`;
   function renderExercises() {
     const phase = 0;
@@ -600,9 +604,9 @@ export function PlanWizardV2({ user, initialName, onClose, onComplete }: PlanWiz
 
   function programLifts(): { id: string; name: string }[] {
     if (state.equipment.environment === 'bodyweight') return [];
-    const avail = availableEquipment(state); const items = itemsForEngine(state);
+    const items = itemsForEngine(state);
     const out: { id: string; name: string }[] = [];
-    (['quads', 'chest', 'back', 'hamstrings', 'shoulders'] as MuscleGroup[]).forEach((m) => { const p = poolFor(m, lib, avail, new Set(), items).find((e) => e.patterns?.includes('compound')); if (p && !out.some((o) => o.id === p.id)) out.push({ id: p.id, name: p.name }); });
+    (['quads', 'chest', 'back', 'hamstrings', 'shoulders'] as MuscleGroup[]).forEach((m) => { const p = poolFor(m, lib, items).find((e) => e.patterns?.includes('compound')); if (p && !out.some((o) => o.id === p.id)) out.push({ id: p.id, name: p.name }); });
     return out;
   }
 
@@ -640,7 +644,7 @@ function AddRow({ muscles, onAdd }: { muscles: string[]; onAdd: (m: string) => v
   </div>;
 }
 function toggle<T>(arr: T[], v: T) { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
-function itemsForEngine(s: WizardState): Set<string> | undefined { return s.equipment.environment === 'commercial' ? undefined : new Set(s.equipment.items); }
+function itemsForEngine(s: WizardState): string[] { return s.equipment.items || []; }
 
 const CUSTOM_GROUPS: { id: string; label: string; muscles: MuscleGroup[] }[] = [
   { id: 'chest', label: 'Chest', muscles: ['chest'] },
@@ -674,15 +678,6 @@ const STATUS: { id: WizStatus; label: string }[] = [
 ];
 const STUBBORN = [{ id: 'belly', label: 'Belly fat' }, { id: 'glutes', label: 'Flat / flabby glutes' }, { id: 'lovehandles', label: 'Love handles' }, { id: 'arms', label: 'Arm definition' }, { id: 'thighs', label: 'Thighs' }, { id: 'chest', label: 'Chest / pecs' }, { id: 'calves', label: 'Calves' }];
 const INJURIES = [{ id: 'shoulder', label: 'Shoulders', desc: 'rotator cuff, impingement, labrum' }, { id: 'lowback', label: 'Lower Back', desc: 'disc, chronic pain, SI joint' }, { id: 'knee', label: 'Knees', desc: 'meniscus, patella, ligament' }, { id: 'elbow', label: 'Wrists / Elbows', desc: 'tendinitis, carpal tunnel' }, { id: 'hip', label: 'Hips', desc: 'impingement, labrum, bursitis' }, { id: 'neck', label: 'Neck / Upper Spine' }];
-const ENVIRONMENTS = [{ id: 'commercial', label: 'Commercial Gym', desc: 'Full equipment — uncheck what yours lacks' }, { id: 'home', label: 'Home Gym', desc: 'Build your list from scratch' }, { id: 'garage', label: 'Garage / Minimal', desc: 'Build your list from scratch' }, { id: 'bodyweight', label: 'Bodyweight Only', desc: 'Skips the equipment checklist' }, { id: 'hotel', label: 'Hotel / Travel', desc: 'Bodyweight + bands + maybe dumbbells' }];
-const EQUIP_GROUPS: Record<string, string[]> = {
-  'Free Weights': ['Barbell & Plates', 'Dumbbells — Fixed', 'Dumbbells — Adjustable', 'Kettlebells', 'EZ Curl Bar', 'Trap Bar'],
-  'Racks & Benches': ['Power / Squat Rack', 'Bench — Flat', 'Bench — Adjustable', 'Dip Station'],
-  'Machines': ['Smith Machine', 'Leg Press', 'Lat Pulldown / Row', 'Chest/Shoulder Press Machine', 'Leg Curl/Extension', 'Pec Deck', 'Hack Squat'],
-  'Cables & Accessories': ['Cable Machine', 'Functional Trainer', 'Resistance Bands', 'Pull-Up Bar', 'Suspension Trainer', 'Landmine', 'Ab Wheel', 'GHD'],
-  'Cardio / Conditioning': ['Battle Ropes', 'Sled / Prowler', 'Rower / Assault Bike / Ski Erg'],
-};
-const ALL_EQUIP = Object.values(EQUIP_GROUPS).flat();
 const BASE_STYLES: { id: BaseStyle; label: string; desc: string }[] = [
   { id: 'powerlifting', label: 'Powerlifting / Strength', desc: 'Heavy compound lifts, low reps, long rest.' },
   { id: 'bodybuilding', label: 'Bodybuilding / Hypertrophy', desc: 'High volume, multiple angles per muscle, chase the pump.' },
