@@ -55,12 +55,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* Rat mascot + FATRAT wordmark + version, stacked text alongside the image */}
           <div className="flex items-center gap-2 leading-none">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/fatrat-rat.png"
-              alt=""
-              aria-hidden="true"
-              className="h-9 w-9 object-contain shrink-0"
-            />
+            <img src="/fatrat-white-on-black-logo.png" alt="" aria-hidden="true" className="logo-on-dark h-9 w-9 object-contain shrink-0" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/fatrat-black-on-white-logo.png" alt="" aria-hidden="true" className="logo-on-light h-9 w-9 object-contain shrink-0" />
             <div className="flex flex-col leading-none">
               <div className="font-semibold tracking-widest2 text-base">
                 FAT<span className="text-accent">RAT</span>

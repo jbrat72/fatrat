@@ -8,6 +8,17 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.74.0 — 2026-06-06
+
+- New logos. Phone/PWA app icon is now the white-on-black logo (regenerated
+  square 192/512 + apple-touch icon on a black field; manifest updated to
+  any+maskable). Inside the app the logo is theme-aware: white-on-black in dark
+  mode, black-on-white in light mode — applied to the login screen and the
+  app-header brand mark via CSS (`.logo-on-dark` / `.logo-on-light`), no JS so
+  there's no theme flicker.
+  - Note: the browser-tab favicon (`app/icon.svg`) is read-only and was left as
+    is; it doesn't affect the installed phone icon. Can overwrite it on request.
+
 ## v0.73.2 — 2026-06-06
 
 - Equipment: floor-based barbell lifts no longer require a rack. Deadlift,

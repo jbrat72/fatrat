@@ -186,3 +186,8 @@ html body {
 ::-webkit-scrollbar-track { background: transparent; }
 
 body { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Theme-aware brand logo: render both variants, show the one matching the
+   active theme (white-on-black for dark, black-on-white for light). */
+html[data-theme='light'] .logo-on-dark { display: none; }
+html[data-theme='dark'] .logo-on-light { display: none; }

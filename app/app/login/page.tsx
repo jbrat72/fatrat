@@ -61,13 +61,9 @@ export default function LoginPage() {
       <div className="flex w-full max-w-xs flex-col items-center">
         {/* Logo — wordmark is baked into the mark itself. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/fatrat-logo2.png"
-          alt="FATRAT"
-          width={180}
-          height={180}
-          className="h-44 w-44 object-contain"
-        />
+        <img src="/fatrat-white-on-black-logo.png" alt="FATRAT" width={180} height={180} className="logo-on-dark h-44 w-44 object-contain" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/fatrat-black-on-white-logo.png" alt="FATRAT" width={180} height={180} className="logo-on-light h-44 w-44 object-contain" />
 
         {/* Version — discreet, directly below the logo */}
         <p className="numeric mt-2 text-xs tracking-wide text-ink-mute">
