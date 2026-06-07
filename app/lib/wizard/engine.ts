@@ -235,7 +235,7 @@ export function generateWeek(
       const b = Math.floor(setsToday / nEx), r = setsToday - b * nEx;
       for (let i = 0; i < nEx; i++) {
         const sets = b + (i < r ? 1 : 0); if (sets <= 0) continue;
-        const e = pool[(i + di) % pool.length];
+        const e = i === 0 ? pool[0] : pool[(i + di) % pool.length];
         const anchor = isAnchor(e) && i === 0;
         exercises.push({ exerciseId: e.id, name: e.name, muscle: m, sets, reps: countFor(state, e, anchor), metric: e.metric || 'weight-reps', anchor });
       }

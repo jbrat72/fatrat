@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
@@ -17,6 +17,7 @@ export default function ProgramTemplatesPage() {
   const [templates, setTemplates] = useState<ProgramTemplate[]>([]);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
+  const savingRef = useRef(false);
 
   useEffect(() => {
     getRepository().listTemplates().then(setTemplates);
@@ -80,10 +81,13 @@ export default function ProgramTemplatesPage() {
             user={user}
             onClose={() => { setWizardOpen(false); setRefreshTick((n) => n + 1); }}
             onComplete={async (state, program) => {
+              if (savingRef.current) return;
+              savingRef.current = true;
               try {
                 await activateWizardProgram(state, program, user);
                 router.push('/today');
               } catch (err) {
+                savingRef.current = false;
                 alert('Could not save your program: ' + ((err as Error)?.message ?? 'unknown error'));
               }
             }}

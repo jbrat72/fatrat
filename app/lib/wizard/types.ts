@@ -69,7 +69,7 @@ export interface WizardState {
     type: string | null; deloadProtocol: DeloadProtocol | null;
     deloadFrequency: number | null; deloadStyle: string | null;
   };
-  baselines: { methods: Record<string, BaselineMethod>; calibrationWeek: boolean; allConservative: boolean };
+  baselines: { methods: Record<string, BaselineMethod>; values: Record<string, { oneRM?: number; weight?: number; reps?: number }>; calibrationWeek: boolean; allConservative: boolean };
 }
 
 /** One column in the program's week structure (calibration / load / deload). */

@@ -8,6 +8,26 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.72.0 — 2026-06-06
+
+- Plan Wizard v2 — 1RM baselines now persist (follow-up to Chunk 3).
+  - Page 14 inputs are controlled and stored: "Known 1RM" captures the max,
+    "Recent set" captures weight × reps, keyed by the lift's exercise id.
+  - `persist.ts` seeds `startingWeights` from those values — a known 1RM is
+    converted to a working weight for the program's rep range (Epley-inverse),
+    a recent set's weight is used directly; values convert lb→kg from the
+    profile unit. "Start conservative" / calibration week leave weights to the
+    existing defaults.
+  - Engine fix so this lines up: a muscle's first exercise each day is pinned to
+    its top compound (the anchor) instead of being rotated by day index, so the
+    Page-14 lifts match the program's anchors exactly. Accessories still rotate
+    day to day for variety.
+  - Double-submit guard on "Start My Program" so a fast double-tap can't create
+    two plans.
+  - Tests: startingWeights-from-1RM mapping.
+  - Still open: routing Edit-this-plan through v2; Block-periodization phase-
+    specific exercise lists persist only the representative phase today.
+
 ## v0.71.0 — 2026-06-06
 
 - Plan Wizard v2 — persistence + integration (Chunk 3). The new wizard now

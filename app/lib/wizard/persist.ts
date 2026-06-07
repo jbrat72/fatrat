@@ -52,6 +52,26 @@ export function buildWizardInput(
   );
   // Offsets parallel to days, derived from each day's weekday vs the start day.
   const workOffsets = days.map((d) => (d.dow - state.schedule.startDow + 7) % 7);
+  // Seed starting weights from the user's 1RM / recent-set baselines (keyed by
+  // exercise id — the anchors shown on Page 14, which match the program anchors).
+  const RR: Record<string, [number, number]> = { strength: [5, 6], hypertrophy: [8, 12], endurance: [12, 15], mixed: [6, 10] };
+  const [repsLow, repsHigh] = RR[state.setsAndReps.repRange || ''] || [8, 12];
+  const toKg = (v: number) => (user.units === 'metric' ? v : v / 2.2046226);
+  const round = (v: number) => Math.round(v * 2) / 2;
+  const startingWeights: NonNullable<CustomProgramInput['startingWeights']> = {};
+  if (!state.baselines.calibrationWeek) {
+    for (const [id, val] of Object.entries(state.baselines.values)) {
+      const method = state.baselines.methods[id] || (state.baselines.allConservative ? 'conservative' : 'working');
+      if (method === 'conservative') continue;
+      const def = library.find((e) => e.id === id);
+      const weighted = !def?.metric || def.metric === 'weight-reps' || def.metric === 'weight-time';
+      let weightKg: number | undefined;
+      if (method === 'known' && val.oneRM && weighted) weightKg = round(toKg(val.oneRM / (1 + repsLow / 30)));
+      else if (method === 'working' && val.weight && weighted) weightKg = round(toKg(val.weight));
+      if (weightKg == null) continue;
+      startingWeights[id] = { weightKg, repsLow, repsHigh };
+    }
+  }
   const programStyle: 'traditional' | 'periodization' =
     (state.trainingStyle.volumeFramework === 'evidence' || (state.trainingStyle.periodizationStrategy && state.trainingStyle.periodizationStrategy !== 'none'))
       ? 'periodization' : 'traditional';
@@ -67,6 +87,7 @@ export function buildWizardInput(
     creatorName: user.displayName,
     goal: goalLabel(state.goal.primary),
     startDate: nextStartIso(state.schedule.startDow),
+    startingWeights: Object.keys(startingWeights).length ? startingWeights : undefined,
     workOffsets,
     splitType: splitTypeOf(state.split.type),
     programStyle,

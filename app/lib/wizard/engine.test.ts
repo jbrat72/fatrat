@@ -29,7 +29,7 @@ function baseState(over: Partial<WizardState> = {}): WizardState {
     core: { method: 'block', frequency: '2x', blockExercises: '2-3', days: [] },
     cardio: { included: 'no', type: [], frequency: null, placement: null, durationMinutes: null },
     progression: { type: 'double', deloadProtocol: 'scheduled', deloadFrequency: 4, deloadStyle: 'volume' },
-    baselines: { methods: {}, calibrationWeek: false, allConservative: false },
+    baselines: { methods: {}, values: {}, calibrationWeek: false, allConservative: false },
   };
   WIZARD_MUSCLES.forEach((m) => (s.prioritization.tiers[m] = 'grow'));
   return { ...s, ...over };
@@ -72,7 +72,7 @@ describe('wizard engine', () => {
   });
 
   it('week structure includes calibration + scheduled deloads', () => {
-    const s = baseState({ baselines: { methods: {}, calibrationWeek: true, allConservative: false } });
+    const s = baseState({ baselines: { methods: {}, values: {}, calibrationWeek: true, allConservative: false } });
     const { cols } = weekStructure(s);
     expect(cols[0].kind).toBe('cal');
     expect(cols.filter((c) => c.kind === 'deload').length).toBe(2); // every 4th week of 8

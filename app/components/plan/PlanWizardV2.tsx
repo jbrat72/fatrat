@@ -71,7 +71,7 @@ function initState(user: UserProfile): WizardState {
     core: { method: null, frequency: null, blockExercises: '2-3', days: [] },
     cardio: { included: null, type: [], frequency: null, placement: null, durationMinutes: null },
     progression: { type: null, deloadProtocol: null, deloadFrequency: null, deloadStyle: null },
-    baselines: { methods: {}, calibrationWeek: false, allConservative: false },
+    baselines: { methods: {}, values: {}, calibrationWeek: false, allConservative: false },
   };
 }
 
@@ -473,16 +473,16 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
         <Eyebrow n={14} title="Strength baselines" sub={bodyweight ? 'Bodyweight program — movement milestones instead of 1RM.' : 'Set starting weights for each main lift. Pick a method per lift.'} />
         {!bodyweight && <>
           <div className="flex flex-wrap gap-2 mb-3">
-            {chip(state.baselines.allConservative, (state.baselines.allConservative ? '✓ ' : '↺ ') + 'Start all conservative', () => update((s) => { s.baselines.allConservative = !s.baselines.allConservative; if (s.baselines.allConservative) { s.baselines.calibrationWeek = false; lifts.forEach((l) => (s.baselines.methods[l] = 'conservative')); } }))}
+            {chip(state.baselines.allConservative, (state.baselines.allConservative ? '✓ ' : '↺ ') + 'Start all conservative', () => update((s) => { s.baselines.allConservative = !s.baselines.allConservative; if (s.baselines.allConservative) { s.baselines.calibrationWeek = false; lifts.forEach((l) => (s.baselines.methods[l.id] = 'conservative')); } }))}
             {chip(state.baselines.calibrationWeek, (state.baselines.calibrationWeek ? '✓ ' : '+ ') + 'Add a calibration week to find my 1RM', () => update((s) => { s.baselines.calibrationWeek = !s.baselines.calibrationWeek; if (s.baselines.calibrationWeek) s.baselines.allConservative = false; }))}
           </div>
           {state.baselines.calibrationWeek && note('ok', 'Week 1 becomes a calibration week — each lift is set to “Calculated during calibration week,” and the program runs one week longer.')}
-          {lifts.map((l) => { const method = state.baselines.calibrationWeek ? 'calibration' : (state.baselines.methods[l] || (state.baselines.allConservative ? 'conservative' : 'working')); const unit = user.units === 'metric' ? 'kg' : 'lb'; const inp = 'w-full rounded-lg border border-ink-line bg-bg-input px-3 py-2.5 text-[15px] font-mono'; return (<div key={l} className="rounded-2xl border border-ink-line bg-bg-card p-3.5 mb-2.5">
-            <div className="font-semibold text-[14px] mb-1.5">{l}</div>
+          {lifts.map((l) => { const method = state.baselines.calibrationWeek ? 'calibration' : (state.baselines.methods[l.id] || (state.baselines.allConservative ? 'conservative' : 'working')); const unit = user.units === 'metric' ? 'kg' : 'lb'; const inp = 'w-full rounded-lg border border-ink-line bg-bg-input px-3 py-2.5 text-[15px] font-mono'; const v = state.baselines.values[l.id] || {}; const setV = (patch: { oneRM?: number; weight?: number; reps?: number }) => update((s) => { s.baselines.values[l.id] = { ...(s.baselines.values[l.id] || {}), ...patch }; }); const num = (x: string) => { const n = parseFloat(x); return Number.isFinite(n) ? n : undefined; }; return (<div key={l.id} className="rounded-2xl border border-ink-line bg-bg-card p-3.5 mb-2.5">
+            <div className="font-semibold text-[14px] mb-1.5">{l.name}</div>
             {state.baselines.calibrationWeek ? <div className="text-[13px] text-ink-dim">Calculated during calibration week</div> : <>
-              <div className="flex flex-wrap gap-2">{[['known', 'Known 1RM'], ['working', 'Recent set'], ['conservative', 'Start conservative']].map(([id, lab]) => chip(method === id, lab, () => update((s) => { s.baselines.methods[l] = id as 'known' | 'working' | 'conservative'; }), id))}</div>
-              {method === 'known' && <input className={inp + ' mt-2.5'} inputMode="numeric" placeholder={`1RM (${unit})`} />}
-              {method === 'working' && <><div className="flex items-center gap-2 mt-2.5"><input className={inp} style={{ flex: 2 }} inputMode="numeric" placeholder={`weight (${unit})`} /><span className="text-ink-mute">×</span><input className={inp} style={{ flex: 1 }} inputMode="numeric" placeholder="reps" /></div><div className="text-[12px] text-ink-mute mt-1.5">Best from a 3–8 rep set. We estimate your 1RM from this.</div></>}
+              <div className="flex flex-wrap gap-2">{[['known', 'Known 1RM'], ['working', 'Recent set'], ['conservative', 'Start conservative']].map(([id, lab]) => chip(method === id, lab, () => update((s) => { s.baselines.methods[l.id] = id as 'known' | 'working' | 'conservative'; }), id))}</div>
+              {method === 'known' && <input className={inp + ' mt-2.5'} inputMode="numeric" placeholder={`1RM (${unit})`} value={v.oneRM ?? ''} onChange={(e) => setV({ oneRM: num(e.target.value) })} />}
+              {method === 'working' && <><div className="flex items-center gap-2 mt-2.5"><input className={inp} style={{ flex: 2 }} inputMode="numeric" placeholder={`weight (${unit})`} value={v.weight ?? ''} onChange={(e) => setV({ weight: num(e.target.value) })} /><span className="text-ink-mute">×</span><input className={inp} style={{ flex: 1 }} inputMode="numeric" placeholder="reps" value={v.reps ?? ''} onChange={(e) => setV({ reps: num(e.target.value) })} /></div><div className="text-[12px] text-ink-mute mt-1.5">Best from a 3–8 rep set. We estimate your 1RM from this.</div></>}
               {method === 'conservative' && <div className="text-[12px] text-ink-mute mt-1.5">We’ll assign a safe body-weight-relative starting weight for your level.</div>}
             </>}
           </div>); })}
@@ -595,11 +595,11 @@ export function PlanWizardV2({ user, onClose, onComplete }: PlanWizardV2Props) {
     </>);
   }
 
-  function programLifts(): string[] {
+  function programLifts(): { id: string; name: string }[] {
     if (state.equipment.environment === 'bodyweight') return [];
     const avail = availableEquipment(state); const items = itemsForEngine(state);
-    const out: string[] = [];
-    (['quads', 'chest', 'back', 'hamstrings', 'shoulders'] as MuscleGroup[]).forEach((m) => { const p = poolFor(m, lib, avail, new Set(), items).find((e) => e.patterns?.includes('compound')); if (p) out.push(p.name); });
+    const out: { id: string; name: string }[] = [];
+    (['quads', 'chest', 'back', 'hamstrings', 'shoulders'] as MuscleGroup[]).forEach((m) => { const p = poolFor(m, lib, avail, new Set(), items).find((e) => e.patterns?.includes('compound')); if (p && !out.some((o) => o.id === p.id)) out.push({ id: p.id, name: p.name }); });
     return out;
   }
 

@@ -25,7 +25,7 @@ function st(): WizardState {
     core: { method: 'block', frequency: '2x', blockExercises: '2-3', days: [] },
     cardio: { included: 'no', type: [], frequency: null, placement: null, durationMinutes: null },
     progression: { type: 'double', deloadProtocol: 'scheduled', deloadFrequency: 4, deloadStyle: 'volume' },
-    baselines: { methods: {}, calibrationWeek: false, allConservative: false },
+    baselines: { methods: {}, values: {}, calibrationWeek: false, allConservative: false },
   };
   WIZARD_MUSCLES.forEach((m) => (s.prioritization.tiers[m] = 'grow'));
   return s;
@@ -47,5 +47,22 @@ describe('buildWizardInput', () => {
     const ids = new Set(GLOBAL_EXERCISES.map((e) => e.id));
     input.week1.flat().forEach((slot) => { expect(ids.has(slot.exerciseId)).toBe(true); expect(slot.exerciseName.length).toBeGreaterThan(0); });
     expect(input.allowed.has('barbell')).toBe(true);
+  });
+
+  it('seeds startingWeights from a known 1RM on an anchor lift', () => {
+    const s = st();
+    const { wk, loadCount } = representativeWeek(s);
+    const days = generateWeek(s, GLOBAL_EXERCISES, wk, loadCount);
+    const anchor = days.flatMap((d) => d.exercises).find((e) => e.anchor && e.exerciseId);
+    expect(anchor).toBeTruthy();
+    const id = anchor!.exerciseId as string;
+    s.baselines.methods[id] = 'known';
+    s.baselines.values[id] = { oneRM: 100 }; // imperial lb
+    const input = buildWizardInput(s, days, USER, GLOBAL_EXERCISES);
+    const sw = input.startingWeights?.[id];
+    expect(sw).toBeTruthy();
+    // 100 lb 1RM -> ~78.9 lb working for 8 reps -> ~35.8 kg
+    expect(sw!.weightKg!).toBeGreaterThan(30);
+    expect(sw!.weightKg!).toBeLessThan(40);
   });
 });
