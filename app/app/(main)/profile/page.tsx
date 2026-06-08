@@ -20,7 +20,7 @@ export default function ProfilePage() {
           <Card className="hover:border-ink-dim transition-colors">
             <div className="flex items-center justify-between">
               <span className="font-medium">Exercise library</span>
-              <span className="text-ink-mute text-xl">›</span>
+              <span className="text-ink-mute text-2xl leading-none">›</span>
             </div>
           </Card>
         </Link>

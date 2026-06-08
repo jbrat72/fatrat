@@ -62,8 +62,8 @@ export function EquipmentManager() {
   return (
     <Card>
       <button type="button" onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between text-left">
-        <span className="section-head">MY EQUIPMENT</span>
-        <span className="text-ink-mute text-sm transition-transform" style={{ transform: open ? 'rotate(90deg)' : 'none' }}>›</span>
+        <span className="font-medium">My Equipment</span>
+        <span className="text-ink-mute text-2xl leading-none transition-transform" style={{ transform: open ? 'rotate(90deg)' : 'none' }}>›</span>
       </button>
       {open && (
         <div className="mt-3">

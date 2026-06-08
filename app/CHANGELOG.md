@@ -8,6 +8,12 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.79.1 — 2026-06-08
+
+- Profile cards: My Equipment and Exercise Library now share the same label
+  font, and the expand/chevron arrows on the profile cards are larger and more
+  visible.
+
 ## v0.79.0 — 2026-06-08
 
 - Profile page reorganized:

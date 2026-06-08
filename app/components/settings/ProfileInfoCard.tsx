@@ -83,7 +83,7 @@ export function ProfileInfoCard() {
           <span className="text-lg font-semibold block leading-tight">{user.displayName}</span>
           {summary && <span className="text-xs text-ink-dim">{summary}</span>}
         </span>
-        <span className="text-ink-mute text-sm transition-transform" style={{ transform: open ? 'rotate(90deg)' : 'none' }}>›</span>
+        <span className="text-ink-mute text-2xl leading-none transition-transform" style={{ transform: open ? 'rotate(90deg)' : 'none' }}>›</span>
       </button>
       {open && (
         <div className="mt-3 space-y-3">
