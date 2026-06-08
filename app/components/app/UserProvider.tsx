@@ -35,8 +35,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
   // Only used in mock mode (no Firebase env config).
   const [activeId, setActiveIdState] = useState<string>(() => defaultUserId());
 
-  const load = async (id: string) => {
-    setLoading(true);
+  // `silent` reloads the profile without flipping the global loading flag —
+  // AppShell blanks the whole app while loading, which would unmount the
+  // current page (losing scroll position and local UI state). Background
+  // refreshes after an edit must stay silent.
+  const load = async (id: string, opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     const repo = getRepository();
     let profile = await repo.getProfile(id);
     // One-shot v0.61 migration — drop Macrocycle for real Firestore users.
@@ -79,9 +83,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const refresh = async () => {
     if (isFirebaseEnabled()) {
-      if (firebaseUser) await load(firebaseUser.uid);
+      if (firebaseUser) await load(firebaseUser.uid, { silent: true });
     } else {
-      await load(activeId);
+      await load(activeId, { silent: true });
     }
   };
 

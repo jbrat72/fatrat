@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.78.2 — 2026-06-08
+
+- Fixed the whole-page reset (scroll jumps to top, collapsible cards snap shut,
+  focus lost) that happened after any profile edit. `refresh()` was flipping the
+  global loading flag, which made AppShell blank and remount the entire page;
+  background refreshes are now silent and leave the current page mounted. Affects
+  My Equipment toggles and every other in-place profile change (mode, units,
+  calendar, sounds).
+
 ## v0.78.1 — 2026-06-08
 
 - My Equipment moved out of Settings into its own collapsible card on the
