@@ -18,7 +18,6 @@ import type {
 import { recommendMode } from '@/lib/periodization/mode';
 import { getRepository } from '@/lib/firestore';
 import { useUser } from '@/components/app';
-import { todayIso } from '@/lib/ui/date';
 
 interface Draft {
   displayName: string;
@@ -31,12 +30,6 @@ interface Draft {
   experience: ExperienceTier | '';
   familiarity: PeriodizationFamiliarity | '';
 
-  primaryGoal: PrimaryGoal | '';
-  secondaryGoal: PrimaryGoal | '';
-  targetLabel: string;
-
-  daysPerWeek: number;
-  timePerSessionMin: 30 | 45 | 60 | 75 | 90;
   equipment: EquipmentAccess[];
   equipmentItems: string[];
 
@@ -60,11 +53,6 @@ const EMPTY_DRAFT: Draft = {
   weightKg: undefined,
   experience: '',
   familiarity: '',
-  primaryGoal: '',
-  secondaryGoal: '',
-  targetLabel: '',
-  daysPerWeek: 3,
-  timePerSessionMin: 60,
   equipment: [],
   equipmentItems: [],
   injurySites: [],
@@ -75,16 +63,6 @@ const EMPTY_DRAFT: Draft = {
   chosenMode: '',
   advancedTerminology: false,
 };
-
-const GOAL_LABELS: Record<PrimaryGoal, string> = {
-  'build-muscle': 'Build muscle / get bigger',
-  'get-stronger': 'Get stronger (lift more weight)',
-  'lose-fat':     'Lose fat / get leaner',
-  'maintain':     'Stay in shape / maintain',
-  'general-fitness': 'General fitness / feel better',
-  'sport-specific':  'Sport-specific performance',
-};
-
 
 const INJURY_LABELS: Record<CommonInjurySite, string> = {
   'lower-back': 'Lower back',
@@ -113,22 +91,20 @@ export function OnboardingWizard() {
     switch (step) {
       case 0: return d.displayName.trim().length > 0 && d.heightCm != null && d.weightKg != null && d.sex !== '';
       case 1: return d.experience !== '' && d.familiarity !== '';
-      case 2: return d.primaryGoal !== '';
-      case 3: return d.daysPerWeek >= 2;
-      case 4: return true; // constraints — optional
-      case 5: return true; // baseline — optional
-      case 6: return d.chosenMode !== '';
-      case 7: return true; // confirmation — Finish always enabled
+      case 2: return true; // equipment — optional (none = bodyweight)
+      case 3: return true; // constraints — optional
+      case 4: return true; // baseline — optional
+      case 5: return d.chosenMode !== '';
+      case 6: return true; // confirmation — Finish always enabled
     }
     return false;
   })();
 
-  const totalSteps = 8;
+  const totalSteps = 7;
 
   const submit = async () => {
     const now = new Date().toISOString();
     const userId = firebaseUser?.uid ?? ('user-' + Math.random().toString(36).slice(2, 9));
-    const { recommendTemplateId, generateProgram } = await import('@/lib/program');
     const wantsAdvancedTerms = d.chosenMode !== 'BASIC' && d.advancedTerminology;
     const profile: UserProfile = {
       userId,
@@ -140,11 +116,11 @@ export function OnboardingWizard() {
       units: d.units,
       experience: d.experience as ExperienceTier,
       periodizationFamiliarity: d.familiarity as PeriodizationFamiliarity,
-      primaryGoal: d.primaryGoal as PrimaryGoal,
-      secondaryGoal: d.secondaryGoal ? (d.secondaryGoal as PrimaryGoal) : undefined,
-      targetLabel: d.targetLabel || undefined,
-      daysPerWeek: d.daysPerWeek,
-      timePerSessionMin: d.timePerSessionMin,
+      // Goal, training days, and session length are chosen per-program in the
+      // Plan wizard now — seed neutral defaults so the profile stays valid.
+      primaryGoal: 'general-fitness' as PrimaryGoal,
+      daysPerWeek: 3,
+      timePerSessionMin: 60,
       equipment: coarseFromItems(d.equipmentItems),
       equipmentProfiles: [{ id: 'default', name: 'My Gym', items: d.equipmentItems }],
       defaultEquipmentProfileId: 'default',
@@ -274,70 +250,25 @@ export function OnboardingWizard() {
 
         {step === 2 && (
           <section>
-            <PageTitle title="Goals" subtitle="What are you training for?" />
+            <PageTitle title="Equipment" subtitle="What can you train with? Your training days, session length, and goals are set per-program in the Plan builder." />
             <div>
-              <div className="section-head mb-2">Primary goal</div>
-              <div className="grid grid-cols-1 gap-2">
-                {(Object.keys(GOAL_LABELS) as PrimaryGoal[]).map((g) => (
-                  <ChoiceCard key={g} value={g} label={GOAL_LABELS[g]} selected={d.primaryGoal === g} onSelect={(v) => update('primaryGoal', v)} />
-                ))}
-              </div>
-            </div>
-            <div className="mt-4">
-              <div className="section-head mb-2">Secondary goal (optional)</div>
-              <div className="flex flex-wrap gap-2">
-                {(Object.keys(GOAL_LABELS) as PrimaryGoal[])
-                  .filter((g) => g !== d.primaryGoal)
-                  .map((g) => (
-                    <ChoicePill key={g} value={g} label={GOAL_LABELS[g]} selected={d.secondaryGoal === g} onSelect={(v) => update('secondaryGoal', d.secondaryGoal === v ? '' : v)} />
-                  ))}
-              </div>
-            </div>
-            <div className="mt-4">
-              <TextField label="Target / timeframe (optional)" value={d.targetLabel} onChange={(e) => update('targetLabel', e.target.value)} placeholder='"By summer", "in 6 months", or leave blank' />
+              <div className="section-head mb-2">Equipment you own</div>
+              {Object.entries(EQUIP_GROUPS).map(([grp, list]) => (
+                <div key={grp} className="mb-3">
+                  <div className="text-xs text-ink-mute mb-1.5">{grp}</div>
+                  <div className="flex gap-2 flex-wrap">
+                    {list.map((i) => (
+                      <ChoicePill key={i} value={i} label={equipLabel(i)} selected={d.equipmentItems.includes(i)} onSelect={() => update('equipmentItems', toggleArr(d.equipmentItems, i))} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <p className="text-xs text-ink-mute mt-2">Pick everything you have access to — leave all unchecked for bodyweight only. You can change this anytime on your Profile under My Equipment.</p>
             </div>
           </section>
         )}
 
         {step === 3 && (
-          <section>
-            <PageTitle title="Schedule" subtitle="How much time can you give us?" />
-            <div className="space-y-4">
-              <div>
-                <div className="section-head mb-2">Days per week</div>
-                <div className="flex gap-2 flex-wrap">
-                  {[2, 3, 4, 5, 6, 7].map((n) => (
-                    <ChoicePill key={n} value={String(n)} label={`${n}`} selected={d.daysPerWeek === n} onSelect={() => update('daysPerWeek', n)} />
-                  ))}
-                </div>
-              </div>
-              <div>
-                <div className="section-head mb-2">Time per session</div>
-                <div className="flex gap-2 flex-wrap">
-                  {([30, 45, 60, 75, 90] as const).map((n) => (
-                    <ChoicePill key={n} value={String(n)} label={`${n} min`} selected={d.timePerSessionMin === n} onSelect={() => update('timePerSessionMin', n)} />
-                  ))}
-                </div>
-              </div>
-              <div>
-                <div className="section-head mb-2">Equipment you own</div>
-                {Object.entries(EQUIP_GROUPS).map(([grp, list]) => (
-                  <div key={grp} className="mb-3">
-                    <div className="text-xs text-ink-mute mb-1.5">{grp}</div>
-                    <div className="flex gap-2 flex-wrap">
-                      {list.map((i) => (
-                        <ChoicePill key={i} value={i} label={equipLabel(i)} selected={d.equipmentItems.includes(i)} onSelect={() => update('equipmentItems', toggleArr(d.equipmentItems, i))} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                <p className="text-xs text-ink-mute mt-2">Pick everything you have access to — leave all unchecked for bodyweight only. You can change this anytime in Settings → My Equipment.</p>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {step === 4 && (
           <section>
             <PageTitle title="Anything to avoid?" subtitle="Optional — helps us swap exercises automatically." />
             <div className="space-y-3">
@@ -355,7 +286,7 @@ export function OnboardingWizard() {
           </section>
         )}
 
-        {step === 5 && (
+        {step === 4 && (
           <section>
             <PageTitle title="Starting strength" subtitle="Optional — recent best for the big four. We'll calibrate from your first sessions if you skip." />
             <div className="grid grid-cols-2 gap-3">
@@ -383,10 +314,7 @@ export function OnboardingWizard() {
           </section>
         )}
 
-        {/* ONBOARDING_CONFIRMATION_STEP */}
-        {step === 7 && <ConfirmationStep draft={d} />}
-
-        {step === 6 && (
+        {step === 5 && (
           <section>
             <PageTitle title="Pick your mode" subtitle="The same data, different levels of detail. You can switch anytime." />
             <div className="space-y-3">
@@ -442,6 +370,8 @@ export function OnboardingWizard() {
             )}
           </section>
         )}
+
+        {step === 6 && <ConfirmationStep draft={d} />}
       </main>
 
       <footer className="fixed bottom-0 inset-x-0 bg-bg/95 backdrop-blur border-t border-ink-line">
@@ -452,7 +382,7 @@ export function OnboardingWizard() {
           <div className="flex-1" />
           {step < totalSteps - 1 && (
             <Button disabled={!canAdvance} onClick={() => {
-              // when leaving step 1, pre-select the recommended mode for step 6
+              // when leaving the experience step, pre-select the recommended mode
               if (step === 1 && recommendation && !d.chosenMode) update('chosenMode', recommendation.mode);
               setStep((s) => s + 1);
             }}>Continue</Button>
@@ -485,8 +415,7 @@ function ConfirmationStep({ draft }: { draft: Draft }) {
           {showTerminology && (
             <li>Terminology: <span className="font-semibold">{draft.advancedTerminology ? 'Advanced' : 'Plain language'}</span></li>
           )}
-          <li>Goal: <span className="font-semibold capitalize">{draft.primaryGoal.replace('-', ' ')}</span></li>
-          <li>We've also picked a starting program based on your inputs.</li>
+          <li>Next: build a plan to set your goal, training days, and schedule.</li>
         </ul>
       </Card>
       <p className="text-xs text-ink-dim text-center mt-3">You can change any of this anytime in Settings.</p>

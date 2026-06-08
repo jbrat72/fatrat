@@ -8,6 +8,20 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.79.0 — 2026-06-08
+
+- Profile page reorganized:
+  - New editable personal-details card at the top (name, birthday, sex, weight,
+    height) in a collapsible card.
+  - Removed the read-only Overview card.
+  - Exercise Library moved to a button directly below My Equipment (pulled out
+    of the Settings card; the library page itself is unchanged).
+- My Equipment no longer stacks setups — a dropdown selects which setup to edit
+  and "+ Add" creates a new one, all reusing the same space.
+- Onboarding no longer asks about training days, session length, or goals —
+  those are chosen per-program in the Plan builder. New profiles seed neutral
+  defaults (general fitness, 3 days, 60 min) until a plan is built.
+
 ## v0.78.2 — 2026-06-08
 
 - Fixed the whole-page reset (scroll jumps to top, collapsible cards snap shut,
