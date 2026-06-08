@@ -705,7 +705,6 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 font-bold tracking-wide"><span className="w-2.5 h-2.5 rounded bg-accent" />FATRAT · Plan Wizard</div>
           <div className="flex items-center gap-3">
-            {onSaveDraft && <button type="button" onClick={saveDraft} disabled={saving} className="text-[12px] font-semibold text-accent-hot disabled:opacity-50">{saving ? 'Saving…' : savedTick ? 'Saved ✓' : 'Save'}</button>}
             <div className="text-[12px] text-ink-dim font-mono">{page + 1} / {TOTAL}</div>
             {onClose && <button type="button" onClick={() => onClose()} aria-label="Close" className="text-ink-mute hover:text-ink text-lg leading-none px-1">✕</button>}
           </div>
@@ -715,9 +714,12 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
       <div ref={pageRef} className="px-[18px] pt-5">{pages[page]()}</div>
       <div className="fixed left-0 right-0 bottom-0 z-30 bg-bg/95 backdrop-blur border-t border-ink-line">
         <div className="text-[11px] text-ink-mute text-center pt-1.5 font-mono min-h-[18px]">{!seen ? 'Scroll down to see the whole page ↓' : !isValid() ? 'Make a selection to continue' : ''}</div>
-        <div className="max-w-[720px] mx-auto px-[18px] pb-3.5 pt-2 flex gap-2.5">
+        <div className="max-w-[720px] mx-auto px-[18px] pb-3.5 pt-2 flex items-center gap-2.5">
           <Button variant="ghost" onClick={back} className={page === 0 ? 'invisible' : ''}>Back</Button>
-          <Button block disabled={!isValid() || !seen} onClick={next}>{genBtn ? '⚡ Generate My Program' : lastBtn ? 'Start My Program' : 'Next'}</Button>
+          <div className="ml-auto flex items-center gap-2.5">
+            {onSaveDraft && <Button variant="ghost" onClick={saveDraft} disabled={saving}>{saving ? 'Saving…' : savedTick ? 'Saved ✓' : 'Save'}</Button>}
+            <Button disabled={!isValid() || !seen} onClick={next}>{genBtn ? '⚡ Generate My Program' : lastBtn ? 'Start My Program' : 'Next'}</Button>
+          </div>
         </div>
       </div>
     </div>

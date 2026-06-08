@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { PageTitle, Card, ModeChip, Button } from '@/components/ui';
 import { useUser } from '@/components/app';
+import { EquipmentManager } from '@/components/settings';
 
 export default function ProfilePage() {
   const { user } = useUser();
@@ -33,6 +34,8 @@ export default function ProfilePage() {
             <li className="py-3 flex items-center justify-between"><span>Goal</span><span className="text-ink-dim capitalize">{user.primaryGoal.replace('-', ' ')}</span></li>
           </ul>
         </Card>
+
+        <EquipmentManager />
 
         <Card>
           <div className="section-head mb-2">SETTINGS</div>

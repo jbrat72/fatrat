@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.78.1 — 2026-06-08
+
+- My Equipment moved out of Settings into its own collapsible card on the
+  Profile page. Toggling an item now updates instantly via local state and
+  persists in the background, so the page no longer jumps to the top on each
+  tap.
+- Plan Wizard footer: the **Next** button is now compact and right-justified,
+  with **Save** sitting to its left; Save was removed from the top header.
+
 ## v0.78.0 — 2026-06-08
 
 - Plan Wizard Page 16 — exercise ordering and set structure.
