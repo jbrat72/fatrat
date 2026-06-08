@@ -8,6 +8,25 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.78.0 — 2026-06-08
+
+- Plan Wizard Page 16 — exercise ordering and set structure.
+  - Select 2+ exercises in a day and tap **Superset** to pair them; selected
+    moves are reordered to sit together and tagged with a shared group. Works
+    for any pairing, including your two core moves.
+  - Per-day action bar offers **Straight**, **Superset**, and — only when you
+    enabled them in the set-types step — **Drop set** and **Pyramid**. Applying
+    a non-superset style clears any existing grouping.
+  - Drag the ⋮⋮ handle to reorder exercises within a day; supersets move as a
+    contiguous block so a pair never gets split.
+  - Grouped rows show a left accent bar and a "⟂ Superset" label at the group
+    start; drop/pyramid rows show a small badge. `setStyle` / `supersetGroup`
+    carry through generation, persistence, and the superset-aware logger.
+- Ad-hoc workout — equipment profile picker. The ad-hoc logger now asks which
+  equipment profile is on hand (defaulting to your default), filters the library
+  to what that setup can do, and stamps the session's `equipmentProfileId` so
+  in-workout swaps match the same gear.
+
 ## v0.77.0 — 2026-06-06
 
 - Multiple equipment profiles (e.g. Home + Commercial Gym). A program is built

@@ -49,6 +49,8 @@ export function buildWizardInput(
         tier: (e.muscle === 'core' ? 'grow' : (state.prioritization.tiers[e.muscle] ?? 'grow')) as MuscleTier,
         exerciseId: e.exerciseId as string,
         exerciseName: e.name,
+        setStyle: e.setStyle,
+        supersetGroup: e.supersetGroup,
       })),
   );
   // Offsets parallel to days, derived from each day's weekday vs the start day.

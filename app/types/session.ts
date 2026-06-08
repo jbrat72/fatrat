@@ -130,6 +130,9 @@ export interface WorkoutSession {
    *  workout sessions that have no mesocycle to pull rest from. Programmed
    *  sessions fall back to `mesocycle.restSeconds`. */
   restSeconds?: number;
+  /** Equipment profile this session was logged against. Lets exercise swaps
+   *  filter the library to whatever was on hand (e.g. a hotel or office gym). */
+  equipmentProfileId?: string;
   feedback?: SessionFeedback;
 }
 

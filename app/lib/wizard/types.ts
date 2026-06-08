@@ -6,7 +6,7 @@
  * program. Profile-derived fields (age band, sex, bodyweight, injuries) are
  * copied in read-only from the user's FATRAT profile when the wizard opens.
  */
-import type { MuscleGroup, ExerciseMetric } from '@/types';
+import type { MuscleGroup, ExerciseMetric, SetStyle } from '@/types';
 
 export type WizGoal =
   | 'muscle' | 'strength' | 'transform' | 'leanout' | 'fitness' | 'athletic';
@@ -87,6 +87,11 @@ export interface GeneratedExercise {
   /** rep count for rep-based metrics; seconds for time-based metrics. */
   reps: number;
   metric: ExerciseMetric;     // 'weight-reps' | 'reps' | 'time' | 'weight-time'
+  /** How the sets are performed. 'superset' exercises sharing a supersetGroup
+   *  are done back-to-back. */
+  setStyle: SetStyle;
+  /** Exercises sharing this id (within a day) form a superset / giant set. */
+  supersetGroup?: number;
   anchor: boolean;            // primary compound the progression tracks
 }
 

@@ -20,6 +20,9 @@ export interface AssignedSlot {
   tier: MuscleTier;
   exerciseId: string;
   exerciseName: string;
+  /** Per-exercise set style + superset grouping (set by the wizard). */
+  setStyle?: SetStyle;
+  supersetGroup?: number;
 }
 
 /** A generated week with exercises filled in — one ordered list per day. */
@@ -130,6 +133,8 @@ export function assignExercises(
         tier: slot.tier,
         exerciseId: pick?.id ?? `muscle:${slot.muscle}`,
         exerciseName: pick?.name ?? slot.muscle,
+        setStyle: slot.setStyle,
+        supersetGroup: slot.supersetGroup,
       };
     }),
   );
@@ -237,7 +242,7 @@ function materializeWeeks(input: CustomProgramInput): WeekMaterial[] {
   const periodized = input.programStyle !== 'traditional';
   const isCircuit = input.programStyle === 'traditional' && input.splitType === 'full-body';
   const rounds = Math.max(1, Math.round(input.timesThrough ?? 3));
-  const layout: WeekLayout = input.week1.map((day) => day.map((s) => ({ muscle: s.muscle, tier: s.tier })));
+  const layout: WeekLayout = input.week1.map((day) => day.map((s) => ({ muscle: s.muscle, tier: s.tier, setStyle: s.setStyle, supersetGroup: s.supersetGroup })));
   const out: WeekMaterial[] = [];
   for (let w = 0; w < input.weeks; w++) {
     const assigned = w === 0 ? input.week1 : assignExercises(layout, input.library, input.allowed, w);
@@ -326,7 +331,8 @@ export function generateCustomProgram(input: CustomProgramInput): GeneratedProgr
         // logged history as the block is trained.
         const weightKg = useWeight && w === 0 ? sw?.weightKg : undefined;
         const setStyle: SetStyle =
-          input.muscleSetStyles?.[slot.muscle]
+          slot.setStyle
+          ?? input.muscleSetStyles?.[slot.muscle]
           ?? (input.programStyle === 'traditional' ? (input.preferredSetStyle ?? 'straight') : 'straight');
         // Pyramid + drop styles only apply to weight-reps exercises; they fall
         // back to plain straight sets for time / pure-rep / weight-time.
@@ -369,11 +375,15 @@ export function generateCustomProgram(input: CustomProgramInput): GeneratedProgr
           prescribedRIR: wk.targetRIR,
           metric,
           setStyle,
+          supersetGroup: slot.supersetGroup,
           sets,
         };
       });
-      // Pair consecutive superset-tagged exercises into superset groups.
-      let ssGroup = 0;
+      // Pair consecutive superset-tagged exercises into groups — only when
+      // the wizard didn't already assign explicit supersetGroups.
+      let ssGroup = day.reduce((mx, s) => Math.max(mx, s.supersetGroup ?? 0), 0);
+      const hasExplicit = day.some((s) => s.supersetGroup != null);
+      if (!hasExplicit)
       for (let k = 0; k < exercises.length - 1; k++) {
         if (
           exercises[k]!.setStyle === 'superset' && exercises[k]!.supersetGroup == null &&

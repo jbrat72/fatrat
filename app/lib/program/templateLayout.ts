@@ -96,6 +96,9 @@ export interface TemplateLayoutInput {
 export interface MuscleSlot {
   muscle: MuscleGroup;
   tier: MuscleTier;
+  /** Carried through from the wizard so set style / supersets persist per week. */
+  setStyle?: import('@/types').SetStyle;
+  supersetGroup?: number;
 }
 
 /** A generated week: one ordered list of muscle slots per training day. */

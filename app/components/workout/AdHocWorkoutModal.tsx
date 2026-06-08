@@ -4,6 +4,7 @@ import { useUser } from '@/components/app';
 import { Button, MuscleBadge, InlineNumber, TextField } from '@/components/ui';
 import { cn } from '@/lib/ui/cn';
 import { getRepository } from '@/lib/firestore';
+import { getEquipmentProfiles, defaultProfileId, itemsForProfile, canUseExercise } from '@/lib/exercise/equipment';
 import { kgToDisplay, displayToKg, weightLabel } from '@/lib/ui/units';
 import type { ExerciseDefinition, ExerciseEntry, SetEntry, WorkoutSession } from '@/types';
 
@@ -45,6 +46,7 @@ export function AdHocWorkoutModal({
   const [entries, setEntries] = useState<ExerciseEntry[]>([]);
   const [saving, setSaving] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(true);
+  const [profileId, setProfileId] = useState<string>('');
 
   // When opening with a pre-filled workout, hide the exercise picker by
   // default so the screen reads as "run this workout" — not "create custom".
@@ -57,6 +59,7 @@ export function AdHocWorkoutModal({
   useEffect(() => {
     if (!open || !user) return;
     setSearch('');
+    setProfileId(defaultProfileId(user));
     setEntries(initialExercises ? initialExercises.map((e) => ({ ...e, sets: blankSets(e.prescribedSets || DEFAULT_SET_COUNT) })) : []);
     let cancelled = false;
     (async () => {
@@ -72,11 +75,14 @@ export function AdHocWorkoutModal({
 
   const pickedIds = useMemo(() => new Set(entries.map((e) => e.exerciseId)), [entries]);
 
+  const profiles = useMemo(() => (user ? getEquipmentProfiles(user) : []), [user]);
+  const items = useMemo(() => (user ? itemsForProfile(user, profileId) : []), [user, profileId]);
   const results = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const list = q ? library.filter((e) => e.name.toLowerCase().includes(q)) : library;
+    const usable = library.filter((e) => canUseExercise(e, items));
+    const list = q ? usable.filter((e) => e.name.toLowerCase().includes(q)) : usable;
     return list.slice(0, 24);
-  }, [library, search]);
+  }, [library, search, items]);
 
   const hasContent = entries.some((e) => e.sets.some((s) => s.reps != null || s.weightKg != null || s.timeSec != null));
 
@@ -164,6 +170,7 @@ export function AdHocWorkoutModal({
         microcycleId: mergeInto.microcycleId ?? microcycleId,
         mesocycleId: mergeInto.mesocycleId ?? mesocycleId,
         planName: mergeInto.planName ?? planName,
+        equipmentProfileId: mergeInto.equipmentProfileId ?? profileId,
       };
     } else {
       session = {
@@ -178,6 +185,7 @@ export function AdHocWorkoutModal({
         microcycleId,
         mesocycleId,
         planName,
+        equipmentProfileId: profileId,
       };
     }
 
@@ -219,6 +227,18 @@ export function AdHocWorkoutModal({
                   </button>
                 )}
               </div>
+              {profiles.length > 1 && (
+                <div className="mb-2">
+                  <label className="text-[11px] text-ink-mute block mb-1">Equipment on hand</label>
+                  <select
+                    value={profileId}
+                    onChange={(e) => setProfileId(e.target.value)}
+                    className="w-full rounded-lg border border-ink-line bg-bg-input px-2.5 py-2 text-[13px]"
+                  >
+                    {profiles.map((pf) => <option key={pf.id} value={pf.id}>{pf.name}</option>)}
+                  </select>
+                </div>
+              )}
               <TextField
                 placeholder="Search the library — bench, row, squat…"
                 value={search}

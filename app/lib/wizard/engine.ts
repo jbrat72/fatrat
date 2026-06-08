@@ -201,7 +201,7 @@ export function generateWeek(
         const sets = b + (i < r ? 1 : 0); if (sets <= 0) continue;
         const e = i === 0 ? pool[0] : pool[(i + di) % pool.length];
         const anchor = isAnchor(e) && i === 0;
-        exercises.push({ exerciseId: e.id, name: e.name, muscle: m, sets, reps: countFor(state, e, anchor), metric: e.metric || 'weight-reps', anchor });
+        exercises.push({ exerciseId: e.id, name: e.name, muscle: m, sets, reps: countFor(state, e, anchor), metric: e.metric || 'weight-reps', setStyle: 'straight', anchor });
       }
     });
     return { dow: dows[di], type: day.type, dayMuscles: day.muscles, emphasis: di === 0 && emph.length ? `${emph[0]} emphasis` : '', exercises };
@@ -220,7 +220,7 @@ export function generateWeek(
       if (!d.dayMuscles.includes('core')) d.dayMuscles.push('core');
       for (let i = 0; i < n; i++) {
         const e = corePool[(di * n + i) % corePool.length];
-        d.exercises.push({ exerciseId: e.id, name: e.name, muscle: 'core', sets: 3, reps: countFor(state, e, false), metric: e.metric || 'weight-reps', anchor: false });
+        d.exercises.push({ exerciseId: e.id, name: e.name, muscle: 'core', sets: 3, reps: countFor(state, e, false), metric: e.metric || 'weight-reps', setStyle: 'straight', anchor: false });
       }
     });
   }
