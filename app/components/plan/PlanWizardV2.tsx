@@ -141,8 +141,11 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   }
   const [page, setPage] = useState(0);
   const [program, setProgram] = useState<Record<number, GeneratedDay[]>>(() => initialProgram ?? {});
-  const [seen, setSeen] = useState(false);
-  const seenPages = useRef<Set<number>>(new Set());
+  const isResuming = !!initialState;
+  // On resume, every page was already completed — treat them as seen so the
+  // scroll-to-bottom gate doesn't re-block the Next button on done pages.
+  const [seen, setSeen] = useState(isResuming);
+  const seenPages = useRef<Set<number>>(new Set(isResuming ? Array.from({ length: TOTAL }, (_, i) => i) : []));
   const pageRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingScroll = useRef<number | null>(null);
@@ -248,15 +251,36 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
     });
     /* eslint-disable-next-line */
   }, [state.trainingStyle.baseStyle]);
+  // Signature of the inputs that determine which exercises get generated. We
+  // regenerate only when this changes — otherwise the user's review-page edits
+  // (supersets, swaps, reorders) are kept instead of being overwritten.
+  function genSignature(): string {
+    return JSON.stringify({
+      d: state.schedule.daysPerWeek, dur: state.schedule.durationWeeks,
+      split: state.split.type, custom: state.split.customDays,
+      tiers: state.prioritization.tiers,
+      env: state.equipment.environment, items: state.equipment.items,
+      base: state.trainingStyle.baseStyle, vol: state.trainingStyle.volumeFramework,
+      reps: state.setsAndReps.repRange,
+    });
+  }
+  const genSig = useRef<string | null>(null);
+  // When resuming an already-built program, lock the signature so we keep the
+  // saved exercises/supersets rather than regenerating over them.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (program[0] && program[0].length) genSig.current = genSignature(); }, []);
   // Generate the program for the review/exercises pages (effect, not during render).
   useEffect(() => {
     if (page !== 15) return;
+    const sig = genSignature();
+    if (program[0] && program[0].length && genSig.current === sig) return; // keep existing edits
     const { cols, loadCount } = weekStructure(state);
     const loads = cols.filter((c) => c.kind === 'load');
     const wk = loads[0] || cols[0];
-    if (wk && !program[0]) {
+    if (wk) {
       const days = generateWeek(state, lib, wk, loadCount).map((d) => ({ ...d, exercises: d.exercises.map((e) => ({ ...e })) }));
       setProgram({ 0: days });
+      genSig.current = sig;
     }
     /* eslint-disable-next-line */
   }, [page, program]);
@@ -290,7 +314,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   function scrollToSection(idx: number) { const c = scrollRef.current; const secs = sectionAnchors(); const el = secs[idx]; if (!c || !el) return; const top = el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 84; c.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }
 
   function goTo(i: number) { setSeen(seenPages.current.has(i)); setPage(i); }
-  function next() { if (!isValid()) return; if (page === 14) { setProgram({}); setSeen(seenPages.current.has(15)); setPage(15); return; } if (page < TOTAL - 1) goTo(page + 1); else onComplete?.(state, program); }
+  function next() { if (!isValid()) return; if (page === 14) { setSeen(seenPages.current.has(15)); setPage(15); return; } if (page < TOTAL - 1) goTo(page + 1); else onComplete?.(state, program); }
   function back() { if (page > 0) goTo(page - 1); }
 
   /* selection that advances to next section */
@@ -672,7 +696,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
                 <button type="button" onClick={() => toggleSel(di, ei)} aria-label="Select" className={`w-5 h-5 shrink-0 rounded border flex items-center justify-center text-[11px] ${checked ? 'bg-accent border-accent text-white' : 'border-ink-line text-transparent'}`}>✓</button>
                 <span draggable onDragStart={() => setDrag({ di, ei })} onDragEnd={() => setDrag(null)} className="shrink-0 cursor-grab text-ink-mute select-none text-[14px] leading-none" aria-label="Drag to reorder">⋮⋮</span>
                 <span className="w-[60px] shrink-0 text-[12px] font-semibold text-ink-dim">{cap(e.muscle)}{e.anchor ? ' 🔒' : ''}</span>
-                <select className="flex-1 min-w-0 rounded-lg border border-ink-line bg-bg-input px-2 py-2 text-[13px]" value={e.name} onChange={(ev) => setProgram((pr) => { const c = structuredClone(pr); const ex = c[phase][di].exercises[ei]; const def = defs.find((x) => x.name === ev.target.value); ex.name = ev.target.value; if (def) { const tb = def.metric === 'time' || def.metric === 'weight-time'; const wasTb = ex.metric === 'time' || ex.metric === 'weight-time'; ex.metric = def.metric || 'weight-reps'; ex.reps = tb ? 30 : (wasTb ? 10 : ex.reps); } return c; })}>{list.map((o) => <option key={o} value={o}>{o}</option>)}</select>
+                <select className="flex-1 min-w-0 rounded-lg border border-ink-line bg-bg-input px-2 py-2 text-[13px]" value={e.name} onChange={(ev) => setProgram((pr) => { const c = structuredClone(pr); const ex = c[phase][di].exercises[ei]; const def = defs.find((x) => x.name === ev.target.value); ex.name = ev.target.value; if (def) { ex.exerciseId = def.id; const tb = def.metric === 'time' || def.metric === 'weight-time'; const wasTb = ex.metric === 'time' || ex.metric === 'weight-time'; ex.metric = def.metric || 'weight-reps'; ex.reps = tb ? 30 : (wasTb ? 10 : ex.reps); } return c; })}>{list.map((o) => <option key={o} value={o}>{o}</option>)}</select>
                 {styleTag && <span className="text-[10px] font-bold text-warn shrink-0">{styleTag}</span>}
                 <span className="font-mono text-[12px] text-ink-dim shrink-0">{fmtPresc(e)}</span>
                 <button type="button" onClick={() => { setSel(null); setProgram((pr) => { const c = structuredClone(pr); c[phase][di].exercises.splice(ei, 1); return c; }); }} className="w-7 shrink-0 rounded-md border border-ink-line text-ink-mute hover:border-danger hover:text-danger">✕</button>

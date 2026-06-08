@@ -8,6 +8,18 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.79.2 — 2026-06-08
+
+- Fixed supersets (and other review-page edits) being lost. Navigating through
+  the "Generate" page used to wipe and regenerate the program, discarding your
+  superset groups, swaps, and reordering. The review page now regenerates only
+  when the underlying settings actually change, and preserves your edits
+  otherwise — including when resuming a saved program.
+- Swapping an exercise from the review-page dropdown now updates its underlying
+  exercise id (not just the name), so the saved program matches the choice.
+- Resuming a saved program no longer disables Next or forces you to scroll to
+  the bottom on pages you already completed.
+
 ## v0.79.1 — 2026-06-08
 
 - Profile cards: My Equipment and Exercise Library now share the same label
