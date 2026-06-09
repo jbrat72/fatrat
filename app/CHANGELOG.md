@@ -8,6 +8,22 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.80.0 — 2026-06-08
+
+- Start a plan any day — no more waiting for Monday.
+  - Page 16's button is now **Finish**, which opens a modal: **Activate this
+    plan** or **Save to Gallery**. Save to Gallery stores the finished plan
+    (single instance) without scheduling anything.
+  - Activating asks for a **start date**. If it's mid-week, a first-week editor
+    shows your typical week on top and the actual first week below, with past
+    days greyed out. Work days are placed in the remaining days and you can flip
+    any remaining day between train and rest. Workouts that don't fit are
+    skipped (short first week); the normal pattern resumes the next Monday.
+  - Schedule is stored as a Monday-anchored weekly pattern + start date, so the
+    first week is a clean override and weeks 2+ follow the typical week.
+- Activated plans stay as a single Gallery entry, now flagged **● Active**
+  (the active block links back to its template via `templateId`).
+
 ## v0.79.4 — 2026-06-08
 
 - Plan wizard, step 1 of the start-anytime work: dropped the "start day"

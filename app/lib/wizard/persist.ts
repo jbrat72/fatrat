@@ -11,7 +11,7 @@
 import { getRepository } from '@/lib/firestore';
 import { todayIso } from '@/lib/ui/date';
 import {
-  generateCustomProgram, buildCustomTemplate,
+  generateCustomProgram, buildCustomTemplate, addDaysIso,
   type CustomProgramInput, type AssignedWeek,
 } from '@/lib/program/templateProgram';
 import type { ProgramTemplate } from '@/types';
@@ -75,6 +75,13 @@ export function buildWizardInput(
       startingWeights[id] = { weightKg, repsLow, repsHigh };
     }
   }
+  // When a real start date was chosen at activation, anchor week 1 on the
+  // Monday on/before it (week-0 offsets then start from the chosen day).
+  // Otherwise default to the next Monday.
+  const actualStart = state.schedule.startDate;
+  const startAnchor = actualStart
+    ? addDaysIso(actualStart, -(((new Date(actualStart + 'T00:00:00').getDay()) - 1 + 7) % 7))
+    : nextStartIso(state.schedule.startDow);
   const programStyle: 'traditional' | 'periodization' =
     (state.trainingStyle.volumeFramework === 'evidence' || (state.trainingStyle.periodizationStrategy && state.trainingStyle.periodizationStrategy !== 'none'))
       ? 'periodization' : 'traditional';
@@ -89,7 +96,8 @@ export function buildWizardInput(
     userId: user.userId,
     creatorName: user.displayName,
     goal: goalLabel(state.goal.primary),
-    startDate: nextStartIso(state.schedule.startDow),
+    startDate: startAnchor,
+    firstWeek: state.schedule.firstWeek,
     startingWeights: Object.keys(startingWeights).length ? startingWeights : undefined,
     workOffsets,
     splitType: splitTypeOf(state.split.type),
@@ -121,15 +129,38 @@ export async function activateWizardProgram(
   for (const mz of mesos) if (mz.status === 'active') await repo.upsertMesocycle({ ...mz, status: 'archived' });
 
   const prog = generateCustomProgram(input);
-  const meso = { ...prog.mesocycle, equipmentProfileId: state.equipment.profileId };
+  // Reuse the draft/template id so the finished plan stays a single instance,
+  // and link the active block back to it so the gallery can flag it Active.
+  const tpl = buildCustomTemplate(input);
+  const finalTplId = templateId || tpl.id;
+  const meso = { ...prog.mesocycle, equipmentProfileId: state.equipment.profileId, templateId: finalTplId };
   await repo.upsertMesocycle(meso);
   for (const mi of prog.microcycles) await repo.upsertMicrocycle(mi);
   for (const s of prog.sessions) await repo.upsertSession(s);
-  // Reuse the draft's id (if resumed/saved) so finishing a plan updates the
-  // single gallery record in place rather than leaving a duplicate behind.
-  const tpl = buildCustomTemplate(input);
-  await repo.upsertTemplate({ ...tpl, id: templateId || tpl.id, isDraft: false });
+  await repo.upsertTemplate({ ...tpl, id: finalTplId, isDraft: false });
   return meso;
+}
+
+/**
+ * Save the finished plan to the Gallery (a non-draft custom template) without
+ * activating it — no mesocycle/sessions are created. Reuses the draft/template
+ * id so there's only ever one instance of the plan.
+ */
+export async function saveWizardToGallery(
+  state: WizardState, user: UserProfile, program: Record<number, GeneratedDay[]>, templateId?: string,
+): Promise<string> {
+  const repo = getRepository();
+  const globals = await repo.listGlobalExercises();
+  let userEx: ExerciseDefinition[] = [];
+  try { userEx = await repo.listUserExercises(user.userId); } catch { userEx = []; }
+  const library = [...globals, ...userEx];
+  const days = program[0] || [];
+  if (days.length === 0) throw new Error('No program to save — generate exercises first.');
+  const input = buildWizardInput(state, days, user, library);
+  const tpl = buildCustomTemplate(input);
+  const id = templateId || tpl.id;
+  await repo.upsertTemplate({ ...tpl, id, isDraft: false });
+  return id;
 }
 
 let _draftN = 0;

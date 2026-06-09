@@ -47,7 +47,7 @@ function uid(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${_uidCounter}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function addDaysIso(iso: string, days: number): string {
+export function addDaysIso(iso: string, days: number): string {
   const d = new Date(iso + 'T00:00:00');
   d.setDate(d.getDate() + days);
   const y = d.getFullYear();
@@ -218,6 +218,10 @@ export interface CustomProgramInput {
   maxSetsPerExercise?: number;
   /** User-chosen rest between sets (seconds). */
   restSeconds?: number;
+  /** Mid-week activation override for week 0: run only the last
+   *  (trainingDays - dropCount) days, placed on these offsets from the start
+   *  anchor. Weeks 2+ use the normal weekly pattern. */
+  firstWeek?: { offsets: number[]; dropCount: number };
 }
 
 export interface GeneratedProgram {
@@ -303,13 +307,16 @@ export function generateCustomProgram(input: CustomProgramInput): GeneratedProgr
   material.forEach((wk, w) => {
     const microId = uid('micro');
     const sessionIds: string[] = [];
-    const offsets = input.workOffsets ?? dayOffsetsFor(wk.trainingDays.length);
+    const fw = w === 0 ? input.firstWeek : undefined;
+    const weekDays = fw ? wk.trainingDays.slice(fw.dropCount) : wk.trainingDays;
+    const weekSetCounts = fw ? wk.setCounts.slice(fw.dropCount) : wk.setCounts;
+    const offsets = fw ? fw.offsets : (input.workOffsets ?? dayOffsetsFor(wk.trainingDays.length));
 
-    wk.trainingDays.forEach((day, i) => {
+    weekDays.forEach((day, i) => {
       const isoDate = addDaysIso(input.startDate, w * 7 + (offsets[i] ?? i));
       const dayOfWeek = new Date(isoDate + 'T00:00:00').getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6;
       const exercises: ExerciseEntry[] = day.map((slot, j) => {
-        const n = wk.setCounts[i]?.[j] ?? 1;
+        const n = weekSetCounts[i]?.[j] ?? 1;
         const def = input.library.find((e) => e.id === slot.exerciseId);
         const metric = exerciseMetric(def);
         const useReps = metric === 'weight-reps' || metric === 'reps';

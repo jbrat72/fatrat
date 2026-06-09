@@ -10,6 +10,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui';
+import { FinishPlanModal } from './FinishPlanModal';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
 import { EQUIP_GROUPS, equipLabel, isBodyweightOnly, getEquipmentProfiles, defaultProfileId, itemsForProfile } from '@/lib/exercise/equipment';
 import type { MuscleGroup, UserProfile, SetStyle } from '@/types';
@@ -95,11 +96,13 @@ export interface PlanWizardV2Props {
   initialDraftId?: string;
   onClose?: () => void;
   onComplete?: (state: WizardState, program: Record<number, GeneratedDay[]>, draftId?: string) => void;
+  /** Save the finished plan to the Gallery without activating it. */
+  onSaveToGallery?: (state: WizardState, program: Record<number, GeneratedDay[]>, draftId?: string) => void;
   /** Save the current state as a resumable draft; returns the draft id. */
   onSaveDraft?: (state: WizardState, program: Record<number, GeneratedDay[]>, existingId?: string) => Promise<string>;
 }
 
-export function PlanWizardV2({ user, initialName, initialState, initialProgram, initialDraftId, onClose, onComplete, onSaveDraft }: PlanWizardV2Props) {
+export function PlanWizardV2({ user, initialName, initialState, initialProgram, initialDraftId, onClose, onComplete, onSaveToGallery, onSaveDraft }: PlanWizardV2Props) {
   const [state, setState] = useState<WizardState>(() => {
     if (initialState) return structuredClone(initialState);
     const s = initState(user); if (initialName) s.name = initialName; return s;
@@ -144,6 +147,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   // On resume, every page was already completed — treat them as seen so the
   // scroll-to-bottom gate doesn't re-block the Next button on done pages.
   const [seen, setSeen] = useState(isResuming);
+  const [finishOpen, setFinishOpen] = useState(false);
   const seenPages = useRef<Set<number>>(new Set(isResuming ? Array.from({ length: TOTAL }, (_, i) => i) : []));
   const pageRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -313,7 +317,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   function scrollToSection(idx: number) { const c = scrollRef.current; const secs = sectionAnchors(); const el = secs[idx]; if (!c || !el) return; const top = el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 84; c.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }
 
   function goTo(i: number) { setSeen(seenPages.current.has(i)); setPage(i); }
-  function next() { if (!isValid()) return; if (page === 14) { setSeen(seenPages.current.has(15)); setPage(15); return; } if (page < TOTAL - 1) goTo(page + 1); else onComplete?.(state, program, savedIdRef.current); }
+  function next() { if (!isValid()) return; if (page === 14) { setSeen(seenPages.current.has(15)); setPage(15); return; } if (page < TOTAL - 1) goTo(page + 1); else setFinishOpen(true); }
   function back() { if (page > 0) goTo(page - 1); }
 
   /* selection that advances to next section */
@@ -738,10 +742,25 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
           <Button variant="ghost" onClick={back} className={page === 0 ? 'invisible' : ''}>Back</Button>
           <div className="ml-auto flex items-center gap-2.5">
             {onSaveDraft && <Button variant="ghost" onClick={saveDraft} disabled={saving}>{saving ? 'Saving…' : savedTick ? 'Saved ✓' : 'Save'}</Button>}
-            <Button disabled={!isValid() || !seen} onClick={next}>{genBtn ? '⚡ Generate My Program' : lastBtn ? 'Start My Program' : 'Next'}</Button>
+            <Button disabled={!isValid() || !seen} onClick={next}>{genBtn ? '⚡ Generate My Program' : lastBtn ? 'Finish' : 'Next'}</Button>
           </div>
         </div>
       </div>
+      {finishOpen && (
+        <FinishPlanModal
+          workDayCount={(program[0]?.length ?? 0)}
+          restDays={state.schedule.restDays}
+          onCancel={() => setFinishOpen(false)}
+          onSaveToGallery={() => { setFinishOpen(false); onSaveToGallery?.(state, program, savedIdRef.current); }}
+          onActivate={(startDate, firstWeek) => {
+            setFinishOpen(false);
+            const finalState = structuredClone(state);
+            finalState.schedule.startDate = startDate;
+            finalState.schedule.firstWeek = firstWeek;
+            onComplete?.(finalState, program, savedIdRef.current);
+          }}
+        />
+      )}
     </div>
   );
 }

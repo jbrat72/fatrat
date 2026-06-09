@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { PageTitle, Card, BackButton } from '@/components/ui';
 import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
-import { activateWizardProgram, saveWizardDraft } from '@/lib/wizard/persist';
+import { activateWizardProgram, saveWizardDraft, saveWizardToGallery } from '@/lib/wizard/persist';
 import { getRepository } from '@/lib/firestore';
 import type { ProgramTemplate, UserMode } from '@/types';
 import type { WizardState, GeneratedDay } from '@/lib/wizard/types';
@@ -21,11 +21,15 @@ export default function ProgramTemplatesPage() {
   const [resumeProgram, setResumeProgram] = useState<Record<number, GeneratedDay[]>>({});
   const [resumeDraftId, setResumeDraftId] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const savingRef = useRef(false);
 
   useEffect(() => {
     getRepository().listTemplates().then(setTemplates);
-  }, [refreshTick]);
+    if (user) getRepository().listMesocycles(user.userId)
+      .then((ms) => setActiveTemplateId(ms.find((m) => m.status === 'active')?.templateId ?? null))
+      .catch(() => { /* non-fatal */ });
+  }, [refreshTick, user]);
 
   const programs = useMemo(() => {
     if (!user) return [];
@@ -81,7 +85,7 @@ export default function ProgramTemplatesPage() {
             <Card className="hover:border-ink-dim transition-colors">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="section-head">{t.isCustom ? 'CUSTOM' : t.split.toUpperCase()}</div>
+                  <div className="section-head flex items-center gap-2">{t.isCustom ? 'CUSTOM' : t.split.toUpperCase()}{t.id === activeTemplateId && <span className="text-ok normal-case tracking-normal">● Active</span>}</div>
                   <div className="font-semibold text-base mt-1">
                     {t.name}
                     {t.isCustom && t.createdBy && (
@@ -112,6 +116,16 @@ export default function ProgramTemplatesPage() {
               const t = await saveWizardDraft(state, user, program, existingId);
               setRefreshTick((n) => n + 1);
               return t.id;
+            }}
+            onSaveToGallery={async (state, program, draftId) => {
+              if (savingRef.current) return;
+              savingRef.current = true;
+              try {
+                await saveWizardToGallery(state, user, program, draftId ?? resumeDraftId ?? undefined);
+                setWizardOpen(false); setResumeState(null); setResumeProgram({}); setResumeDraftId(null); setRefreshTick((n) => n + 1);
+              } catch (err) {
+                alert('Could not save to gallery: ' + ((err as Error)?.message ?? 'unknown error'));
+              } finally { savingRef.current = false; }
             }}
             onComplete={async (state, program, draftId) => {
               if (savingRef.current) return;

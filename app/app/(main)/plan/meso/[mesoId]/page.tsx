@@ -9,7 +9,7 @@ import { terminologyMode, usesAdvancedTerminology } from '@/lib/periodization';
 import type { Mesocycle, Microcycle, WorkoutSession } from '@/types';
 import { ChangePlanSheet } from '@/components/plan/ChangePlanSheet';
 import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
-import { activateWizardProgram, saveWizardDraft } from '@/lib/wizard/persist';
+import { activateWizardProgram, saveWizardDraft, saveWizardToGallery } from '@/lib/wizard/persist';
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -127,6 +127,10 @@ export default function MesoDetailPage() {
             initialName={meso.name}
             onSaveDraft={async (st, pr, id) => (await saveWizardDraft(st, user, pr, id)).id}
             onClose={() => setEditV2Open(false)}
+            onSaveToGallery={async (state, program) => {
+              try { await saveWizardToGallery(state, user, program); setEditV2Open(false); }
+              catch (err) { alert('Could not save to gallery: ' + ((err as Error)?.message ?? 'unknown error')); }
+            }}
             onComplete={async (state, program) => {
               try { await activateWizardProgram(state, program, user); router.push('/today'); }
               catch (err) { alert('Could not save: ' + ((err as Error)?.message ?? 'unknown error')); }

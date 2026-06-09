@@ -49,6 +49,11 @@ export interface WizardState {
     startDow: number;            // 0=Sun .. 6=Sat
     restDays: number[];          // day-of-week indices
     durationWeeks: number | 'ongoing' | null;
+    /** Actual ISO start date chosen at activation. Absent = start next Monday. */
+    startDate?: string;
+    /** Week-0 override for a mid-week start: run only the last
+     *  (workDays - dropCount) days, on these Monday-anchored offsets. */
+    firstWeek?: { offsets: number[]; dropCount: number };
   };
   equipment: { environment: string | null; items: string[]; profileId: string };
   trainingStyle: {

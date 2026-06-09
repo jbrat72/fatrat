@@ -67,6 +67,9 @@ export interface Mesocycle {
   /** Equipment profile this plan was built for — Swap/Add filter against it
    *  (live: editing that profile changes what's available here). */
   equipmentProfileId?: string;
+  /** The Gallery template this active block was generated from — keeps a plan
+   *  to a single instance and lets the gallery flag it Active. */
+  templateId?: string;
 }
 
 export interface Microcycle {
