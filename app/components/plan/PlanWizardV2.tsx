@@ -36,10 +36,6 @@ function defaultRestDays(startDow: number, d: number): number[] {
   for (let off = 0; off < 7; off++) if (!work.has(off)) rest.push((startDow + off) % 7);
   return rest;
 }
-function nextDowStr(dow: number): string {
-  const d = new Date(); d.setDate(d.getDate() + ((dow - d.getDay() + 7) % 7));
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-}
 
 /* ---- profile mapping ---- */
 function ageBandFromDob(dob?: string): WizardState['profile']['ageBand'] {
@@ -426,9 +422,6 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
         <div className="flex flex-wrap gap-2">{[2, 3, 4, 5, 6, 7].map((n) => chip(state.schedule.daysPerWeek === n, String(n), (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.schedule.daysPerWeek = n; s.schedule.restDays = defaultRestDays(s.schedule.startDow, n); s.split.type = null; }), n))}</div></div>
       <div className="wz-field"><label className="block text-[13px] font-semibold mb-1.5 mt-3">Session length</label>
         <div className="flex flex-wrap gap-2">{[30, 45, 60, 75, 90].map((n) => chip(state.schedule.sessionMinutes === n, n + (n === 90 ? '+ min' : ' min'), (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.schedule.sessionMinutes = n; }), n))}</div></div>
-      <div className="wz-field"><label className="block text-[13px] font-semibold mb-1.5 mt-3">Start day</label>
-        <div className="flex flex-wrap gap-2">{[1, 2, 3, 4, 5, 6, 0].map((d) => chip(state.schedule.startDow === d, DOW_ABBR[d], (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.schedule.startDow = d; s.schedule.restDays = defaultRestDays(d, s.schedule.daysPerWeek || 0); }), d))}</div>
-        <p className="text-[12px] text-ink-mute mt-1.5">Starts {nextDowStr(state.schedule.startDow)}.</p></div>
       <div className="wz-field"><label className="block text-[13px] font-semibold mb-1.5 mt-3">Program duration</label>
         <div className="flex flex-wrap gap-2">{[{ id: 4, label: '4 weeks' }, { id: 6, label: '6 weeks' }, { id: 8, label: '8 weeks' }, { id: 12, label: '12 weeks' }, { id: 'ongoing', label: 'Ongoing' }].map((o) => chip(state.schedule.durationWeeks === o.id, o.label, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.schedule.durationWeeks = o.id as number | 'ongoing'; }), String(o.id)))}</div></div>
     </>),
@@ -601,13 +594,13 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
     if (d >= 7) return <div className="rounded-2xl border border-ink-line bg-bg-card p-3 mt-0.5"><p className="text-[12px] text-ink-mute">You train every day — no rest days.</p></div>;
     return <div className="rounded-2xl border border-ink-line bg-bg-card p-3 mt-0.5">
       <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-dim mb-1">Rest days</div>
-      <p className="text-[12px] text-ink-dim mb-2">Tap a day to make it rest. You have {7 - d} rest day{7 - d === 1 ? '' : 's'} — marking a new one frees the oldest. Your start day stays a work day.</p>
-      <div className="grid grid-cols-7 gap-1.5">{Array.from({ length: 7 }, (_, p) => { const dow = (sd + p) % 7; const isRest = state.schedule.restDays.includes(dow); const isStart = dow === sd; return <button key={p} type="button" disabled={isStart} onClick={() => update((s) => toggleRest(s, dow))} className={`h-9 rounded-lg border text-[11px] font-semibold ${isStart ? 'bg-accent/15 border-accent/40 text-accent-hot opacity-80' : isRest ? 'bg-bg-elev border-ink-dim text-ink' : 'bg-bg-input border-ink-line text-ink-dim'}`}>{DOW_ABBR[dow]}</button>; })}</div>
+      <p className="text-[12px] text-ink-dim mb-2">Tap any day — including Monday — to make it rest. You have {7 - d} rest day{7 - d === 1 ? '' : 's'}; marking a new one frees the oldest. This is your <span className="text-ink">typical week</span> — when you activate the plan you can lay out a different first week if you&apos;re starting mid-week.</p>
+      <div className="grid grid-cols-7 gap-1.5">{Array.from({ length: 7 }, (_, p) => { const dow = (sd + p) % 7; const isRest = state.schedule.restDays.includes(dow); return <button key={p} type="button" onClick={() => update((s) => toggleRest(s, dow))} className={`h-9 rounded-lg border text-[11px] font-semibold ${isRest ? 'bg-bg-elev border-ink-dim text-ink' : 'bg-bg-input border-ink-line text-ink-dim'}`}>{DOW_ABBR[dow]}</button>; })}</div>
     </div>;
   }
   function toggleRest(s: WizardState, dow: number) {
     const d = s.schedule.daysPerWeek || 0; const maxRest = 7 - d; let r = s.schedule.restDays.slice();
-    if (dow === s.schedule.startDow) return; if (r.includes(dow)) r = r.filter((x) => x !== dow); else { r.push(dow); while (r.length > maxRest) r.shift(); }
+    if (r.includes(dow)) r = r.filter((x) => x !== dow); else { r.push(dow); while (r.length > maxRest) r.shift(); }
     s.schedule.restDays = r;
   }
 

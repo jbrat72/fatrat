@@ -8,6 +8,14 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.79.4 — 2026-06-08
+
+- Plan wizard, step 1 of the start-anytime work: dropped the "start day"
+  question. Your schedule is now a Monday-anchored typical week, and any day —
+  including Monday — can be a rest day. Copy notes that you'll be able to lay
+  out a different first week when you activate the plan (the activation modal +
+  first-week editor land next).
+
 ## v0.79.3 — 2026-06-08
 
 - Fixed finishing a plan creating a duplicate. A plan now keeps a single id for
