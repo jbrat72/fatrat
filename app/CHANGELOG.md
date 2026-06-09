@@ -8,6 +8,18 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.81.0 — 2026-06-08
+
+- Bodyweight exercises can now carry optional added weight. Moves like glute
+  bridge, single-leg calf raise, lunges, and dips are stored as bodyweight
+  (reps only), so there was no way to log the dumbbell you were holding. The
+  set logger now shows an optional "+ WEIGHT" field on rep-based exercises —
+  log it when you load the move, leave it blank for pure bodyweight (never
+  required).
+- Fixed the workout screen loading only global exercises into its definition
+  map, so custom exercises you added lost their rest-timer and movement-pattern
+  data mid-workout. It now loads your custom exercises too.
+
 ## v0.80.1 — 2026-06-08
 
 - Fixed custom exercises not appearing in the Plan wizard. The wizard read from

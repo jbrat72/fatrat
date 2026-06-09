@@ -37,6 +37,10 @@ export function SetLoggerRow({
   const showWeight = metric === 'weight-reps' || metric === 'weight-time';
   const showReps = metric === 'weight-reps' || metric === 'reps';
   const showTime = metric === 'time' || metric === 'weight-time';
+  // Bodyweight (rep-based) moves are often loaded — a dumbbell, vest, or dip
+  // belt — so offer an OPTIONAL weight field. It's never required to log.
+  const addedWeight = metric === 'reps';
+  const weightCol = showWeight || addedWeight;
 
   // Clear the warning the moment any of the required fields is filled in.
   useEffect(() => {
@@ -90,7 +94,7 @@ export function SetLoggerRow({
       <div
         className={cn(
           'items-start gap-3 p-3 grid',
-          showWeight && (showReps || showTime)
+          weightCol && (showReps || showTime)
             ? 'grid-cols-[24px_minmax(0,1fr)_minmax(0,1fr)_56px]'
             : 'grid-cols-[24px_minmax(0,1fr)_56px]',
         )}
@@ -103,9 +107,9 @@ export function SetLoggerRow({
               : index + 1}
         </div>
 
-        {showWeight && (
+        {weightCol && (
           <div>
-            <div className="text-[10px] tracking-wider2 font-semibold text-ink-mute mb-1.5">WEIGHT</div>
+            <div className="text-[10px] tracking-wider2 font-semibold text-ink-mute mb-1.5">{showWeight ? 'WEIGHT' : '+ WEIGHT'}</div>
             <InlineNumber
               value={kgToDisplay(set.weightKg, units)}
               onChange={(n) => onChange({ ...set, weightKg: displayToKg(n, units) })}

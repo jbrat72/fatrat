@@ -63,9 +63,13 @@ export default function WorkoutPage() {
       setSession(s);
       setMeso(res.mesocycle);
       setMicro(res.microcycle);
-      const defs = await repo.listGlobalExercises();
+      const [globalDefs, userDefs] = await Promise.all([
+        repo.listGlobalExercises(),
+        repo.listUserExercises(user.userId).catch(() => [] as ExerciseDefinition[]),
+      ]);
       const byId: Record<string, ExerciseDefinition> = {};
-      for (const e of defs) byId[e.id] = e;
+      for (const e of globalDefs) byId[e.id] = e;
+      for (const e of userDefs) byId[e.id] = e; // custom exercises win over any id clash
       setExerciseDefs(byId);
       if (s && !s.startedAt) {
         const started: WorkoutSession = { ...s, startedAt: new Date().toISOString() };
