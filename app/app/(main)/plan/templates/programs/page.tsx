@@ -106,18 +106,20 @@ export default function ProgramTemplatesPage() {
             user={user}
             initialState={resumeState ?? undefined}
             initialProgram={resumeProgram}
+            initialDraftId={resumeDraftId ?? undefined}
             onClose={() => { setWizardOpen(false); setResumeState(null); setResumeProgram({}); setResumeDraftId(null); setRefreshTick((n) => n + 1); }}
             onSaveDraft={async (state, program, existingId) => {
               const t = await saveWizardDraft(state, user, program, existingId);
               setRefreshTick((n) => n + 1);
               return t.id;
             }}
-            onComplete={async (state, program) => {
+            onComplete={async (state, program, draftId) => {
               if (savingRef.current) return;
               savingRef.current = true;
               try {
-                await activateWizardProgram(state, program, user);
-                if (resumeDraftId) { try { await getRepository().deleteTemplate(resumeDraftId); } catch { /* best-effort */ } }
+                // Reuse the draft/template id so the finished plan replaces the
+                // draft in place — one instance, no duplicate.
+                await activateWizardProgram(state, program, user, draftId ?? resumeDraftId ?? undefined);
                 router.push('/today');
               } catch (err) {
                 savingRef.current = false;

@@ -104,7 +104,7 @@ export function buildWizardInput(
  * Returns the new active mesocycle.
  */
 export async function activateWizardProgram(
-  state: WizardState, program: Record<number, GeneratedDay[]>, user: UserProfile,
+  state: WizardState, program: Record<number, GeneratedDay[]>, user: UserProfile, templateId?: string,
 ): Promise<Mesocycle> {
   const repo = getRepository();
   const globals = await repo.listGlobalExercises();
@@ -125,7 +125,10 @@ export async function activateWizardProgram(
   await repo.upsertMesocycle(meso);
   for (const mi of prog.microcycles) await repo.upsertMicrocycle(mi);
   for (const s of prog.sessions) await repo.upsertSession(s);
-  await repo.upsertTemplate(buildCustomTemplate(input));
+  // Reuse the draft's id (if resumed/saved) so finishing a plan updates the
+  // single gallery record in place rather than leaving a duplicate behind.
+  const tpl = buildCustomTemplate(input);
+  await repo.upsertTemplate({ ...tpl, id: templateId || tpl.id, isDraft: false });
   return meso;
 }
 

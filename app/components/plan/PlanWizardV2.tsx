@@ -94,20 +94,23 @@ export interface PlanWizardV2Props {
   initialState?: WizardState;
   /** Resume the edited Page-16 program alongside initialState. */
   initialProgram?: Record<number, GeneratedDay[]>;
+  /** Id of the draft being resumed, so saving/finishing updates it in place
+   *  (instead of leaving a duplicate behind). */
+  initialDraftId?: string;
   onClose?: () => void;
-  onComplete?: (state: WizardState, program: Record<number, GeneratedDay[]>) => void;
+  onComplete?: (state: WizardState, program: Record<number, GeneratedDay[]>, draftId?: string) => void;
   /** Save the current state as a resumable draft; returns the draft id. */
   onSaveDraft?: (state: WizardState, program: Record<number, GeneratedDay[]>, existingId?: string) => Promise<string>;
 }
 
-export function PlanWizardV2({ user, initialName, initialState, initialProgram, onClose, onComplete, onSaveDraft }: PlanWizardV2Props) {
+export function PlanWizardV2({ user, initialName, initialState, initialProgram, initialDraftId, onClose, onComplete, onSaveDraft }: PlanWizardV2Props) {
   const [state, setState] = useState<WizardState>(() => {
     if (initialState) return structuredClone(initialState);
     const s = initState(user); if (initialName) s.name = initialName; return s;
   });
   const [saving, setSaving] = useState(false);
   const [savedTick, setSavedTick] = useState(false);
-  const savedIdRef = useRef<string | undefined>(undefined);
+  const savedIdRef = useRef<string | undefined>(initialDraftId);
   const [sel, setSel] = useState<{ di: number; idx: number[] } | null>(null);
   function toggleSel(di: number, ei: number) { setSel((prev) => { if (!prev || prev.di !== di) return { di, idx: [ei] }; return prev.idx.includes(ei) ? { di, idx: prev.idx.filter((x) => x !== ei) } : { di, idx: [...prev.idx, ei] }; }); }
   const [drag, setDrag] = useState<{ di: number; ei: number } | null>(null);
@@ -314,7 +317,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   function scrollToSection(idx: number) { const c = scrollRef.current; const secs = sectionAnchors(); const el = secs[idx]; if (!c || !el) return; const top = el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 84; c.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }
 
   function goTo(i: number) { setSeen(seenPages.current.has(i)); setPage(i); }
-  function next() { if (!isValid()) return; if (page === 14) { setSeen(seenPages.current.has(15)); setPage(15); return; } if (page < TOTAL - 1) goTo(page + 1); else onComplete?.(state, program); }
+  function next() { if (!isValid()) return; if (page === 14) { setSeen(seenPages.current.has(15)); setPage(15); return; } if (page < TOTAL - 1) goTo(page + 1); else onComplete?.(state, program, savedIdRef.current); }
   function back() { if (page > 0) goTo(page - 1); }
 
   /* selection that advances to next section */

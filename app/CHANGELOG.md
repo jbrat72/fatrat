@@ -8,6 +8,14 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.79.3 — 2026-06-08
+
+- Fixed finishing a plan creating a duplicate. A plan now keeps a single id for
+  its whole life: saving a draft, then finishing it, updates that one gallery
+  record in place instead of leaving the draft behind next to a new copy. The
+  wizard also seeds its draft id when resuming, so re-saving a resumed draft
+  no longer forks a second one.
+
 ## v0.79.2 — 2026-06-08
 
 - Fixed supersets (and other review-page edits) being lost. Navigating through
