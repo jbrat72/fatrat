@@ -303,10 +303,12 @@ export default function WorkoutPage() {
     setActiveExerciseIdx(exIdx); setActiveSetIdx(setIdx);
   };
 
-  const swapExercise = async (exIdx: number, newDef: { id: string; name: string; primaryMuscle: any }) => {
+  const swapExercise = async (exIdx: number, newDef: { id: string; name: string; primaryMuscle: any; metric?: ExerciseDefinition['metric'] }) => {
     if (!session) return;
     const exercises = session.exercises.map((ex, i) =>
-      i === exIdx ? { ...ex, exerciseId: newDef.id, name: newDef.name, muscle: newDef.primaryMuscle, swappedFromExerciseId: ex.exerciseId } : ex,
+      // Carry the new exercise's metric so a bodyweight→loaded swap (or vice
+      // versa) shows the right inputs instead of inheriting the old metric.
+      i === exIdx ? { ...ex, exerciseId: newDef.id, name: newDef.name, muscle: newDef.primaryMuscle, metric: newDef.metric ?? 'weight-reps', swappedFromExerciseId: ex.exerciseId } : ex,
     );
     const next = { ...session, exercises };
     setSession(next); queueSave(next); setSwapFor(null);
@@ -427,7 +429,7 @@ export default function WorkoutPage() {
         exerciseIndex={i}
         mode={terminologyMode(user)}
         units={user.units}
-        liveMetric={exerciseDefs[ex.exerciseId]?.metric}
+        liveMetric={exerciseDefs[ex.exerciseId] ? (exerciseDefs[ex.exerciseId]!.metric ?? 'weight-reps') : undefined}
         activeSetIndex={activeExerciseIdx === i ? activeSetIdx : null}
         disabled={isResting}
         onActivateSet={(s) => activateSet(i, s)}

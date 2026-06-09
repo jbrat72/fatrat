@@ -8,6 +8,17 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.81.1 — 2026-06-08
+
+- Fixed dumbbell exercises showing reps-only with no weight field. Root cause:
+  swapping an exercise mid-workout kept the *old* exercise's metric, so swapping
+  a bodyweight slot to a loaded dumbbell move (e.g. Triceps Kickback, Rotating
+  Dumbbell Chest Press) inherited "reps only." Two fixes:
+  - Swaps now carry the new exercise's metric.
+  - The set logger now resolves the metric from the live exercise definition
+    (defaulting loadable exercises to weight-reps), which also corrects any
+    existing sessions that already have a stale metric.
+
 ## v0.81.0 — 2026-06-08
 
 - Bodyweight exercises can now carry optional added weight. Moves like glute
