@@ -70,6 +70,9 @@ export interface Mesocycle {
   /** The Gallery template this active block was generated from — keeps a plan
    *  to a single instance and lets the gallery flag it Active. */
   templateId?: string;
+  /** Per-week structure (calibration / layoff ramp / load / deload). Week 1
+   *  being 'cal' triggers e1RM auto-seeding once that week is completed. */
+  weekKinds?: ('cal' | 'ramp' | 'load' | 'deload')[];
 }
 
 export interface Microcycle {

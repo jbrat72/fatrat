@@ -72,6 +72,45 @@ function rirForWeek(week: number, weeks: number): number {
   return clamp(Math.round(3 - 2 * (week / (working - 1))), 0, 3);
 }
 
+/** A week's role in the block. 'cal' = calibration/test week, 'ramp' = layoff
+ *  reintroduction, 'load' = working week, 'deload' = recovery week. */
+export type WeekKind = 'cal' | 'ramp' | 'load' | 'deload';
+
+/** Per-muscle weekly hard sets for a given week kind. Load weeks ramp MEV→peak
+ *  across the load weeks; cal/ramp are light; deload is ~half steady. */
+function weeklyVolumeForKind(tier: MuscleTier, lm: VolumeLandmarks, kind: WeekKind, loadIdx: number, loadCount: number, periodized: boolean): number {
+  const maintain = Math.max(1, Math.round(lm.mev * 0.5));
+  const steady = tier === 'emphasize' ? lm.mav : tier === 'grow' ? Math.round((lm.mev + lm.mav) / 2) : maintain;
+  const peak = tier === 'emphasize' ? lm.mrv : tier === 'grow' ? lm.mav : maintain;
+  switch (kind) {
+    case 'cal':    return Math.max(1, Math.round(lm.mev * 0.6));
+    case 'ramp':   return Math.max(1, Math.round(lm.mev * 0.8));
+    case 'deload': return Math.max(1, Math.round(steady * 0.5));
+    case 'load':
+    default: {
+      if (!periodized) return Math.max(1, steady); // traditional = steady volume
+      const lc = Math.max(1, loadCount - 1);
+      const t = lc > 0 ? loadIdx / lc : 0;
+      return Math.max(1, Math.round(lm.mev + (peak - lm.mev) * t));
+    }
+  }
+}
+
+/** Target RIR for a week by kind. Cal = a hard top set (2), ramp = easy (3),
+ *  deload = 4, load = ramps 3→1 across the load weeks. */
+function rirForKind(kind: WeekKind, loadIdx: number, loadCount: number): number {
+  switch (kind) {
+    case 'cal':    return 2;
+    case 'ramp':   return 3;
+    case 'deload': return 4;
+    case 'load':
+    default: {
+      const lc = Math.max(1, loadCount - 1);
+      return clamp(Math.round(3 - 2 * (loadIdx / lc)), 0, 3);
+    }
+  }
+}
+
 /* ---------- equipment + exercise assignment ---------- */
 
 /** The EquipmentType set a user can train with, from their equipment access. */
@@ -222,6 +261,10 @@ export interface CustomProgramInput {
    *  (trainingDays - dropCount) days, placed on these offsets from the start
    *  anchor. Weeks 2+ use the normal weekly pattern. */
   firstWeek?: { offsets: number[]; dropCount: number };
+  /** Explicit per-week structure (calibration / layoff ramp / load / deload).
+   *  When set, total weeks = weekKinds.length and each week's volume + RIR
+   *  follow its kind instead of the default ramp-with-final-deload model. */
+  weekKinds?: WeekKind[];
 }
 
 export interface GeneratedProgram {
@@ -247,8 +290,13 @@ function materializeWeeks(input: CustomProgramInput): WeekMaterial[] {
   const isCircuit = input.programStyle === 'traditional' && input.splitType === 'full-body';
   const rounds = Math.max(1, Math.round(input.timesThrough ?? 3));
   const layout: WeekLayout = input.week1.map((day) => day.map((s) => ({ muscle: s.muscle, tier: s.tier, setStyle: s.setStyle, supersetGroup: s.supersetGroup })));
+  const kinds = input.weekKinds;
+  const totalWeeks = kinds ? kinds.length : input.weeks;
+  const totalLoad = kinds ? Math.max(1, kinds.filter((k) => k === 'load').length) : input.weeks;
   const out: WeekMaterial[] = [];
-  for (let w = 0; w < input.weeks; w++) {
+  for (let w = 0; w < totalWeeks; w++) {
+    const kind = kinds ? kinds[w]! : null;
+    const loadIdx = kinds ? Math.max(0, kinds.slice(0, w + 1).filter((k) => k === 'load').length - 1) : w;
     const assigned = w === 0 ? input.week1 : assignExercises(layout, input.library, input.allowed, w);
     const trainingDays = assigned.filter((d) => d.length > 0);
 
@@ -265,7 +313,9 @@ function materializeWeeks(input: CustomProgramInput): WeekMaterial[] {
       const queue = new Map<MuscleGroup, number[]>();
       for (const [muscle, count] of slotCount) {
         const tier = input.tiers[muscle] ?? 'grow';
-        const weekly = volumeRamp(tier, input.weeks, DEFAULT_LANDMARKS[muscle], periodized)[w] ?? 1;
+        const weekly = kinds
+          ? weeklyVolumeForKind(tier, DEFAULT_LANDMARKS[muscle], kind!, loadIdx, totalLoad, periodized)
+          : (volumeRamp(tier, input.weeks, DEFAULT_LANDMARKS[muscle], periodized)[w] ?? 1);
         queue.set(muscle, distribute(weekly, count));
       }
       const cursor = new Map<MuscleGroup, number>();
@@ -286,7 +336,8 @@ function materializeWeeks(input: CustomProgramInput): WeekMaterial[] {
       );
     }
 
-    out.push({ trainingDays, setCounts, targetRIR: periodized ? rirForWeek(w, input.weeks) : undefined });
+    const targetRIR = periodized ? (kinds ? rirForKind(kind!, loadIdx, totalLoad) : rirForWeek(w, input.weeks)) : undefined;
+    out.push({ trainingDays, setCounts, targetRIR });
   }
   return out;
 }

@@ -80,7 +80,7 @@ export interface WizardState {
 /** One column in the program's week structure (calibration / load / deload). */
 export interface WeekCol {
   label: string;
-  kind: 'cal' | 'load' | 'deload';
+  kind: 'cal' | 'ramp' | 'load' | 'deload';
   loadIdx?: number;   // 0-based index among load weeks (for ramp math)
 }
 

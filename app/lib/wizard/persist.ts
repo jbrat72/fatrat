@@ -12,12 +12,12 @@ import { getRepository } from '@/lib/firestore';
 import { todayIso } from '@/lib/ui/date';
 import {
   generateCustomProgram, buildCustomTemplate, addDaysIso,
-  type CustomProgramInput, type AssignedWeek,
+  type CustomProgramInput, type AssignedWeek, type WeekKind,
 } from '@/lib/program/templateProgram';
 import type { ProgramTemplate } from '@/types';
-import type { ExerciseDefinition, Mesocycle, MuscleTier, SplitType, UserProfile } from '@/types';
+import type { ExerciseDefinition, Mesocycle, MuscleGroup, MuscleTier, SplitType, UserProfile } from '@/types';
 import type { WizardState, GeneratedDay } from './types';
-import { availableEquipment, durationWeeks } from './engine';
+import { availableEquipment, durationWeeks, weekStructure } from './engine';
 
 function nextStartIso(startDow: number): string {
   const d = new Date();
@@ -41,18 +41,33 @@ const REST_SEC: Record<string, number | undefined> = { short: 45, moderate: 75, 
 export function buildWizardInput(
   state: WizardState, days: GeneratedDay[], user: UserProfile, library: ExerciseDefinition[],
 ): CustomProgramInput {
+  // After a 12+ month layoff, drop every muscle one volume tier so the block
+  // starts more conservatively (emphasize→grow, grow→maintain).
+  const layoff = state.experience.status === 'layoff12';
+  const downTier = (t: MuscleTier): MuscleTier => (t === 'emphasize' ? 'grow' : 'maintain');
+  const tierOf = (m: MuscleGroup): MuscleTier => {
+    const base = (m === 'core' ? 'grow' : (state.prioritization.tiers[m] ?? 'grow')) as MuscleTier;
+    return layoff ? downTier(base) : base;
+  };
   const week1: AssignedWeek = days.map((d) =>
     d.exercises
       .filter((e) => !!e.exerciseId)
       .map((e) => ({
         muscle: e.muscle,
-        tier: (e.muscle === 'core' ? 'grow' : (state.prioritization.tiers[e.muscle] ?? 'grow')) as MuscleTier,
+        tier: tierOf(e.muscle),
         exerciseId: e.exerciseId as string,
         exerciseName: e.name,
         setStyle: e.setStyle,
         supersetGroup: e.supersetGroup,
       })),
   );
+  const tiersForInput: Partial<Record<MuscleGroup, MuscleTier>> = {};
+  for (const [m, t] of Object.entries(state.prioritization.tiers)) {
+    if (t) tiersForInput[m as MuscleGroup] = layoff ? downTier(t as MuscleTier) : (t as MuscleTier);
+  }
+  // Per-week structure (ramp / calibration / load / deload) from the wizard's
+  // own week layout — the single source so preview and program agree.
+  const weekKinds: WeekKind[] = weekStructure(state).cols.map((col) => col.kind);
   // Offsets parallel to days, derived from each day's weekday vs the start day.
   const workOffsets = days.map((d) => (d.dow - state.schedule.startDow + 7) % 7);
   // Seed starting weights from the user's 1RM / recent-set baselines (keyed by
@@ -87,10 +102,11 @@ export function buildWizardInput(
       ? 'periodization' : 'traditional';
   return {
     name: state.name.trim() || 'Custom Program',
-    weeks: durationWeeks(state),
+    weeks: weekKinds.length,
     daysPerWeek: days.length,
     week1,
-    tiers: state.prioritization.tiers,
+    tiers: tiersForInput,
+    weekKinds,
     library,
     allowed: availableEquipment(state),
     userId: user.userId,
@@ -133,7 +149,7 @@ export async function activateWizardProgram(
   // and link the active block back to it so the gallery can flag it Active.
   const tpl = buildCustomTemplate(input);
   const finalTplId = templateId || tpl.id;
-  const meso = { ...prog.mesocycle, equipmentProfileId: state.equipment.profileId, templateId: finalTplId };
+  const meso = { ...prog.mesocycle, equipmentProfileId: state.equipment.profileId, templateId: finalTplId, weekKinds: input.weekKinds };
   await repo.upsertMesocycle(meso);
   for (const mi of prog.microcycles) await repo.upsertMicrocycle(mi);
   for (const s of prog.sessions) await repo.upsertSession(s);

@@ -87,6 +87,11 @@ export function weekStructure(state: WizardState): { cols: WeekCol[]; loadCount:
   const scheduled = state.progression.deloadProtocol === 'scheduled' && !!state.progression.deloadFrequency;
   const cols: WeekCol[] = [];
   let loadIdx = 0;
+  // Layoff / break reintroduction weeks come first (1 for a break, 2 after a
+  // 12+ month layoff), then an optional calibration week.
+  const rampCount = state.experience.status === 'layoff12' ? 2
+    : (state.experience.status === 'break_short' || state.experience.status === 'break_long') ? 1 : 0;
+  for (let r = 0; r < rampCount; r++) cols.push({ label: 'Ramp', kind: 'ramp' });
   if (state.baselines.calibrationWeek) cols.push({ label: 'Cal', kind: 'cal' });
   for (let i = 0; i < base; i++) {
     if (scheduled && (i + 1) % (state.progression.deloadFrequency as number) === 0) {
@@ -108,6 +113,7 @@ export function muscleSetsForWeek(state: WizardState, m: MuscleGroup, wk: WeekCo
   const steady = tier === 'emphasize' ? lm.mav : tier === 'grow' ? Math.round((lm.mev + lm.mav) / 2) : maintain;
   const peak = tier === 'emphasize' ? lm.mrv : tier === 'grow' ? lm.mav : maintain;
   if (wk.kind === 'cal') return Math.max(1, Math.round(steady * 0.4));
+  if (wk.kind === 'ramp') return Math.max(1, Math.round(steady * 0.7));
   if (wk.kind === 'deload') return Math.max(1, Math.round(steady * 0.5));
   if (isVolumeRamped(state)) {
     const lc = Math.max(1, loadCount - 1);

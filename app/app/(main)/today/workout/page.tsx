@@ -9,6 +9,7 @@ import { resolveToday } from '@/lib/session/resolveToday';
 import { hydrateFromHistory } from '@/lib/session/hydrateFromHistory';
 import { nudgeNextSet } from '@/lib/session/nextSetNudge';
 import { planAdvance } from '@/lib/session/advance';
+import { seedWeightsFromCalibration } from '@/lib/periodization/calibration';
 import { defaultRestSec, terminologyMode, isPeriodizedSession } from '@/lib/periodization';
 import type { WorkoutSession, SetEntry, ExerciseEntry, SessionFeedback, Mesocycle, Microcycle, ExerciseDefinition, MovementPattern, MuscleGroup, SorenessRating, MuscleSoreness } from '@/types';
 import { todayIso } from '@/lib/ui/date';
@@ -398,6 +399,13 @@ export default function WorkoutPage() {
           mesoCompletedId = patch.mesocycleCompleted.id;
         }
         if (patch.mesocycleWeekIndex != null) await repo.upsertMesocycle({ ...meso, weekIndex: patch.mesocycleWeekIndex });
+        // When the calibration week finishes, estimate e1RM from the logged top
+        // sets and seed working weights into the remaining weeks.
+        const calIdx = meso.weekKinds?.indexOf('cal') ?? -1;
+        if (patch.microcycleCompleted && calIdx >= 0 && patch.microcycleCompleted.weekNumber === calIdx + 1) {
+          try { await seedWeightsFromCalibration(repo, patch.mesocycleCompleted ?? meso, patch.microcycleCompleted); }
+          catch (e) { console.warn('calibration seed failed', e); }
+        }
       } catch (err) {
         // Don't block the user from completing — log and continue.
         console.warn('plan advance failed', err);

@@ -8,6 +8,24 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.82.0 — 2026-06-08
+
+- Calibration week, layoff ramp-up, scheduled deloads, and the layoff volume
+  drop now actually change the generated program (previously they only showed
+  in the wizard preview). The program is built from an explicit per-week
+  structure — ramp / calibration / load / deload — so what you pick is what you
+  train.
+  - Calibration week: estimates your e1RM (averaged Epley/Brzycki) from the top
+    sets you log that week, then auto-seeds working weights into the remaining
+    weeks (inverse-Epley at each week's rep target). Weighted lifts only.
+  - Layoff ramp-up: a 12+ month layoff prepends two reduced reintroduction
+    weeks; a shorter break prepends one. A 12+ month layoff also drops every
+    muscle one volume tier (emphasize→grow, grow→maintain).
+  - Scheduled deloads from the progression step are inserted at the chosen
+    cadence, not just a single deload at the end.
+  - Traditional (non-periodized) programs keep their steady volume — only
+    periodized programs ramp.
+
 ## v0.81.1 — 2026-06-08
 
 - Fixed dumbbell exercises showing reps-only with no weight field. Root cause:
