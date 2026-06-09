@@ -8,6 +8,13 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.80.1 — 2026-06-08
+
+- Fixed custom exercises not appearing in the Plan wizard. The wizard read from
+  the bundled seed library, so exercises you added in the Exercise Library
+  (e.g. while building a plan) never showed in the dropdowns. It now loads the
+  live library — global plus your own custom exercises — when it opens.
+
 ## v0.80.0 — 2026-06-08
 
 - Start a plan any day — no more waiting for Monday.

@@ -12,8 +12,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui';
 import { FinishPlanModal } from './FinishPlanModal';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
+import { getRepository } from '@/lib/firestore';
 import { EQUIP_GROUPS, equipLabel, isBodyweightOnly, getEquipmentProfiles, defaultProfileId, itemsForProfile } from '@/lib/exercise/equipment';
-import type { MuscleGroup, UserProfile, SetStyle } from '@/types';
+import type { MuscleGroup, UserProfile, SetStyle, ExerciseDefinition } from '@/types';
 import type {
   WizardState, WizGoal, WizExperience, WizStatus, WizTier, BaseStyle,
   VolumeFramework, PeriodizationStrategy, RepRange, CoreMethod, RestPref,
@@ -156,7 +157,21 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   const update = (fn: (s: WizardState) => void) => setState((s) => { const n: WizardState = structuredClone(s); fn(n); return n; });
 
   /* ---------- derived option lists & defaults (mirror mockup) ---------- */
-  const lib = GLOBAL_EXERCISES;
+  // Pull the live library (global + the user's custom exercises) so anything
+  // added in the Exercise Library shows up in the wizard dropdowns. Falls back
+  // to the bundled seed until the fetch resolves.
+  const [lib, setLib] = useState<ExerciseDefinition[]>(GLOBAL_EXERCISES);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const repo = getRepository();
+      try {
+        const [g, u] = await Promise.all([repo.listGlobalExercises(), repo.listUserExercises(user.userId)]);
+        if (!cancelled) setLib([...u, ...g]);
+      } catch { /* keep the bundled seed */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user.userId]);
 
   function allowedBaseStyles() {
     const g = state.goal.primary, lv = effLevel(state), d = state.schedule.daysPerWeek || 0;
