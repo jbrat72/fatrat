@@ -5,6 +5,7 @@ import { useUser } from '@/components/app';
 import { Button } from '@/components/ui';
 import { ExerciseCard, RestTimer, ExerciseTimer, ExerciseHistorySheet, SwapExerciseModal, SessionFeedbackModal, SorenessCheckIn } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
+import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
 import { resolveToday } from '@/lib/session/resolveToday';
 import { hydrateFromHistory } from '@/lib/session/hydrateFromHistory';
 import { nudgeNextSet } from '@/lib/session/nextSetNudge';
@@ -69,8 +70,11 @@ export default function WorkoutPage() {
         repo.listUserExercises(user.userId).catch(() => [] as ExerciseDefinition[]),
       ]);
       const byId: Record<string, ExerciseDefinition> = {};
+      // Bundled library first so every id resolves even if the backend list is
+      // missing newer entries; repo globals + custom exercises overlay it.
+      for (const e of GLOBAL_EXERCISES) byId[e.id] = e;
       for (const e of globalDefs) byId[e.id] = e;
-      for (const e of userDefs) byId[e.id] = e; // custom exercises win over any id clash
+      for (const e of userDefs) byId[e.id] = e;
       setExerciseDefs(byId);
       if (s && !s.startedAt) {
         const started: WorkoutSession = { ...s, startedAt: new Date().toISOString() };

@@ -6,6 +6,7 @@ import { Button, MuscleBadge } from '@/components/ui';
 import { EditableSetTable } from './EditableSetTable';
 import { SessionFeedbackModal } from './SessionFeedbackModal';
 import { getRepository } from '@/lib/firestore';
+import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
 import { PUMP_LABEL, VOLUME_LABEL, PAIN_LABEL } from '@/lib/ui/feedback';
 import { terminologyMode, usesAdvancedTerminology, effortShort, isPeriodizedSession } from '@/lib/periodization';
@@ -57,7 +58,11 @@ export function SessionDetailModal({ sessionId, onClose, onChanged, onAddToDay }
         repo.listUserExercises(user.userId).catch(() => [] as ExerciseDefinition[]),
       ]);
       if (cancelled) return;
+      // Seed from the bundled library first so every exercise id resolves even
+      // if the backend's global list is missing newer entries; repo + custom
+      // exercises overlay it.
       const byId: Record<string, ExerciseDefinition> = {};
+      for (const e of GLOBAL_EXERCISES) byId[e.id] = e;
       for (const e of g) byId[e.id] = e;
       for (const e of u) byId[e.id] = e;
       setExDefs(byId);
@@ -121,14 +126,9 @@ export function SessionDetailModal({ sessionId, onClose, onChanged, onAddToDay }
   const saveEdit = async () => {
     if (editIdx == null || saving) return;
     setSaving(true);
-    const exercises: ExerciseEntry[] = session.exercises.map((ex, i) => {
-      if (i !== editIdx) return ex;
-      let m = metricFor(ex);
-      // If the user added weight to a rep-based move, store it as weighted so
-      // the load shows in the summary going forward.
-      if (m === 'reps' && draftSets.some((s) => s.weightKg != null)) m = 'weight-reps';
-      return { ...ex, metric: m, sets: draftSets };
-    });
+    const exercises: ExerciseEntry[] = session.exercises.map((ex, i) =>
+      i === editIdx ? { ...ex, metric: metricFor(ex), sets: draftSets } : ex,
+    );
     await persist({ ...session, exercises });
     setEditIdx(null);
     setDraftSets([]);

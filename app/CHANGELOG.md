@@ -8,6 +8,17 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.83.2 — 2026-06-08
+
+- Reverted the optional weight field on rep-based exercises in the set editor —
+  that was masking the real bug.
+- Root cause: exercise definitions were loaded only from the backend's global
+  list. If that list is missing newer seed exercises (e.g. Triceps Kickback),
+  the metric couldn't be resolved and fell back to a stale stored 'reps',
+  hiding the weight field. The workout logger and session editor now seed their
+  definition map from the bundled library first, then overlay the backend +
+  custom exercises, so every exercise id resolves to its correct metric.
+
 ## v0.83.1 — 2026-06-08
 
 - The set editor now always offers an optional "+ WEIGHT" field on rep-based
