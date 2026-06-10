@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.83.1 — 2026-06-08
+
+- The set editor now always offers an optional "+ WEIGHT" field on rep-based
+  exercises (same as the live logger), so you can add weight to any logged set —
+  including ones whose exercise resolves to a bodyweight/reps metric (e.g. a
+  Triceps Kickback that was swapped in from a bodyweight slot in an old
+  session). When you enter a weight, the exercise is promoted to weight-reps so
+  the load shows in the summary afterward.
+
 ## v0.83.0 — 2026-06-08
 
 - Unified the session detail view. The Plan day page, History session page, and

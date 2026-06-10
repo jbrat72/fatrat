@@ -121,9 +121,14 @@ export function SessionDetailModal({ sessionId, onClose, onChanged, onAddToDay }
   const saveEdit = async () => {
     if (editIdx == null || saving) return;
     setSaving(true);
-    const exercises: ExerciseEntry[] = session.exercises.map((ex, i) =>
-      i === editIdx ? { ...ex, metric: metricFor(ex), sets: draftSets } : ex,
-    );
+    const exercises: ExerciseEntry[] = session.exercises.map((ex, i) => {
+      if (i !== editIdx) return ex;
+      let m = metricFor(ex);
+      // If the user added weight to a rep-based move, store it as weighted so
+      // the load shows in the summary going forward.
+      if (m === 'reps' && draftSets.some((s) => s.weightKg != null)) m = 'weight-reps';
+      return { ...ex, metric: m, sets: draftSets };
+    });
     await persist({ ...session, exercises });
     setEditIdx(null);
     setDraftSets([]);

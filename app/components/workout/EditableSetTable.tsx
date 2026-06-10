@@ -19,7 +19,10 @@ interface Props {
  * users can correct or fill in any set after the fact.
  */
 export function EditableSetTable({ sets, metric, units, onChange }: Props) {
-  const showWeight = metric === 'weight-reps' || metric === 'weight-time';
+  const requiredWeight = metric === 'weight-reps' || metric === 'weight-time';
+  // Rep-based moves can still be loaded (dumbbell, vest, belt) — offer an
+  // optional weight field so you can always log/correct added load.
+  const showWeight = requiredWeight || metric === 'reps';
   const showReps   = metric === 'weight-reps' || metric === 'reps';
   const showTime   = metric === 'time' || metric === 'weight-time';
   const wLabel = weightLabel(units);
@@ -47,7 +50,7 @@ export function EditableSetTable({ sets, metric, units, onChange }: Props) {
             <div className="grid gap-2" style={{ gridTemplateColumns: cols }}>
               {showWeight && (
                 <div>
-                  <div className="text-[10px] tracking-wider2 text-ink-mute mb-1">WEIGHT</div>
+                  <div className="text-[10px] tracking-wider2 text-ink-mute mb-1">{requiredWeight ? 'WEIGHT' : '+ WEIGHT'}</div>
                   <InlineNumber
                     value={kgToDisplay(s.weightKg, units)}
                     onChange={(n) => updateAt(idx, { weightKg: displayToKg(n, units) })}
