@@ -8,6 +8,13 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.82.2 — 2026-06-08
+
+- The Plan-tab day editor (edit an upcoming workout's sets) now also resolves
+  the metric from the live exercise definition, so reps-only exercises show the
+  weight field there too — not just the History session editor. Saving writes
+  the corrected metric back.
+
 ## v0.82.1 — 2026-06-08
 
 - You can now add weight to sets you already logged without it. The session
