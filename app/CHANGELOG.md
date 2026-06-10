@@ -8,6 +8,13 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.82.3 — 2026-06-08
+
+- The day-session sheet (opened from History / the week calendar) now has an
+  Edit button that opens the editable session — completed sessions go to the
+  History session editor, upcoming ones to the Plan day editor. Previously this
+  sheet was read-only with no way through to editing.
+
 ## v0.82.2 — 2026-06-08
 
 - The Plan-tab day editor (edit an upcoming workout's sets) now also resolves

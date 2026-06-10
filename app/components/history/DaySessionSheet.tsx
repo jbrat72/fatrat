@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { MuscleBadge, Button } from '@/components/ui';
 import { getRepository } from '@/lib/firestore';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
@@ -53,7 +54,16 @@ export function DaySessionSheet({ sessionId, onClose, onAddToDay }: Props) {
               {session.completed ? 'Completed' : session.startedAt ? 'In progress' : 'Upcoming'}
             </div>
           </div>
-          <button type="button" onClick={onClose} className="w-9 h-9 rounded-md border border-ink-line text-ink-dim hover:text-ink" aria-label="Close">✕</button>
+          <div className="flex items-center gap-2">
+            <Link
+              href={session.completed ? `/history/session/${session.id}` : `/plan/day/${session.id}`}
+              onClick={onClose}
+              className="h-9 px-3 inline-flex items-center rounded-md border border-ink-line text-ink-dim hover:text-ink text-sm font-medium"
+            >
+              Edit
+            </Link>
+            <button type="button" onClick={onClose} className="w-9 h-9 rounded-md border border-ink-line text-ink-dim hover:text-ink" aria-label="Close">✕</button>
+          </div>
         </div>
 
         <div className="px-4 py-3 space-y-3">
