@@ -16,12 +16,15 @@ import type {
 } from '@/types';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const SORENESS_LABEL: Record<number, string> = { 1: 'Never got sore', 2: 'Healed a while ago', 3: 'Healed just on time', 4: 'Still sore' };
 
 interface Props {
   sessionId: string | null;
   onClose: () => void;
   /** Called after any change (edit / feedback / reschedule) so callers refresh. */
   onChanged?: () => void;
+  /** When provided, shows an "Add cardio or a workout to this day" action. */
+  onAddToDay?: () => void;
 }
 
 /**
@@ -29,7 +32,7 @@ interface Props {
  * the History calendar and the Plan schedule (and as the target of the
  * /history/session and /plan/day routes) so there's one implementation.
  */
-export function SessionDetailModal({ sessionId, onClose, onChanged }: Props) {
+export function SessionDetailModal({ sessionId, onClose, onChanged, onAddToDay }: Props) {
   const { user } = useUser();
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [meso, setMeso] = useState<Mesocycle | null>(null);
@@ -278,6 +281,25 @@ export function SessionDetailModal({ sessionId, onClose, onChanged }: Props) {
               <p className="text-sm text-ink-dim mb-3">{session.feedback ? 'Some muscles still need a check-in — pump, volume, joint pain.' : 'Tell us how it felt and we’ll tune your next workout.'}</p>
               <Button block onClick={() => setFeedbackOpen(true)}>Add feedback</Button>
             </div>
+          )}
+
+          {(session.soreness ?? []).length > 0 && (
+            <div className="card p-3">
+              <div className="section-head mb-2">RECOVERY</div>
+              <div className="text-xs text-ink-mute mb-1.5">Soreness reported at the start of this session.</div>
+              <ul className="space-y-1 text-sm">
+                {(session.soreness ?? []).map((sr, i) => (
+                  <li key={i} className="flex items-center justify-between">
+                    <span className="capitalize">{sr.muscle}</span>
+                    <span className="text-ink-dim">{SORENESS_LABEL[sr.rating]}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {onAddToDay && (
+            <Button block onClick={onAddToDay}>Add cardio or a workout to this day</Button>
           )}
         </div>
       </div>

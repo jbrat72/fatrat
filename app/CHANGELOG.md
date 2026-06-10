@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.83.0 — 2026-06-08
+
+- Unified the session detail view. The Plan day page, History session page, and
+  the History day-sheet were three near-duplicate implementations of the same
+  thing. They're now one shared `SessionDetailModal`, opened from both Plan and
+  History; the two routes are thin wrappers around it. Same view, same editing,
+  one place to maintain — and the metric-resolution fix now lives in a single
+  spot. (Removed ~600 lines of duplicated code.)
+
 ## v0.82.3 — 2026-06-08
 
 - The day-session sheet (opened from History / the week calendar) now has an

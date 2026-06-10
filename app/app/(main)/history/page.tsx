@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useUser } from '@/components/app';
 import { PageTitle, Card, Button } from '@/components/ui';
-import { WeekCalendar, CalendarLegend, DaySessionSheet } from '@/components/history';
+import { WeekCalendar, CalendarLegend } from '@/components/history';
+import { SessionDetailModal } from '@/components/workout';
 import { Sparkline, type SparkPoint } from '@/components/charts';
 import { CardioLogModal } from '@/components/today';
 import { AdHocWorkoutModal } from '@/components/workout';
@@ -495,7 +496,7 @@ export default function HistoryPage() {
         </Card>
       </div>
 
-      <DaySessionSheet
+      <SessionDetailModal
         sessionId={selectedSessionId}
         onClose={() => setSelectedSessionId(null)}
         onAddToDay={() => {
