@@ -6,6 +6,7 @@ import { PageTitle, Card, Button, MuscleBadge, BackButton } from '@/components/u
 import { TemplateWizard } from '@/components/plan/TemplateWizard';
 import { SingleWorkoutWizard } from '@/components/plan/SingleWorkoutWizard';
 import { getRepository } from '@/lib/firestore';
+import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
 import { todayIso } from '@/lib/ui/date';
 import type { ProgramTemplate, ExerciseDefinition, Mesocycle, ExerciseEntry, SetEntry, WorkoutSession } from '@/types';
 
@@ -32,8 +33,12 @@ export default function TemplateDetailPage() {
         repo.getActivePlan(user.userId),
       ]);
       setTemplate(t);
+      // Bundled library first so every id resolves even if the backend's global
+      // list is missing newer entries; repo globals + custom exercises overlay.
       const map: Record<string, ExerciseDefinition> = {};
-      for (const e of [...custom, ...exercises]) map[e.id] = e;
+      for (const e of GLOBAL_EXERCISES) map[e.id] = e;
+      for (const e of [...exercises, ...custom]) map[e.id] = e;
+      setDefs(map);
       setActivePlan(plan);
     };
     load();

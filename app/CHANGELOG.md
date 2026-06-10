@@ -8,6 +8,14 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.83.3 — 2026-06-08
+
+- Fixed the template/plan detail page showing exercises by their raw id (e.g.
+  "bench-press-dumbbell") with no muscle badge. The page built the exercise-
+  definition map but never stored it, so nothing resolved. It now sets the map
+  (seeded from the bundled library first) so names, muscles, and rep/time
+  prescriptions render correctly.
+
 ## v0.83.2 — 2026-06-08
 
 - Reverted the optional weight field on rep-based exercises in the set editor —
