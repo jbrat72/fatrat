@@ -8,6 +8,14 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.82.1 — 2026-06-08
+
+- You can now add weight to sets you already logged without it. The session
+  summary's Edit view was using the stored (possibly stale) metric, so sets
+  that logged reps-only stayed reps-only. It now resolves the metric from the
+  live exercise definition, so editing a completed workout shows the weight
+  field — and saving writes the corrected metric back so it stays fixed.
+
 ## v0.82.0 — 2026-06-08
 
 - Calibration week, layoff ramp-up, scheduled deloads, and the layoff volume

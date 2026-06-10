@@ -9,7 +9,7 @@ import { getRepository } from '@/lib/firestore';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
 import { PUMP_LABEL, VOLUME_LABEL, PAIN_LABEL } from '@/lib/ui/feedback';
 import { terminologyMode, effortShort, isPeriodizedSession } from '@/lib/periodization';
-import type { WorkoutSession, Mesocycle, Microcycle, SessionFeedback, MuscleGroup, ExerciseEntry, SetEntry } from '@/types';
+import type { WorkoutSession, Mesocycle, Microcycle, SessionFeedback, MuscleGroup, ExerciseEntry, SetEntry, ExerciseDefinition } from '@/types';
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -26,6 +26,10 @@ export default function SessionSummaryPage() {
   /** Draft sets for the exercise being edited. */
   const [draftSets, setDraftSets] = useState<SetEntry[]>([]);
   const [saving, setSaving] = useState(false);
+  const [exDefs, setExDefs] = useState<Record<string, ExerciseDefinition>>({});
+  // Resolve the metric from the live exercise definition so a stale stored
+  // metric (e.g. 'reps' from an old swap) doesn't hide the weight field.
+  const metricFor = (ex: ExerciseEntry) => exDefs[ex.exerciseId] ? (exDefs[ex.exerciseId]!.metric ?? 'weight-reps') : (ex.metric ?? 'weight-reps');
 
   useEffect(() => {
     if (!user || !sessionId) return;
@@ -33,6 +37,14 @@ export default function SessionSummaryPage() {
       const repo = getRepository();
       const s = await repo.getSession(sessionId);
       setSession(s);
+      const [g, u] = await Promise.all([
+        repo.listGlobalExercises(),
+        repo.listUserExercises(user.userId).catch(() => [] as ExerciseDefinition[]),
+      ]);
+      const byId: Record<string, ExerciseDefinition> = {};
+      for (const e of g) byId[e.id] = e;
+      for (const e of u) byId[e.id] = e;
+      setExDefs(byId);
       if (s?.mesocycleId)  setMeso(await repo.getMesocycle(s.mesocycleId));
       if (s?.microcycleId) setMicro(await repo.getMicrocycle(s.microcycleId));
     };
@@ -89,7 +101,7 @@ export default function SessionSummaryPage() {
     setSaving(true);
     const repo = getRepository();
     const exercises: ExerciseEntry[] = session.exercises.map((ex, i) => (
-      i === editIdx ? { ...ex, sets: draftSets } : ex
+      i === editIdx ? { ...ex, metric: metricFor(ex), sets: draftSets } : ex
     ));
     const updated = { ...session, exercises };
     await repo.upsertSession(updated);
@@ -145,7 +157,7 @@ export default function SessionSummaryPage() {
           <ul className="space-y-3">
             {session.exercises.map((ex, i) => {
               const fb = session.feedback?.perMuscle.find((p) => p.muscle === ex.muscle);
-              const m = ex.metric ?? 'weight-reps';
+              const m = metricFor(ex);
               const isEditing = editIdx === i;
               return (
                 <li key={i}>
