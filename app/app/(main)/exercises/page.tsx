@@ -11,6 +11,14 @@ import type { ExerciseDefinition, MuscleGroup, EquipmentType, MovementPattern, U
 const MUSCLES: MuscleGroup[] = ['chest','back','shoulders','biceps','triceps','forearms','quads','hamstrings','glutes','calves','core','neck'];
 const EQUIPMENT: EquipmentType[] = ['barbell','dumbbell','machine','cable','bodyweight','kettlebell','band','smith'];
 const PATTERNS: MovementPattern[] = ['compound','isolation','push','pull','hinge','squat','carry','lunge'];
+type Metric = NonNullable<ExerciseDefinition['metric']>;
+const METRICS: { value: Metric; label: string }[] = [
+  { value: 'weight-reps', label: 'weight + reps' },
+  { value: 'reps',        label: 'reps only' },
+  { value: 'time',        label: 'time' },
+  { value: 'weight-time', label: 'weight + time' },
+];
+const metricLabel = (m?: ExerciseDefinition['metric']) => METRICS.find((x) => x.value === (m ?? 'weight-reps'))?.label ?? 'weight + reps';
 
 type View = 'all' | 'favorites' | 'custom' | 'hidden';
 const VIEWS: { value: View; label: string }[] = [
@@ -57,7 +65,12 @@ export default function ExercisesPage() {
     load();
   }, [user]);
 
-  const all = useMemo(() => [...custom, ...global], [custom, global]);
+  const all = useMemo(() => {
+    const byId = new Map<string, ExerciseDefinition>();
+    for (const e of global) byId.set(e.id, e);
+    for (const e of custom) byId.set(e.id, e); // user edits override the global
+    return [...byId.values()];
+  }, [custom, global]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -99,9 +112,25 @@ export default function ExercisesPage() {
   };
   const closeForm = () => { setFormOpen(false); setEditingId(null); setDraft(emptyDraft()); };
 
+  // Push a corrected metric into every existing session (plan day) that uses
+  // this exercise, so the change shows immediately in active and past plans.
+  const propagateMetric = async (exerciseId: string, metric: Metric) => {
+    const repo = getRepository();
+    const sessions = await repo.listSessions(user.userId, { limit: 1000 });
+    for (const s of sessions) {
+      let changed = false;
+      const exercises = s.exercises.map((ex) =>
+        ex.exerciseId === exerciseId && ex.metric !== metric ? (changed = true, { ...ex, metric }) : ex,
+      );
+      if (changed) await repo.upsertSession({ ...s, exercises });
+    }
+  };
+
   const saveExercise = async () => {
     if (!draft.name?.trim()) return;
     const repo = getRepository();
+    const original = editingId ? all.find((e) => e.id === editingId) : null;
+    const metric: Metric = (draft.metric ?? 'weight-reps') as Metric;
     const ex: ExerciseDefinition = {
       id: editingId ?? 'custom-' + Math.random().toString(36).slice(2, 9),
       name: draft.name.trim(),
@@ -109,11 +138,15 @@ export default function ExercisesPage() {
       equipment: (draft.equipment ?? 'barbell') as EquipmentType,
       secondaryMuscles: (draft.secondaryMuscles ?? []).filter((m) => m !== draft.primaryMuscle),
       patterns: draft.patterns ?? [],
-      isCustom: true,
+      metric,
+      requiresEquipment: original?.requiresEquipment,
+      isCustom: original ? !!original.isCustom : true,
       ownerUserId: user.userId,
     };
     const saved = await repo.upsertUserExercise(user.userId, ex);
     setCustom((cs) => [...cs.filter((c) => c.id !== saved.id), saved]);
+    // Reflect the corrected metric across existing plans immediately.
+    await propagateMetric(saved.id, metric);
     closeForm();
   };
 
@@ -182,7 +215,7 @@ export default function ExercisesPage() {
                   >
                     <div className="font-medium truncate">{ex.name}</div>
                     <div className="text-xs text-ink-dim capitalize">
-                      {ex.equipment}
+                      {ex.equipment} · {metricLabel(ex.metric)}
                       {ex.isCustom ? ' · custom' : ''}
                       {hidden ? ' · hidden' : ''}
                     </div>
@@ -260,13 +293,11 @@ export default function ExercisesPage() {
               <Link href={`/history/exercise/${manageEx.id}`} className="block">
                 <Button block variant="ghost">View history</Button>
               </Link>
-              {manageEx.isCustom && (
-                <>
-                  <Button block variant="ghost" onClick={() => openEdit(manageEx)}>Edit exercise</Button>
-                  <Button block variant="ghost" className="!text-danger" onClick={() => deleteExercise(manageEx.id)}>
-                    Delete exercise
-                  </Button>
-                </>
+              <Button block variant="ghost" onClick={() => openEdit(manageEx)}>Edit exercise</Button>
+              {manageEx.id.startsWith('custom-') && (
+                <Button block variant="ghost" className="!text-danger" onClick={() => deleteExercise(manageEx.id)}>
+                  Delete exercise
+                </Button>
               )}
               <p className="text-xs text-ink-mute text-center pt-1">
                 Hidden exercises drop out of lists and won&apos;t be picked when generating programs.
@@ -302,6 +333,15 @@ export default function ExercisesPage() {
                     <ChoicePill key={e} value={e} label={e} selected={draft.equipment === e} onSelect={() => setDraft((d) => ({ ...d, equipment: e }))} />
                   ))}
                 </div>
+              </div>
+              <div>
+                <div className="text-[10px] tracking-wider2 text-ink-mute uppercase mb-1.5">Tracks</div>
+                <div className="flex gap-1.5 flex-wrap">
+                  {METRICS.map((m) => (
+                    <ChoicePill key={m.value} value={m.value} label={m.label} selected={(draft.metric ?? 'weight-reps') === m.value} onSelect={() => setDraft((d) => ({ ...d, metric: m.value }))} />
+                  ))}
+                </div>
+                <p className="text-[11px] text-ink-mute mt-1.5">How this exercise is logged — fixes wrong reps-only / time inputs. Saving updates it in your existing plans too.</p>
               </div>
               <div>
                 <div className="text-[10px] tracking-wider2 text-ink-mute uppercase mb-1.5">Secondary muscles <span className="text-ink-mute normal-case">(optional)</span></div>

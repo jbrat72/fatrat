@@ -8,6 +8,18 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.88.0 — 2026-06-08
+
+- Exercise Library now shows how each exercise is tracked (weight + reps / reps
+  only / time / weight + time) on every card.
+- Every exercise is now editable — not just custom ones. Editing a built-in
+  exercise saves a personal override (same id) that wins everywhere.
+- The edit form has a "Tracks" metric picker, so you can fix an exercise that's
+  logging the wrong inputs (e.g. reps-only when it should be weight + reps).
+- Saving a metric change propagates immediately into your existing plans: every
+  session (past and scheduled) that uses that exercise is updated, and the
+  override also drives live metric resolution in the workout logger and editors.
+
 ## v0.87.1 — 2026-06-08
 
 - You can now fix up a skipped exercise after the fact. In the session editor:
