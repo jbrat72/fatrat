@@ -10,3 +10,4 @@ export * from './AdHocWorkoutModal';
 export * from './SorenessCheckIn';
 export * from './EditableSetTable';
 export * from './SessionDetailModal';
+export * from './SetRow';

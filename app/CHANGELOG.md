@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.86.0 — 2026-06-08
+
+- Consolidated the duplicated per-set renderers into one shared `SetRow`
+  component plus a `formatSetValue` helper. The Plan page, session detail modal,
+  and History week list now all render logged sets through the same code —
+  consistent styling and a single place for the done/skipped/pending states
+  (green ✓ / red ✕ / empty), value formatting, and RPE label. Removed the
+  copy-pasted logic (and orphaned imports) from those three screens.
+
 ## v0.85.1 — 2026-06-08
 
 - Plan page: skipped sets in a completed workout now show a red ✕ and "Skipped"

@@ -9,6 +9,7 @@ import { CardioLogModal } from '@/components/today';
 import { AdHocWorkoutModal } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
 import { cardioStats } from '@/lib/ui/cardio';
+import { formatSetValue } from '@/lib/ui/sets';
 import { weightSeries, e1rmSeries } from '@/lib/progress';
 import { cleanupArchivedPendingSessions } from '@/lib/session/cleanupArchived';
 import { terminologyMode, usesAdvancedTerminology } from '@/lib/periodization';
@@ -392,13 +393,7 @@ export default function HistoryPage() {
                                       <div className="font-medium text-ink">{ex.name}</div>
                                       <div className="tnum mt-0.5">
                                         {logged.length > 0
-                                          ? logged.map((s, j) => {
-                                              const m = ex.metric ?? 'weight-reps';
-                                              if (m === 'time') return `${s.timeSec ?? '—'}s`;
-                                              if (m === 'weight-time') return `${kgToDisplay(s.weightKg, user.units) ?? '—'} ${weightLabel(user.units)} × ${s.timeSec ?? '—'}s`;
-                                              if (m === 'reps') return `× ${s.reps ?? '—'}`;
-                                              return `${kgToDisplay(s.weightKg, user.units) ?? '—'} ${weightLabel(user.units)} × ${s.reps ?? '—'}`;
-                                            }).join(' · ')
+                                          ? logged.map((s) => formatSetValue(s, ex.metric ?? 'weight-reps', user.units)).join(' · ')
                                           : 'No sets logged'}
                                       </div>
                                     </li>

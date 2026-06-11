@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/components/app';
+import { SetRow } from '@/components/workout';
 import { PageTitle, Card, Button, ModeChip, MuscleBadge } from '@/components/ui';
 import { VolumeDashboard } from '@/components/plan/VolumeDashboard';
 import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
@@ -12,10 +13,9 @@ import { CardioLogModal } from '@/components/today';
 import { AdHocWorkoutModal } from '@/components/workout';
 import { useRouter } from 'next/navigation';
 import { getRepository } from '@/lib/firestore';
-import { kgToDisplay, weightLabel } from '@/lib/ui/units';
 import { todayIso } from '@/lib/ui/date';
 import { cn } from '@/lib/ui/cn';
-import { terminologyMode, effortShort } from '@/lib/periodization';
+import { terminologyMode } from '@/lib/periodization';
 import type {
   Mesocycle, Microcycle, WorkoutSession, UserMode,
 } from '@/types';
@@ -459,7 +459,6 @@ function WeekSessionRow({
     session.completed ? 'done' : isPast ? 'skipped' : isToday ? 'today' : 'upcoming';
   const exNames = session.exercises.map((e) => e.name);
   const muscles = Array.from(new Set(session.exercises.map((e) => e.muscle))).slice(0, 4);
-  const wLabel = weightLabel(units);
   const showStart = isToday && !session.completed;
 
   const dotCls =
@@ -525,49 +524,9 @@ function WeekSessionRow({
                 </div>
               </div>
               <ul className="mt-2 space-y-1">
-                {ex.sets.map((s, idx) => {
-                  const skipped = s.setType === 'skip';
-                  const completed = s.completed && !skipped;
-                  const metric = ex.metric ?? 'weight-reps';
-                  const display = kgToDisplay(s.weightKg, units);
-                  let body: React.ReactNode;
-                  if (skipped) {
-                    body = 'Skipped';
-                  } else if (metric === 'time') {
-                    body = <>{s.timeSec ?? (completed ? '—' : '?')}s</>;
-                  } else if (metric === 'weight-time') {
-                    body = <>{display != null ? `${display} ${wLabel}` : '—'} {'×'} {s.timeSec ?? (completed ? '—' : '?')}s</>;
-                  } else if (metric === 'reps') {
-                    body = <>{'×'} {s.reps ?? (completed ? '—' : '?')}</>;
-                  } else {
-                    body = <>{display != null ? `${display} ${wLabel}` : '—'} {'×'} {s.reps ?? (completed ? '—' : '?')}</>;
-                  }
-                  return (
-                    <li
-                      key={idx}
-                      className={cn(
-                        'flex items-center gap-2 rounded px-2 py-1 text-[12px] tnum',
-                        skipped ? 'bg-danger/10 text-danger' : completed ? 'bg-ok/10 text-ok' : 'bg-bg-elev/40 text-ink-dim',
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'w-4 h-4 rounded-full text-[10px] flex items-center justify-center flex-none',
-                          skipped ? 'bg-danger/30 text-danger' : completed ? 'bg-ok/30 text-ok' : 'border border-ink-line',
-                        )}
-                      >
-                        {skipped ? '✕' : completed ? '✓' : ''}
-                      </span>
-                      <span className="font-medium">Set {idx + 1}</span>
-                      <span className="flex-1 numeric truncate">
-                        {body}
-                        {completed && s.rpe != null && (
-                          <span className="text-ink-mute"> {'·'} {effortShort(mode, s.rpe)}</span>
-                        )}
-                      </span>
-                    </li>
-                  );
-                })}
+                {ex.sets.map((s, idx) => (
+                  <SetRow key={idx} set={s} index={idx} metric={ex.metric ?? 'weight-reps'} units={units} mode={mode} />
+                ))}
               </ul>
               {ex.notes && (
                 <div className="mt-2 text-[11px] text-ink-mute italic">&ldquo;{ex.notes}&rdquo;</div>

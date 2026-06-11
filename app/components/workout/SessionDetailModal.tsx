@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useUser } from '@/components/app';
 import { Button, MuscleBadge } from '@/components/ui';
 import { EditableSetTable } from './EditableSetTable';
+import { SetRow } from './SetRow';
 import { SessionFeedbackModal } from './SessionFeedbackModal';
 import { getRepository } from '@/lib/firestore';
 import { cardioStats } from '@/lib/ui/cardio';
@@ -216,39 +217,9 @@ export function SessionDetailModal({ sessionId, onClose, onChanged, onAddToDay }
                   </>
                 ) : (
                   <ul className="px-3 pb-3 space-y-1.5">
-                    {ex.sets.map((s, idx) => {
-                      const display = kgToDisplay(s.weightKg, units);
-                      if (s.completed) {
-                        const isSkip = s.setType === 'skip';
-                        let body: React.ReactNode;
-                        if (isSkip) body = <span className="text-ink-mute">Skipped</span>;
-                        else if (m === 'time') body = <>{s.timeSec ?? '—'}s</>;
-                        else if (m === 'weight-time') body = <>{display ?? '—'} {wLabel} × {s.timeSec ?? '—'}s</>;
-                        else if (m === 'reps') body = <>× {s.reps ?? '—'}</>;
-                        else body = <>{display ?? '—'} {wLabel} × {s.reps ?? '—'}</>;
-                        return (
-                          <li key={idx} className="rounded-lg border border-ink-line bg-bg-card px-3 py-2 flex items-center gap-3">
-                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-none ${isSkip ? 'bg-danger/20 text-danger' : 'bg-ok/20 text-ok'}`}>{isSkip ? '✕' : '✓'}</span>
-                            <span className="text-sm font-medium">Set {idx + 1}</span>
-                            <span className="flex-1 text-sm text-ink-dim numeric truncate">
-                              {body}
-                              {!isSkip && s.rpe != null && <span className="text-ink-mute"> · {effortShort(terminologyMode(user), s.rpe)}</span>}
-                            </span>
-                          </li>
-                        );
-                      }
-                      let upcoming: React.ReactNode = 'Upcoming';
-                      if (m === 'time' || m === 'weight-time') { if (s.timeSec != null) upcoming = `${m === 'weight-time' && display != null ? display + ' ' + wLabel + ' × ' : ''}${s.timeSec}s`; }
-                      else if (m === 'reps') { if (s.reps != null) upcoming = `× ${s.reps}`; }
-                      else if (display != null) upcoming = `${display} ${wLabel} × ${s.reps ?? '?'}`;
-                      return (
-                        <li key={idx} className="rounded-lg border border-ink-line bg-bg-card/60 px-3 py-2 flex items-center gap-3">
-                          <span className="w-5 h-5 rounded-full border border-ink-line flex-none" />
-                          <span className="text-sm text-ink-mute">Set {idx + 1}</span>
-                          <span className="flex-1 text-sm text-ink-dim numeric truncate">{upcoming}</span>
-                        </li>
-                      );
-                    })}
+                    {ex.sets.map((s, idx) => (
+                      <SetRow key={idx} set={s} index={idx} metric={m} units={units} mode={terminologyMode(user)} />
+                    ))}
                   </ul>
                 )}
 
