@@ -526,11 +526,14 @@ function WeekSessionRow({
               </div>
               <ul className="mt-2 space-y-1">
                 {ex.sets.map((s, idx) => {
-                  const completed = s.completed;
+                  const skipped = s.setType === 'skip';
+                  const completed = s.completed && !skipped;
                   const metric = ex.metric ?? 'weight-reps';
                   const display = kgToDisplay(s.weightKg, units);
                   let body: React.ReactNode;
-                  if (metric === 'time') {
+                  if (skipped) {
+                    body = 'Skipped';
+                  } else if (metric === 'time') {
                     body = <>{s.timeSec ?? (completed ? '—' : '?')}s</>;
                   } else if (metric === 'weight-time') {
                     body = <>{display != null ? `${display} ${wLabel}` : '—'} {'×'} {s.timeSec ?? (completed ? '—' : '?')}s</>;
@@ -544,16 +547,16 @@ function WeekSessionRow({
                       key={idx}
                       className={cn(
                         'flex items-center gap-2 rounded px-2 py-1 text-[12px] tnum',
-                        completed ? 'bg-ok/10 text-ok' : 'bg-bg-elev/40 text-ink-dim',
+                        skipped ? 'bg-danger/10 text-danger' : completed ? 'bg-ok/10 text-ok' : 'bg-bg-elev/40 text-ink-dim',
                       )}
                     >
                       <span
                         className={cn(
                           'w-4 h-4 rounded-full text-[10px] flex items-center justify-center flex-none',
-                          completed ? 'bg-ok/30 text-ok' : 'border border-ink-line',
+                          skipped ? 'bg-danger/30 text-danger' : completed ? 'bg-ok/30 text-ok' : 'border border-ink-line',
                         )}
                       >
-                        {completed ? '✓' : ''}
+                        {skipped ? '✕' : completed ? '✓' : ''}
                       </span>
                       <span className="font-medium">Set {idx + 1}</span>
                       <span className="flex-1 numeric truncate">
@@ -599,7 +602,7 @@ function WeekSessionRow({
               </Link>
             )}
             <Link href={`/plan/day/${session.id}`}>
-              <Button variant="ghost" size="sm">Open full day {'→'}</Button>
+              <Button variant="ghost" size="sm">Open full day {'\u2192'}</Button>
             </Link>
           </div>
         </div>
