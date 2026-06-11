@@ -14,6 +14,8 @@ interface Props {
    *  exercise.metric so a stale denormalized value (e.g. 'reps' on what is
    *  now a 'weight-reps' lift) doesn't keep showing the wrong input. */
   liveMetric?: ExerciseEntry['metric'];
+  /** The matching exercise's completed sets from the last time it was trained. */
+  lastSets?: SetEntry[];
   activeSetIndex: number | null;
   disabled?: boolean;
   onActivateSet: (i: number) => void;
@@ -31,7 +33,7 @@ interface Props {
 }
 
 export function ExerciseCard({
-  exercise, exerciseIndex, mode, units, liveMetric, activeSetIndex, disabled,
+  exercise, exerciseIndex, mode, units, liveMetric, lastSets, activeSetIndex, disabled,
   onActivateSet, onUpdateSet, onLogSet, onUnlockSet, onAddSet,
   onSwap, onSkip, onSkipSet, onRemove, onShowHistory, onStartTimer,
 }: Props) {
@@ -125,6 +127,7 @@ export function ExerciseCard({
             state={stateFor(i, set)}
             disabled={disabled}
             metric={liveMetric ?? exercise.metric}
+            lastSet={lastSets ? (lastSets[i] ?? lastSets[lastSets.length - 1]) : undefined}
             onActivate={() => onActivateSet(i)}
             onChange={(next) => onUpdateSet(i, next)}
             onLog={() => onLogSet(i)}

@@ -5,6 +5,7 @@ import type { SetEntry, UserMode, Units, ExerciseMetric } from '@/types';
 import { InlineNumber } from '@/components/ui';
 import { EffortPicker } from './EffortPicker';
 import { kgToDisplay, displayToKg, weightLabel } from '@/lib/ui/units';
+import { formatSetValue } from '@/lib/ui/sets';
 
 export type SetRowState = 'future' | 'active' | 'locked';
 
@@ -15,6 +16,8 @@ interface Props {
   units: Units;
   /** How this exercise measures a set. Defaults to weight-reps. */
   metric?: ExerciseMetric;
+  /** What the user did on this set last time they trained this exercise. */
+  lastSet?: SetEntry;
   state: SetRowState;
   disabled?: boolean;
   onActivate: () => void;
@@ -28,7 +31,7 @@ interface Props {
 }
 
 export function SetLoggerRow({
-  set, index, mode, units, metric = 'weight-reps', state, disabled, onActivate, onChange, onLog, onUnlock, onSkip, onStartTimer,
+  set, index, mode, units, metric = 'weight-reps', lastSet, state, disabled, onActivate, onChange, onLog, onUnlock, onSkip, onStartTimer,
 }: Props) {
   const [logError, setLogError] = useState<string | null>(null);
   const isHard = set.rpe != null && set.rpe >= 9;
@@ -186,6 +189,11 @@ export function SetLoggerRow({
 
       {state === 'active' && (
         <div className="px-3 pb-3" onClick={(e) => e.stopPropagation()}>
+          {lastSet && (
+            <div className="text-[11px] text-ink-mute tnum mb-2">
+              Last time: <span className="text-ink-dim">{formatSetValue(lastSet, metric, units)}</span>
+            </div>
+          )}
           <div className="text-[10px] tracking-wider2 font-semibold text-ink-mute uppercase mb-1.5">How did it feel?</div>
           <EffortPicker
             mode={mode}

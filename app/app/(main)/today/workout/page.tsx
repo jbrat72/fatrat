@@ -33,6 +33,9 @@ export default function WorkoutPage() {
   const [exerciseTimerSec, setExerciseTimerSec] = useState(0);
   const [exerciseTimerLabel, setExerciseTimerLabel] = useState<string | null>(null);
   const [exerciseDefs, setExerciseDefs] = useState<Record<string, ExerciseDefinition>>({});
+  // Last-time performance per exercise id (completed sets from the most recent
+  // prior session that trained it) — shown under each set as a reference.
+  const [lastPerf, setLastPerf] = useState<Record<string, SetEntry[]>>({});
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [swapFor, setSwapFor] = useState<number | null>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -61,6 +64,18 @@ export default function WorkoutPage() {
           for (const ex of ps.exercises) trained.add(ex.muscle);
         }
         setPriorMuscles(trained);
+        // Build the "last time" reference: most recent prior completed sets per exercise.
+        const perf: Record<string, SetEntry[]> = {};
+        const sortedPrior = [...prior].sort((a, b) => b.date.localeCompare(a.date));
+        for (const ps of sortedPrior) {
+          if (ps.id === s.id) continue;
+          for (const ex of ps.exercises) {
+            if (perf[ex.exerciseId]) continue;
+            const done = ex.sets.filter((x) => x.completed && x.setType !== 'skip' && (x.weightKg != null || x.reps != null || x.timeSec != null));
+            if (done.length) perf[ex.exerciseId] = done;
+          }
+        }
+        setLastPerf(perf);
       }
       setSession(s);
       setMeso(res.mesocycle);
@@ -113,6 +128,12 @@ export default function WorkoutPage() {
   const queueSave = (next: WorkoutSession) => {
     if (saveDebounce.current) clearTimeout(saveDebounce.current);
     saveDebounce.current = setTimeout(() => { getRepository().upsertSession(next); }, 350);
+  };
+
+  const pauseWorkout = () => {
+    if (saveDebounce.current) clearTimeout(saveDebounce.current);
+    if (session) getRepository().upsertSession(session);
+    router.push('/today');
   };
 
   const updateSessionNotes = (notes: string) => {
@@ -442,6 +463,7 @@ export default function WorkoutPage() {
         mode={terminologyMode(user)}
         units={user.units}
         liveMetric={exerciseDefs[ex.exerciseId] ? (exerciseDefs[ex.exerciseId]!.metric ?? 'weight-reps') : undefined}
+        lastSets={lastPerf[ex.exerciseId]}
         activeSetIndex={activeExerciseIdx === i ? activeSetIdx : null}
         disabled={isResting}
         onActivateSet={(s) => activateSet(i, s)}
@@ -571,7 +593,7 @@ export default function WorkoutPage() {
 
       <div className="fixed bottom-0 inset-x-0 bg-bg/95 backdrop-blur border-t border-ink-line z-20">
         <div className="mx-auto max-w-md p-3 flex items-center gap-2">
-          <Button variant="ghost" onClick={() => router.push('/today')}>Exit</Button>
+          <Button variant="ghost" onClick={pauseWorkout}>Pause Workout</Button>
           <div className="flex-1" />
           <Button onClick={requestFinish} disabled={completion.done === 0} className={completion.done === completion.total ? 'animate-pulseRed shadow-glow' : ''}>
             {completion.done === completion.total ? 'Finish workout' : `Finish (${completion.done}/${completion.total})`}

@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.87.0 — 2026-06-08
+
+- During a workout, each active set now shows "Last time: <weight × reps>" in
+  small text below the inputs and above the effort picker — the most recent
+  completed performance of that exercise, when available.
+- Added a "Pause Workout" button at the bottom of the workout screen. It saves
+  your progress and returns to Today; the session stays in progress so you can
+  pick it back up later the same day (Today shows "Continue Workout").
+
 ## v0.86.0 — 2026-06-08
 
 - Consolidated the duplicated per-set renderers into one shared `SetRow`
