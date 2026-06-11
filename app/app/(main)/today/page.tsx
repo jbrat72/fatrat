@@ -171,9 +171,10 @@ export default function TodayPage() {
           </Card>
         )}
 
-        {/* Skip-ahead: nothing pending for today and nothing missed, but a
-            future workout in the active plan is scheduled. Offer to pull it. */}
-        {!startable && !missed && nextPending && meso && (
+        {/* Skip-ahead: nothing pending for today, but a future workout in the
+            active plan is scheduled. Offer to pull it forward. Shown alongside
+            the missed-workout card so the user can pick either. */}
+        {!startable && nextPending && meso && (
           <Card>
             <div className="section-head mb-1">UP NEXT</div>
             <p className="text-sm text-ink-dim mb-2">

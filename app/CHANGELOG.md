@@ -8,6 +8,12 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.84.1 — 2026-06-08
+
+- Fixed: adding the "missed workout" card hid the "pull a future workout into
+  today" card. Both now show when applicable, so you can either make up a
+  skipped workout or pull a future one forward.
+
 ## v0.84.0 — 2026-06-08
 
 - Today now surfaces a skipped workout. When a scheduled day was missed (a past,
