@@ -8,6 +8,7 @@ import { Sparkline, type SparkPoint } from '@/components/charts';
 import { CardioLogModal } from '@/components/today';
 import { AdHocWorkoutModal } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
+import { cardioStats } from '@/lib/ui/cardio';
 import { weightSeries, e1rmSeries } from '@/lib/progress';
 import { cleanupArchivedPendingSessions } from '@/lib/session/cleanupArchived';
 import { terminologyMode, usesAdvancedTerminology } from '@/lib/periodization';
@@ -410,9 +411,7 @@ export default function HistoryPage() {
                                 {sess.cardio.map((c, j) => (
                                   <li key={j} className="text-xs text-ink-dim tnum">
                                     <span className="capitalize text-ink">{c.activityType.replace('-', ' ')}</span>
-                                    {` · ${c.durationMin} min`}
-                                    {c.distanceKm != null && ` · ${c.distanceKm} km`}
-                                    {c.avgHR != null && ` · ${c.avgHR} bpm`}
+                                    {` · ${cardioStats(c, user.units)}`}
                                   </li>
                                 ))}
                               </ul>

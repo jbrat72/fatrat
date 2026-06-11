@@ -6,6 +6,7 @@ import { Button, MuscleBadge } from '@/components/ui';
 import { EditableSetTable } from './EditableSetTable';
 import { SessionFeedbackModal } from './SessionFeedbackModal';
 import { getRepository } from '@/lib/firestore';
+import { cardioStats } from '@/lib/ui/cardio';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
 import { PUMP_LABEL, VOLUME_LABEL, PAIN_LABEL } from '@/lib/ui/feedback';
@@ -271,9 +272,9 @@ export function SessionDetailModal({ sessionId, onClose, onChanged, onAddToDay }
               <div className="section-head mb-2">CARDIO</div>
               <ul className="space-y-2">
                 {session.cardio.map((c, i) => (
-                  <li key={i} className="flex items-center justify-between text-sm">
-                    <span className="capitalize">{c.activityType.replace('-', ' ')}</span>
-                    <span className="text-ink-dim tnum">{c.durationMin} min</span>
+                  <li key={i} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="capitalize shrink-0">{c.activityType.replace('-', ' ')}</span>
+                    <span className="text-ink-dim tnum text-right">{cardioStats(c, units)}</span>
                   </li>
                 ))}
               </ul>

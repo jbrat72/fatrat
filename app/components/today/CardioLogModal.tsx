@@ -8,6 +8,7 @@ import {
   kmToDisplayDistance, displayDistanceToKm,
   kphToDisplaySpeed, displaySpeedToKph,
   distanceLabel, speedLabel, paceLabel, formatPace,
+  formatDuration, parseDurationToMinutes,
 } from '@/lib/ui/units';
 import type { CardioActivity, CardioEntry, WorkoutSession } from '@/types';
 import { todayIso } from '@/lib/ui/date';
@@ -50,6 +51,7 @@ export function CardioLogModal({
   const { user } = useUser();
   const [activity, setActivity] = useState<CardioActivity>('treadmill');
   const [duration, setDuration] = useState<number | undefined>(20);
+  const [durationStr, setDurationStr] = useState('20:00');
   const [distance, setDistance] = useState<number | undefined>();
   const [speed, setSpeed] = useState<number | undefined>();
   const [incline, setIncline] = useState<number | undefined>(0);
@@ -85,6 +87,7 @@ export function CardioLogModal({
     if (!last) {
       // No history yet — reset to sensible blank defaults for this mode.
       setDuration(20);
+      setDurationStr('20:00');
       setDistance(undefined);
       setSpeed(undefined);
       setIncline(0);
@@ -94,6 +97,7 @@ export function CardioLogModal({
       return;
     }
     setDuration(last.durationMin ?? 20);
+    setDurationStr(formatDuration(last.durationMin ?? 20));
     setDistance(last.distanceKm != null ? kmToDisplayDistance(last.distanceKm, user.units) : undefined);
     setSpeed(last.speedKph != null ? kphToDisplaySpeed(last.speedKph, user.units) : undefined);
     setIncline(last.inclinePct ?? 0);
@@ -201,7 +205,16 @@ export function CardioLogModal({
           <div className={cn('grid gap-3', mode === 'treadmill' ? 'grid-cols-3' : 'grid-cols-2')}>
             <div>
               <div className="section-head mb-2">DURATION</div>
-              <InlineNumber value={duration} onChange={setDuration} step={5} decimals={0} unit="min" ariaLabel="Duration" />
+              <input
+                type="text"
+                inputMode="numeric"
+                value={durationStr}
+                onChange={(e) => { setDurationStr(e.target.value); setDuration(parseDurationToMinutes(e.target.value)); }}
+                onBlur={() => { if (duration != null) setDurationStr(formatDuration(duration)); }}
+                placeholder="mm:ss"
+                aria-label="Duration"
+                className="w-full bg-bg-input border border-ink-line rounded-lg px-3 py-2 text-sm text-center tnum focus:border-accent outline-none"
+              />
             </div>
 
             {mode === 'treadmill' && (

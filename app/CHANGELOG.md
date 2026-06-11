@@ -8,6 +8,16 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.85.0 — 2026-06-08
+
+- Cardio duration is now entered and shown as mm:ss (e.g. 40:00) instead of a
+  decimal "min" field.
+- Cardio stats now respect your units — distance and speed show in miles/mph for
+  imperial (previously always km).
+- Treadmill cardio now shows time · incline · speed · heart rate. Distance-based
+  activities show time · distance · HR; machine cardio shows time · level · HR.
+  A shared formatter drives the Today card, History week list, and session view.
+
 ## v0.84.1 — 2026-06-08
 
 - Fixed: adding the "missed workout" card hid the "pull a future workout into

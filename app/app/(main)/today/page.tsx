@@ -8,7 +8,8 @@ import { BodyWeightCheckIn, CardioLogModal, StreakCard, WorkoutPicker } from '@/
 import { getRepository } from '@/lib/firestore';
 import { resolveToday, type ResolvedToday } from '@/lib/session/resolveToday';
 import { todayIso } from '@/lib/ui/date';
-import type { WorkoutSession, Mesocycle, Microcycle } from '@/types';
+import { cardioStats } from '@/lib/ui/cardio';
+import type { WorkoutSession, Mesocycle, Microcycle, Units } from '@/types';
 
 function formatLongDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
@@ -150,6 +151,7 @@ export default function TodayPage() {
               meso={meso ?? null}
               micro={micro ?? null}
               dayOrdinal={session?.id === s.id ? dayOrdinal : null}
+              units={user.units}
             />
           ))}
 
@@ -244,13 +246,14 @@ export default function TodayPage() {
 /** Single-session card on Today. Shared by programmed, ad-hoc, and
  *  cardio-only sessions. */
 function SessionCard({
-  session, isPrimary, meso, micro, dayOrdinal,
+  session, isPrimary, meso, micro, dayOrdinal, units,
 }: {
   session: WorkoutSession;
   isPrimary: boolean;
   meso: Mesocycle | null;
   micro: Microcycle | null;
   dayOrdinal: number | null;
+  units: Units;
 }) {
   const isCardioOnly = session.exercises.length === 0 && (session.cardio?.length ?? 0) > 0;
   // Open routes to history when done, /today/workout for a pending session
@@ -294,11 +297,8 @@ function SessionCard({
         <ul className="mt-4 space-y-2">
           {session.cardio.map((c, i) => (
             <li key={i} className="flex items-center justify-between gap-2 text-sm">
-              <span className="capitalize">{c.activityType.replace('-', ' ')}</span>
-              <span className="text-ink-dim tnum">
-                {c.durationMin} min{c.distanceKm != null ? ` · ${c.distanceKm} km` : ''}
-                {c.avgHR != null ? ` · ${c.avgHR} bpm` : ''}
-              </span>
+              <span className="capitalize shrink-0">{c.activityType.replace('-', ' ')}</span>
+              <span className="text-ink-dim tnum text-right">{cardioStats(c, units)}</span>
             </li>
           ))}
         </ul>
