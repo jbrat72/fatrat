@@ -27,6 +27,9 @@ export default function TodayPage() {
    *  the user's plan — used to offer "pull this workout into today" when
    *  nothing is pending for today. Null when there's nothing scheduled later. */
   const [nextPending, setNextPending] = useState<WorkoutSession | null>(null);
+  /** Most recent missed (past, still-pending) session in the active plan — used
+   *  to offer pulling a skipped workout forward into today. */
+  const [missed, setMissed] = useState<WorkoutSession | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -37,9 +40,9 @@ export default function TodayPage() {
   // to the user's currently active mesocycle so archived / cancelled plans
   // don't surface a stale workout.
   useEffect(() => {
-    if (!user) { setNextPending(null); return; }
+    if (!user) { setNextPending(null); setMissed(null); return; }
     const activeMesoId = today?.mesocycle?.id ?? null;
-    if (!activeMesoId) { setNextPending(null); return; }
+    if (!activeMesoId) { setNextPending(null); setMissed(null); return; }
     (async () => {
       const all = await getRepository().listSessions(user.userId, { limit: 200 });
       const todayStr = todayIso();
@@ -47,6 +50,11 @@ export default function TodayPage() {
         .filter((s) => !s.completed && s.date > todayStr && s.mesocycleId === activeMesoId)
         .sort((a, b) => a.date.localeCompare(b.date));
       setNextPending(future[0] ?? null);
+      // Most recent skipped day (past + still unfinished) in the active plan.
+      const past = all
+        .filter((s) => !s.completed && s.date < todayStr && s.mesocycleId === activeMesoId)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      setMissed(past[past.length - 1] ?? null);
     })();
   }, [user, refreshTick, today?.mesocycle?.id]);
 
@@ -145,9 +153,27 @@ export default function TodayPage() {
             />
           ))}
 
-        {/* Skip-ahead: nothing pending for today, but a future workout in
-            the active plan is scheduled. Offer to pull it into today. */}
-        {!startable && nextPending && meso && (
+        {/* Catch-up: a scheduled day was skipped (past + still unfinished).
+            Offer to pull that missed workout into today. */}
+        {!startable && missed && meso && (
+          <Card>
+            <div className="section-head mb-1 text-warn">MISSED WORKOUT</div>
+            <p className="text-sm text-ink-dim mb-2">
+              {meso?.name ? `${meso.name} · ` : ''}{formatLongDate(missed.date)}
+            </p>
+            <p className="text-xs text-ink-dim mb-3">
+              Skipped that day? Move it to today — it becomes today&apos;s
+              workout and its original day stays an off-day.
+            </p>
+            <Button block onClick={() => pullSessionToToday(missed)}>
+              Move this workout to today
+            </Button>
+          </Card>
+        )}
+
+        {/* Skip-ahead: nothing pending for today and nothing missed, but a
+            future workout in the active plan is scheduled. Offer to pull it. */}
+        {!startable && !missed && nextPending && meso && (
           <Card>
             <div className="section-head mb-1">UP NEXT</div>
             <p className="text-sm text-ink-dim mb-2">

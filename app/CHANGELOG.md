@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.84.0 — 2026-06-08
+
+- Today now surfaces a skipped workout. When a scheduled day was missed (a past,
+  still-unfinished session in your active plan) and nothing is pending for today,
+  a "Missed workout" card offers to move it to today — it becomes today's
+  workout (with a Start button) and its original day stays an off-day. Mirrors
+  the existing "pull a future workout into today" action; the missed card takes
+  priority over the up-next one.
+
 ## v0.83.3 — 2026-06-08
 
 - Fixed the template/plan detail page showing exercises by their raw id (e.g.
