@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.87.1 — 2026-06-08
+
+- You can now fix up a skipped exercise after the fact. In the session editor:
+  - Skipped sets show an "Un-skip to edit" action that turns them back into
+    editable weight/reps fields, so you can log what you actually did.
+  - A "Swap" button (while editing an exercise) lets you change it to the
+    exercise you really performed — handy when you swapped something out
+    last-minute and skipped the original.
+
 ## v0.87.0 — 2026-06-08
 
 - During a workout, each active set now shows "Last time: <weight × reps>" in

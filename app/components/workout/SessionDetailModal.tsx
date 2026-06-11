@@ -6,6 +6,7 @@ import { Button, MuscleBadge } from '@/components/ui';
 import { EditableSetTable } from './EditableSetTable';
 import { SetRow } from './SetRow';
 import { SessionFeedbackModal } from './SessionFeedbackModal';
+import { SwapExerciseModal } from './SwapExerciseModal';
 import { getRepository } from '@/lib/firestore';
 import { cardioStats } from '@/lib/ui/cardio';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
@@ -45,6 +46,7 @@ export function SessionDetailModal({ sessionId, onClose, onChanged, onAddToDay }
   const [draftSets, setDraftSets] = useState<SetEntry[]>([]);
   const [saving, setSaving] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [swapIdx, setSwapIdx] = useState<number | null>(null);
 
   useEffect(() => {
     if (!sessionId || !user) { setSession(null); return; }
@@ -136,6 +138,16 @@ export function SessionDetailModal({ sessionId, onClose, onChanged, onAddToDay }
     setDraftSets([]);
     setSaving(false);
   };
+  const doSwap = async (def: ExerciseDefinition) => {
+    if (swapIdx == null) return;
+    const exercises = session.exercises.map((ex, i) =>
+      i === swapIdx
+        ? { ...ex, exerciseId: def.id, name: def.name, muscle: def.primaryMuscle, metric: def.metric ?? 'weight-reps', swappedFromExerciseId: ex.exerciseId }
+        : ex,
+    );
+    await persist({ ...session, exercises });
+    setSwapIdx(null);
+  };
   const saveFeedback = async (fb: SessionFeedback) => {
     await persist({ ...session, feedback: fb });
     setFeedbackOpen(false);
@@ -197,7 +209,10 @@ export function SessionDetailModal({ sessionId, onClose, onChanged, onAddToDay }
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {isEditing ? (
-                      <span className="text-[10px] tracking-wider2 font-semibold text-accent uppercase">Editing</span>
+                      <>
+                        <button type="button" onClick={() => setSwapIdx(i)} className="text-xs text-accent font-medium px-2 h-8">Swap</button>
+                        <span className="text-[10px] tracking-wider2 font-semibold text-accent uppercase">Editing</span>
+                      </>
                     ) : (
                       <>
                         <button type="button" onClick={() => startEdit(i)} className="text-xs text-accent font-medium disabled:opacity-40 px-2 h-8" disabled={editIdx != null}>Edit</button>
@@ -280,6 +295,14 @@ export function SessionDetailModal({ sessionId, onClose, onChanged, onAddToDay }
           )}
         </div>
       </div>
+
+      <SwapExerciseModal
+        open={swapIdx !== null}
+        fromExerciseId={swapIdx != null ? session.exercises[swapIdx]?.exerciseId ?? '' : ''}
+        equipmentProfileId={meso?.equipmentProfileId}
+        onClose={() => setSwapIdx(null)}
+        onPick={doSwap}
+      />
 
       <SessionFeedbackModal
         open={feedbackOpen}

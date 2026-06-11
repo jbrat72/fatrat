@@ -35,9 +35,9 @@ export function EditableSetTable({ sets, metric, units, onChange }: Props) {
       {sets.map((s, idx) => {
         if (s.setType === 'skip') {
           return (
-            <div key={idx} className="rounded-md border border-ink-line bg-bg-card/50 px-2 py-1.5 text-xs text-ink-mute flex items-center justify-between">
-              <span>Set {idx + 1}</span>
-              <span>Skipped</span>
+            <div key={idx} className="rounded-md border border-ink-line bg-bg-card/50 px-2 py-1.5 text-xs flex items-center justify-between">
+              <span className="text-ink-mute">Set {idx + 1} · Skipped</span>
+              <button type="button" onClick={() => updateAt(idx, { setType: undefined })} className="text-accent font-medium">Un-skip to edit</button>
             </div>
           );
         }
