@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/components/app';
 import { SetRow } from '@/components/workout';
-import { PageTitle, Card, Button, ModeChip, MuscleBadge } from '@/components/ui';
+import { PageTitle, Card, Button, ModeChip, MuscleBadge, MUSCLE_COLOR } from '@/components/ui';
 import { VolumeDashboard } from '@/components/plan/VolumeDashboard';
 import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
 import { activateWizardProgram, saveWizardDraft, saveWizardToGallery } from '@/lib/wizard/persist';
@@ -504,9 +504,9 @@ function WeekSessionRow({
       </div>
 
       {isOpen && (
-        <div className="border-t border-ink-line px-3 py-3 space-y-3 bg-bg-card/40">
+        <div className="border-t border-ink-line px-3 py-3 space-y-4 bg-bg-card/40">
           {session.exercises.map((ex, i) => (
-            <div key={i} className="rounded-md border border-ink-line bg-bg-card p-2.5">
+            <div key={i} className="border-l-2 pl-3" style={{ borderColor: MUSCLE_COLOR[ex.muscle] ?? '#64748b' }}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <MuscleBadge muscle={ex.muscle} />

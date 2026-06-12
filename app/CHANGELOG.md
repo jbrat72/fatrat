@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.89.0 — 2026-06-08
+
+- Plan week view: removed the box-in-a-box-in-a-box nesting. Each exercise in an
+  expanded day now uses a thin muscle-colored left rule instead of its own
+  bordered card, reclaiming the wasted indent and giving content more width.
+- Muscle pills restyled app-wide (via the shared MuscleBadge): soft 1px colored
+  outline, matching-color text, and a faint tinted fill instead of the bold
+  solid block. Lighter and easier to scan.
+
 ## v0.88.0 — 2026-06-08
 
 - Exercise Library now shows how each exercise is tracked (weight + reps / reps
