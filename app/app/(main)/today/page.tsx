@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { Card, PageTitle, Button, MuscleBadge } from '@/components/ui';
-import { BodyWeightCheckIn, CardioLogModal, StreakCard, WorkoutPicker, TodayWorkoutCard } from '@/components/today';
+import { BodyWeightCheckIn, CardioLogModal, StreakCard, WorkoutPicker, TodayWorkoutCard, StartWorkoutModal } from '@/components/today';
 import { getRepository } from '@/lib/firestore';
 import { resolveToday, type ResolvedToday } from '@/lib/session/resolveToday';
 import { todayIso } from '@/lib/ui/date';
@@ -23,6 +23,10 @@ export default function TodayPage() {
   const [dayOrdinal, setDayOrdinal] = useState<number | null>(null);
   const [cardioOpen, setCardioOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [startOpen, setStartOpen] = useState(false);
+  /** Other pending days in the active plan (past + future) — offered under
+   *  "Swap with another day" in the Start Workout modal. */
+  const [otherDays, setOtherDays] = useState<WorkoutSession[]>([]);
   const [refreshTick, setRefreshTick] = useState(0);
   /** The earliest pending session dated strictly after today, anywhere in
    *  the user's plan — used to offer "pull this workout into today" when
@@ -41,9 +45,9 @@ export default function TodayPage() {
   // to the user's currently active mesocycle so archived / cancelled plans
   // don't surface a stale workout.
   useEffect(() => {
-    if (!user) { setNextPending(null); setMissed(null); return; }
+    if (!user) { setNextPending(null); setMissed(null); setOtherDays([]); return; }
     const activeMesoId = today?.mesocycle?.id ?? null;
-    if (!activeMesoId) { setNextPending(null); setMissed(null); return; }
+    if (!activeMesoId) { setNextPending(null); setMissed(null); setOtherDays([]); return; }
     (async () => {
       const all = await getRepository().listSessions(user.userId, { limit: 200 });
       const todayStr = todayIso();
@@ -56,6 +60,8 @@ export default function TodayPage() {
         .filter((s) => !s.completed && s.date < todayStr && s.mesocycleId === activeMesoId)
         .sort((a, b) => a.date.localeCompare(b.date));
       setMissed(past[past.length - 1] ?? null);
+      // Any other pending day (not today) — newest-missed first, then upcoming.
+      setOtherDays([...past.slice().reverse(), ...future]);
     })();
   }, [user, refreshTick, today?.mesocycle?.id]);
 
@@ -71,15 +77,15 @@ export default function TodayPage() {
     });
   }, [today]);
 
-  /**
-   * Pull a future scheduled session into today. Updates the session's date +
-   * dayOfWeek so Today picks it up and the original date becomes an off-day.
-   */
   // Save day-of structure edits (supersets / styles) made on the Today card.
   const persistStructure = (s: WorkoutSession, exercises: ExerciseEntry[]) => {
     getRepository().upsertSession({ ...s, exercises });
   };
 
+  /**
+   * Pull a scheduled session into today. Updates the session's date +
+   * dayOfWeek so Today picks it up and the original date becomes an off-day.
+   */
   const pullSessionToToday = async (s: WorkoutSession) => {
     if (!user) return;
     const date = todayIso();
@@ -101,7 +107,7 @@ export default function TodayPage() {
   const meso = today?.mesocycle;
   const micro = today?.microcycle;
   const todaySessions = today?.todaySessions ?? [];
-  // Pending session on today's date — the "Start Workout" button targets it.
+  // Pending session on today's date — the Start Workout modal targets it.
   const startable = todaySessions.find((s) => !s.completed) ?? null;
 
   return (
@@ -112,14 +118,10 @@ export default function TodayPage() {
 
         <Card>
           <div className="section-head mb-2">LOG WORKOUT</div>
-          {startable ? (
-            <Button variant="ghost" block onClick={() => setCardioOpen(true)}>Log Cardio</Button>
-          ) : (
-            <div className="grid grid-cols-5 gap-2">
-              <Button block className="col-span-3" onClick={() => setPickerOpen(true)}>Ad-Hoc Workout</Button>
-              <Button variant="ghost" block className="col-span-2" onClick={() => setCardioOpen(true)}>Log Cardio</Button>
-            </div>
-          )}
+          <div className="grid grid-cols-5 gap-2">
+            <Button block className="col-span-3" onClick={() => setStartOpen(true)}>Start Workout</Button>
+            <Button variant="ghost" block className="col-span-2" onClick={() => setCardioOpen(true)}>Log Cardio</Button>
+          </div>
         </Card>
 
         <BodyWeightCheckIn />
@@ -204,6 +206,18 @@ export default function TodayPage() {
           </Card>
         )}
       </div>
+
+      <StartWorkoutModal
+        open={startOpen}
+        onClose={() => setStartOpen(false)}
+        hasScheduled={!!startable}
+        scheduledLabel={startable?.name || meso?.name || "Today's workout"}
+        otherDays={otherDays}
+        planName={meso?.name}
+        onScheduled={() => router.push('/today/workout')}
+        onPullDay={async (s) => { await pullSessionToToday(s); router.push('/today/workout'); }}
+        onAdHoc={() => setPickerOpen(true)}
+      />
 
       <CardioLogModal
         open={cardioOpen}

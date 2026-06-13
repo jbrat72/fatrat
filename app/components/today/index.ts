@@ -3,3 +3,4 @@ export * from './CardioLogModal';
 export * from './StreakCard';
 export * from './WorkoutPicker';
 export * from './TodayWorkoutCard';
+export * from './StartWorkoutModal';

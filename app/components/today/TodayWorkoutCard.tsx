@@ -2,10 +2,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Card, Button, MuscleBadge } from '@/components/ui';
+import { SwapExerciseModal } from '@/components/workout';
 import { cn } from '@/lib/ui/cn';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
-import { applyStyleAt, pairSuperset, unlinkGroup, setSetCount, groupLetters } from '@/lib/workout/structure';
-import type { ExerciseEntry, Mesocycle, Microcycle, SetStyle, Units, WorkoutSession, MuscleGroup } from '@/types';
+import { applyStyleAt, pairSuperset, unlinkGroup, setSetCount, groupLetters, removeExerciseAt } from '@/lib/workout/structure';
+import type { ExerciseDefinition, ExerciseEntry, Mesocycle, Microcycle, SetStyle, Units, WorkoutSession, MuscleGroup } from '@/types';
 
 const STYLE_LABEL: Record<SetStyle, string> = { straight: 'Straight', superset: 'Superset', pyramid: 'Pyramid', drop: 'Drop' };
 
@@ -33,13 +34,16 @@ interface Props {
 export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allowed, onPersist }: Props) {
   const [exs, setExs] = useState<ExerciseEntry[]>(session.exercises);
   const [open, setOpen] = useState<Set<number>>(new Set());
+  const [listOpen, setListOpen] = useState(true);
   const [pairFrom, setPairFrom] = useState<number | null>(null);
+  const [swapFor, setSwapFor] = useState<number | null>(null);
 
   const apply = (next: ExerciseEntry[]) => { setExs(next); onPersist(next); };
   const toggleOpen = (i: number) => setOpen((prev) => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
   const extra = allowed.filter((a) => a === 'pyramid' || a === 'drop');
   const styleButtons: SetStyle[] = ['straight', ...extra, 'superset'];
   const letters = groupLetters(exs);
+  const totalSets = exs.reduce((n, e) => n + e.sets.length, 0);
 
   const onStyle = (i: number, st: SetStyle) => {
     if (st === 'superset') {
@@ -52,6 +56,24 @@ export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allo
     apply(applyStyleAt(exs, i, st));
   };
   const onCandidate = (i: number) => { if (pairFrom != null && pairFrom !== i) { apply(pairSuperset(exs, pairFrom, i)); setPairFrom(null); } };
+
+  const onSwap = (i: number, def: ExerciseDefinition) => {
+    const ex = exs[i]!;
+    apply(exs.map((e, j) => j === i ? {
+      ...ex,
+      exerciseId: def.id,
+      name: def.name,
+      muscle: def.primaryMuscle,
+      metric: def.metric ?? 'weight-reps',
+      swappedFromExerciseId: ex.swappedFromExerciseId ?? ex.exerciseId,
+    } : e));
+    setSwapFor(null);
+  };
+  const onRemove = (i: number) => {
+    setOpen(new Set());
+    setPairFrom(null);
+    apply(removeExerciseAt(exs, i));
+  };
 
   const muscles = Array.from(new Set(exs.map((e) => e.muscle))) as MuscleGroup[];
 
@@ -99,6 +121,9 @@ export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allo
               <button type="button" onClick={() => apply(setSetCount(exs, i, ex.sets.length - 1))} disabled={ex.sets.length <= 1} className="w-7 h-7 rounded-md border border-ink-line text-ink-dim disabled:opacity-30 hover:text-ink leading-none">−</button>
               <span className="w-5 text-center font-mono text-ink">{ex.sets.length}</span>
               <button type="button" onClick={() => apply(setSetCount(exs, i, ex.sets.length + 1))} className="w-7 h-7 rounded-md border border-ink-line text-ink-dim hover:text-ink leading-none">+</button>
+              <div className="flex-1" />
+              <button type="button" onClick={() => setSwapFor(i)} className="text-[12px] font-medium px-2.5 py-1.5 rounded-lg border border-ink-line text-ink-dim hover:text-ink">Swap</button>
+              <button type="button" onClick={() => onRemove(i)} className="text-[12px] font-medium px-2.5 py-1.5 rounded-lg border border-ink-line text-ink-dim hover:text-danger hover:border-danger/50">Remove</button>
             </div>
           </div>
         )}
@@ -123,22 +148,36 @@ export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allo
         </div>
       )}
 
-      <div className="section-head mb-2">{exs.length} Exercises</div>
-      <div className="space-y-2">
-        {blocks.map((b) => b.group != null ? (
-          <div key={`g${b.group}`} className="rounded-xl border border-accent/40 bg-accent/5 p-1.5">
-            <div className="flex items-center justify-between px-2 pt-1 pb-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-accent-hot">⛓ Superset {letters.get(b.group)}</span>
-              <button type="button" onClick={() => apply(unlinkGroup(exs, b.group!))} className="text-[11px] text-ink-mute hover:text-ink">Unlink</button>
+      <button type="button" onClick={() => setListOpen((v) => !v)} className="w-full flex items-center justify-between mb-2">
+        <span className="section-head">{exs.length} Exercises · {totalSets} Sets</span>
+        <span className="text-ink-mute text-lg leading-none transition-transform" style={{ transform: listOpen ? 'none' : 'rotate(-90deg)' }}>⌄</span>
+      </button>
+
+      {listOpen && (
+        <div className="space-y-2">
+          {blocks.map((b) => b.group != null ? (
+            <div key={`g${b.group}`} className="rounded-xl border border-accent/40 bg-accent/5 p-1.5">
+              <div className="flex items-center justify-between px-2 pt-1 pb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-accent-hot">⛓ Superset {letters.get(b.group)}</span>
+                <button type="button" onClick={() => apply(unlinkGroup(exs, b.group!))} className="text-[11px] text-ink-mute hover:text-ink">Unlink</button>
+              </div>
+              <div className="space-y-1.5">{b.idxs.map(renderRow)}</div>
             </div>
-            <div className="space-y-1.5">{b.idxs.map(renderRow)}</div>
-          </div>
-        ) : renderRow(b.idxs[0]!))}
-      </div>
+          ) : renderRow(b.idxs[0]!))}
+        </div>
+      )}
 
       <Link href="/today/workout" className="block mt-4">
         <Button block>{session.startedAt ? 'Continue Workout' : 'Start Workout'}</Button>
       </Link>
+
+      <SwapExerciseModal
+        open={swapFor !== null}
+        equipmentProfileId={meso?.equipmentProfileId}
+        fromExerciseId={swapFor != null ? exs[swapFor]?.exerciseId ?? '' : ''}
+        onClose={() => setSwapFor(null)}
+        onPick={(def) => { if (swapFor != null) onSwap(swapFor, def); }}
+      />
     </Card>
   );
 }

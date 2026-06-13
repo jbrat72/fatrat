@@ -17,9 +17,13 @@ in `package.json`; all three are kept in sync on every change.
   (or time / reps) in smaller mono type below. Tap a row to expand it and reveal
   the set-type buttons (Straight / Superset / Pyramid / Drop, gated by the plan's
   allowed types) and the Sets stepper. Supersets render grouped under a
-  "Superset A" bracket with an Unlink action. Start Workout lives at the bottom
-  of the card; the top action card now just offers Log Cardio (or an ad-hoc
-  workout when nothing is scheduled).
+  "Superset A" bracket with an Unlink action. Expanded exercises also gained
+  Swap (replace the exercise) and Remove buttons next to the Sets stepper. The
+  list header reads "n Exercises · n Sets" and has its own arrow to collapse the
+  whole list at once.
+- The Log Workout card's Start Workout button now opens a chooser: Scheduled
+  Workout (today's plan), Swap with another day (pull a different day's workout
+  into today), or Ad-Hoc. Log Cardio sits beside it.
 
 ## v0.93.0 — 2026-06-08
 

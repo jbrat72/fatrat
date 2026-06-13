@@ -82,3 +82,18 @@ export function groupLetters(exs: ExerciseEntry[]): Map<number, string> {
   for (const e of exs) if (e.supersetGroup != null && !map.has(e.supersetGroup)) map.set(e.supersetGroup, String.fromCharCode(65 + n++));
   return map;
 }
+
+/**
+ * Remove the exercise at `idx`. If it belonged to a superset group that's now
+ * left with fewer than two members, that group is dissolved (remaining member
+ * reverts to a straight set).
+ */
+export function removeExerciseAt(exs: ExerciseEntry[], idx: number): ExerciseEntry[] {
+  const removed = exs[idx];
+  let next = exs.filter((_, i) => i !== idx);
+  const g = removed?.supersetGroup;
+  if (g != null && next.filter((e) => e.supersetGroup === g).length < 2) {
+    next = next.map((e) => (e.supersetGroup === g ? { ...e, supersetGroup: undefined, setStyle: 'straight' as const } : e));
+  }
+  return next;
+}
