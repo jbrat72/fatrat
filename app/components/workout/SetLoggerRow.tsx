@@ -5,9 +5,9 @@ import type { SetEntry, UserMode, Units, ExerciseMetric } from '@/types';
 import { InlineNumber } from '@/components/ui';
 import { EffortPicker } from './EffortPicker';
 import { kgToDisplay, displayToKg, weightLabel } from '@/lib/ui/units';
-import { formatSetValue } from '@/lib/ui/sets';
+import { formatPrev } from '@/lib/ui/sets';
 
-export type SetRowState = 'future' | 'active' | 'locked';
+export type SetRowState = 'future' | 'active' | 'awaiting' | 'locked';
 
 interface Props {
   set: SetEntry;
@@ -19,166 +19,133 @@ interface Props {
   /** What the user did on this set last time they trained this exercise. */
   lastSet?: SetEntry;
   state: SetRowState;
+  /** Shared grid-template-columns string so every row aligns under the header. */
+  gridTemplate: string;
   disabled?: boolean;
   onActivate: () => void;
   onChange: (next: SetEntry) => void;
   onLog: () => void;
   onUnlock?: () => void;
   onSkip?: () => void;
-  /** Called when the user taps "Start timer" on a time-based set. The parent
-   *  opens the countdown overlay with the set's current/prescribed time. */
+  /** Effort chosen after logging — advances to the next set / starts the timer. */
+  onEffort?: (rpe: SetEntry['rpe']) => void;
+  /** Called when the user taps "Start timer" on a time-based set. */
   onStartTimer?: () => void;
 }
 
 export function SetLoggerRow({
-  set, index, mode, units, metric = 'weight-reps', lastSet, state, disabled, onActivate, onChange, onLog, onUnlock, onSkip, onStartTimer,
+  set, index, mode, units, metric = 'weight-reps', lastSet, state, gridTemplate,
+  disabled, onActivate, onChange, onLog, onUnlock, onSkip, onEffort, onStartTimer,
 }: Props) {
   const [logError, setLogError] = useState<string | null>(null);
-  const isHard = set.rpe != null && set.rpe >= 9;
   const isDrop = set.setType === 'drop';
   const isSkipped = set.setType === 'skip';
   const showWeight = metric === 'weight-reps' || metric === 'weight-time';
   const showReps = metric === 'weight-reps' || metric === 'reps';
   const showTime = metric === 'time' || metric === 'weight-time';
-  // Bodyweight (rep-based) moves are often loaded — a dumbbell, vest, or dip
-  // belt — so offer an OPTIONAL weight field. It's never required to log.
+  // Bodyweight (rep-based) moves can be loaded — offer an OPTIONAL weight field.
   const addedWeight = metric === 'reps';
   const weightCol = showWeight || addedWeight;
 
-  // Clear the warning the moment any of the required fields is filled in.
+  const isActive = state === 'active';
+  const isAwaiting = state === 'awaiting';
+  const isLocked = state === 'locked';
+  const checked = isAwaiting || isLocked;
+  const inputsDisabled = !isActive || disabled;
+
+  // Clear the warning the moment the required fields are filled in.
   useEffect(() => {
     const wOk = !showWeight || set.weightKg != null;
     const rOk = !showReps || set.reps != null;
     const tOk = !showTime || set.timeSec != null;
-    if (logError && wOk && rOk && tOk && set.rpe != null) {
-      setLogError(null);
-    }
-  }, [set.weightKg, set.reps, set.timeSec, set.rpe, showWeight, showReps, showTime, logError]);
+    if (logError && wOk && rOk && tOk) setLogError(null);
+  }, [set.weightKg, set.reps, set.timeSec, showWeight, showReps, showTime, logError]);
 
-  // Also clear the error if the user navigates away from this set.
-  useEffect(() => {
-    if (state !== 'active' && logError) setLogError(null);
-  }, [state, logError]);
+  useEffect(() => { if (state !== 'active' && logError) setLogError(null); }, [state, logError]);
 
   const handleLogClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (disabled) return;
-    if (state === 'locked') { onUnlock?.(); return; }
+    if (isLocked || isAwaiting) { onUnlock?.(); return; }
     if (state === 'future') { onActivate(); return; }
-    if (showWeight && set.weightKg == null) {
-      setLogError(showTime ? 'Enter weight and time first' : 'Enter weight and reps first'); return;
-    }
-    if (showReps && set.reps == null) {
-      setLogError(showWeight ? 'Enter weight and reps first' : 'Enter reps first'); return;
-    }
-    if (showTime && set.timeSec == null) {
-      setLogError(showWeight ? 'Enter weight and time first' : 'Enter time first'); return;
-    }
-    if (set.rpe == null) {
-      setLogError('Pick how it felt first'); return;
-    }
+    // Active — validate the entry (effort is asked AFTER logging now).
+    if (showWeight && set.weightKg == null) { setLogError(showTime ? 'Enter weight and time' : 'Enter weight and reps'); return; }
+    if (showReps && set.reps == null) { setLogError(showWeight ? 'Enter weight and reps' : 'Enter reps'); return; }
+    if (showTime && set.timeSec == null) { setLogError(showWeight ? 'Enter weight and time' : 'Enter time'); return; }
     setLogError(null);
     onLog();
   };
 
   return (
     <div
-      onClick={() => { if (state === 'future') onActivate(); if (state === 'locked') onUnlock?.(); }}
+      onClick={() => { if (state === 'future') onActivate(); if (isLocked) onUnlock?.(); }}
       className={cn(
-        'rounded-xl border transition relative',
-        state === 'active'  && 'border-2 border-accent bg-bg-elev shadow-glow',
-        state === 'locked'  && 'border-ink-line bg-bg-card hover:border-accent cursor-pointer',
-        state === 'future'  && 'border-ink-line bg-bg-card/60 cursor-pointer',
-        isHard && state === 'active' && 'ring-1 ring-danger/40',
-        isDrop && 'ml-5',
-        disabled && 'opacity-60 pointer-events-none',
+        'relative rounded-lg transition',
+        isActive && 'bg-bg-elev',
+        isAwaiting && 'bg-bg-elev',
+        (state === 'future' || isLocked) && 'cursor-pointer',
+        isDrop && 'ml-4',
+        disabled && !isAwaiting && 'opacity-60 pointer-events-none',
       )}
     >
-      <div
-        className={cn(
-          'items-start gap-3 p-3 grid',
-          weightCol && (showReps || showTime)
-            ? 'grid-cols-[24px_minmax(0,1fr)_minmax(0,1fr)_56px]'
-            : 'grid-cols-[24px_minmax(0,1fr)_56px]',
-        )}
-      >
-        <div className="mt-5 text-ink-mute text-sm tabular-nums font-medium">
-          {isDrop
-            ? <span className="text-warn text-[9px] font-semibold tracking-wider2">DROP</span>
-            : isSkipped
-              ? <span className="text-ink-mute text-[9px] font-semibold tracking-wider2">SKIP</span>
+      {/* Left accent rule for the active / just-logged row. */}
+      {(isActive || isAwaiting) && <div className="absolute left-0 top-1 bottom-1 w-0.5 rounded bg-accent" />}
+
+      <div className="grid items-center gap-2 px-1.5 py-1.5" style={{ gridTemplateColumns: gridTemplate }}>
+        <div className="text-center text-ink-mute text-sm tabular-nums font-medium">
+          {isDrop ? <span className="text-warn text-[9px] font-semibold tracking-wider2">DROP</span>
+            : isSkipped ? <span className="text-ink-mute text-[9px] font-semibold tracking-wider2">SKIP</span>
               : index + 1}
         </div>
 
+        <div className="text-center text-[12px] text-ink-mute tnum truncate">{formatPrev(lastSet, metric, units)}</div>
+
         {weightCol && (
-          <div>
-            <div className="text-[10px] tracking-wider2 font-semibold text-ink-mute mb-1.5">{showWeight ? 'WEIGHT' : '+ WEIGHT'}</div>
-            <InlineNumber
-              value={kgToDisplay(set.weightKg, units)}
-              onChange={(n) => onChange({ ...set, weightKg: displayToKg(n, units) })}
-              step={units === 'imperial' ? 5 : 2.5}
-              decimals={1}
-              unit={weightLabel(units)}
-              disabled={state !== 'active' || disabled}
-              ariaLabel={`Set ${index + 1} weight`}
-            />
-          </div>
+          <InlineNumber
+            value={kgToDisplay(set.weightKg, units)}
+            onChange={(n) => onChange({ ...set, weightKg: displayToKg(n, units) })}
+            step={units === 'imperial' ? 5 : 2.5}
+            decimals={1}
+            disabled={inputsDisabled}
+            ariaLabel={`Set ${index + 1} weight`}
+          />
         )}
 
         {showReps && (
-          <div>
-            <div className="text-[10px] tracking-wider2 font-semibold text-ink-mute mb-1.5">REPS</div>
-            <InlineNumber
-              value={set.reps}
-              onChange={(n) => onChange({ ...set, reps: n })}
-              step={1}
-              decimals={0}
-              disabled={state !== 'active' || disabled}
-              ariaLabel={`Set ${index + 1} reps`}
-            />
-          </div>
+          <InlineNumber
+            value={set.reps}
+            onChange={(n) => onChange({ ...set, reps: n })}
+            step={1}
+            decimals={0}
+            disabled={inputsDisabled}
+            ariaLabel={`Set ${index + 1} reps`}
+          />
         )}
 
         {showTime && (
-          <div>
-            <div className="text-[10px] tracking-wider2 font-semibold text-ink-mute mb-1.5">TIME</div>
-            <InlineNumber
-              value={set.timeSec}
-              onChange={(n) => onChange({ ...set, timeSec: n })}
-              step={5}
-              min={1}
-              decimals={0}
-              unit="s"
-              disabled={state !== 'active' || disabled}
-              ariaLabel={`Set ${index + 1} time`}
-            />
-            {state === 'active' && onStartTimer && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onStartTimer(); }}
-                disabled={disabled}
-                className="mt-1.5 w-full h-8 rounded-md bg-accent/10 border border-accent/40 text-accent text-xs font-semibold active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
-              >
-                ▶ Start timer
-              </button>
-            )}
-          </div>
+          <InlineNumber
+            value={set.timeSec}
+            onChange={(n) => onChange({ ...set, timeSec: n })}
+            step={5}
+            min={1}
+            decimals={0}
+            unit="s"
+            disabled={inputsDisabled}
+            ariaLabel={`Set ${index + 1} time`}
+          />
         )}
 
-        <div className="flex flex-col items-center">
-          <div className="text-[10px] tracking-wider2 font-semibold text-ink-mute mb-1.5">
-            {state === 'locked' ? 'EDIT' : 'LOG'}
-          </div>
+        <div className="flex justify-center">
           <button
             type="button"
             onClick={handleLogClick}
             disabled={disabled}
             className="log-check"
-            data-on={state === 'locked'}
-            aria-pressed={state === 'locked'}
-            aria-label={state === 'locked' ? 'Unlock set' : 'Log set'}
+            data-on={checked}
+            aria-pressed={checked}
+            aria-label={checked ? 'Unlock set' : 'Log set'}
           >
-            {state === 'locked' && (
+            {checked && (
               <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 10l4 4 8-8" />
               </svg>
@@ -187,26 +154,22 @@ export function SetLoggerRow({
         </div>
       </div>
 
-      {state === 'active' && (
-        <div className="px-3 pb-3" onClick={(e) => e.stopPropagation()}>
-          {lastSet && (
-            <div className="text-[11px] text-ink-mute tnum mb-2">
-              Last time: <span className="text-ink-dim">{formatSetValue(lastSet, metric, units)}</span>
-            </div>
+      {/* Active: timer button (time metric) + skip affordance. */}
+      {isActive && (
+        <div className="px-2 pb-2" onClick={(e) => e.stopPropagation()}>
+          {showTime && onStartTimer && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onStartTimer(); }}
+              disabled={disabled}
+              className="mb-2 w-full h-8 rounded-md bg-accent/10 border border-accent/40 text-accent text-xs font-semibold active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+            >
+              ▶ Start timer
+            </button>
           )}
-          <div className="text-[10px] tracking-wider2 font-semibold text-ink-mute uppercase mb-1.5">How did it feel?</div>
-          <EffortPicker
-            mode={mode}
-            value={set.rpe}
-            onChange={(rpe) => {
-              if (rpe != null) setLogError(null);
-              onChange({ ...set, rpe });
-            }}
-            compact
-          />
-          {logError && <div className="mt-2 text-xs text-danger text-center">{logError}</div>}
+          {logError && <div className="mb-1 text-xs text-danger text-right">{logError}</div>}
           {onSkip && (
-            <div className="mt-3 flex justify-end">
+            <div className="flex justify-end">
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onSkip(); }}
@@ -217,6 +180,19 @@ export function SetLoggerRow({
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Just logged: ask how it felt — advancing waits on this. */}
+      {isAwaiting && (
+        <div className="px-2 pb-2.5" onClick={(e) => e.stopPropagation()}>
+          <div className="text-[10px] tracking-wider2 font-semibold text-ink-mute uppercase mb-1.5">How did it feel?</div>
+          <EffortPicker
+            mode={mode}
+            value={set.rpe}
+            onChange={(rpe) => { if (rpe != null) onEffort?.(rpe); }}
+            compact
+          />
         </div>
       )}
     </div>

@@ -8,6 +8,19 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.96.0 — 2026-06-13
+
+- Reworked the in-workout set logger from stacked cards into a compact table:
+  SET · PREV · weight · reps (or time) · LOG, with one header per exercise. The
+  PREV column shows what you did on that set last time (e.g. "35 × 8").
+- Effort is now asked AFTER logging, not before. Tap the LOG checkbox to record
+  the set, then "How did it feel?" appears inline on that row. The next set does
+  not become active and the rest timer does not start until you pick a rating —
+  so the flow is enter → log → rate → advance. Re-tapping a row's checkmark
+  unlocks it for editing and cancels the pending rating.
+- The active set is marked with a left accent rule and shows "Skip this set"
+  below it; time-based sets keep their Start-timer button.
+
 ## v0.95.0 — 2026-06-13
 
 - The exercise menu (⋮) during a live workout now actually works. Previously

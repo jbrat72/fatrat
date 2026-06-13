@@ -24,3 +24,23 @@ export function formatSetValue(
     default:            return `${wStr} × ${set.reps ?? ph}`;
   }
 }
+
+/**
+ * Compact "previous performance" label for the PREV column in the in-workout
+ * table — weight without its unit, e.g. "35 × 8", "× 12", or "45s". Returns
+ * "—" when there's nothing recorded for that set last time.
+ */
+export function formatPrev(
+  set: SetEntry | undefined,
+  metric: ExerciseMetric,
+  units: Units,
+): string {
+  if (!set || set.setType === 'skip') return '—';
+  const w = kgToDisplay(set.weightKg, units);
+  switch (metric) {
+    case 'time':        return set.timeSec != null ? `${set.timeSec}s` : '—';
+    case 'weight-time': return `${w ?? '—'} × ${set.timeSec ?? '—'}s`;
+    case 'reps':        return set.reps != null ? `× ${set.reps}` : '—';
+    default:            return w != null || set.reps != null ? `${w ?? '—'} × ${set.reps ?? '—'}` : '—';
+  }
+}

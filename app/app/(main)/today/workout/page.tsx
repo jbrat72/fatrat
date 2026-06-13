@@ -39,6 +39,9 @@ export default function WorkoutPage() {
   const [lastPerf, setLastPerf] = useState<Record<string, SetEntry[]>>({});
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [swapFor, setSwapFor] = useState<number | null>(null);
+  // A set that's been logged but is waiting on its "how did it feel?" rating.
+  // Until effort is picked, focus doesn't advance and the rest timer is held.
+  const [pendingEffort, setPendingEffort] = useState<{ exIdx: number; setIdx: number } | null>(null);
   const [structureOpen, setStructureOpen] = useState(false);
   const structureDecided = useRef(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -238,16 +241,34 @@ export default function WorkoutPage() {
     setSession(next); queueSave(next);
   };
 
+  // Phase 1 of logging: mark the set done and surface its "how did it feel?"
+  // prompt. Advancing to the next set + starting the rest timer is deferred to
+  // setEffort, so nothing moves until the user rates the set.
   const logSet = (exIdx: number, setIdx: number) => {
     if (!session) return;
     const ex = session.exercises[exIdx]!;
     const current = ex.sets[setIdx]!;
     const committed: SetEntry = { ...current, completed: true };
+    const exercises = session.exercises.map((e, i) =>
+      i === exIdx ? { ...e, sets: e.sets.map((s, j) => (j === setIdx ? committed : s)) } : e,
+    );
+    const next = { ...session, exercises };
+    setSession(next); queueSave(next);
+    setPendingEffort({ exIdx, setIdx });
+  };
+
+  // Phase 2: the user rated the just-logged set. Record the effort, nudge the
+  // following set, prompt for muscle feedback if the group finished, then
+  // advance focus + start the rest timer.
+  const setEffort = (exIdx: number, setIdx: number, rpe: SetEntry['rpe']) => {
+    if (!session) return;
+    const ex = session.exercises[exIdx]!;
+    const current = ex.sets[setIdx]!;
+    const committed: SetEntry = { ...current, completed: true, rpe };
 
     // Auto-nudge the very next set in this exercise based on what just happened.
     const nextSetIdx = setIdx + 1;
-    const nextRaw    = ex.sets[nextSetIdx];
-
+    const nextRaw = ex.sets[nextSetIdx];
     const updatedSets = ex.sets.map((s, j) => {
       if (j === setIdx) return committed;
       if (j === nextSetIdx && nextRaw && !nextRaw.completed && ex.setStyle !== 'pyramid' && nextRaw.setType !== 'drop') {
@@ -261,10 +282,9 @@ export default function WorkoutPage() {
     );
     const next = { ...session, exercises };
     setSession(next); queueSave(next);
+    setPendingEffort(null);
 
     // Per-muscle feedback: if this set finished the muscle group, ask for it.
-    // Pump/volume/pain feedback only drives the periodization model — ad-hoc
-    // and traditional sessions don't use it, so we don't prompt for it there.
     // Core is excluded — it's a noise-prone signal (everything trains it
     // incidentally) and Brian doesn't want to be asked.
     const justMuscle = ex.muscle;
@@ -292,10 +312,6 @@ export default function WorkoutPage() {
     if (anyPending && !intoSupersetPartner) {
       const def = exerciseDefs[ex.exerciseId];
       const patterns: MovementPattern[] = def?.patterns ?? [];
-      // Rest precedence: explicit session rest (single-workout templates) →
-      // meso wizard setting → phase + movement default. Ad-hoc sessions
-      // without any rest hint fall through to the phase default for
-      // 'hypertrophy' which is sensible for most lifts.
       const rest = next.restSeconds
         ?? meso?.restSeconds
         ?? defaultRestSec(meso?.phaseType ?? 'hypertrophy', patterns);
@@ -340,6 +356,8 @@ export default function WorkoutPage() {
     );
     const next = { ...session, exercises };
     setSession(next); queueSave(next);
+    // Re-editing the set that was awaiting an effort rating cancels that prompt.
+    if (pendingEffort?.exIdx === exIdx && pendingEffort?.setIdx === setIdx) setPendingEffort(null);
     setActiveExerciseIdx(exIdx); setActiveSetIdx(setIdx);
   };
 
@@ -525,10 +543,12 @@ export default function WorkoutPage() {
         liveMetric={exerciseDefs[ex.exerciseId] ? (exerciseDefs[ex.exerciseId]!.metric ?? 'weight-reps') : undefined}
         lastSets={lastPerf[ex.exerciseId]}
         activeSetIndex={activeExerciseIdx === i ? activeSetIdx : null}
+        awaitingEffortSetIdx={pendingEffort?.exIdx === i ? pendingEffort.setIdx : null}
         disabled={isResting}
         onActivateSet={(s) => activateSet(i, s)}
         onUpdateSet={(s, next) => updateSet(i, s, next)}
         onLogSet={(s) => logSet(i, s)}
+        onEffort={(s, rpe) => setEffort(i, s, rpe)}
         onUnlockSet={(s) => unlockSet(i, s)}
         onAddSet={() => addSet(i)}
         onRemoveSet={() => removeSet(i)}

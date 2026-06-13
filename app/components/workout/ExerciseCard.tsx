@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { cn } from '@/lib/ui/cn';
 import { Card, MuscleBadge, Button } from '@/components/ui';
 import { SetLoggerRow, type SetRowState } from './SetLoggerRow';
-import type { ExerciseEntry, SetEntry, UserMode, Units } from '@/types';
+import { weightLabel } from '@/lib/ui/units';
+import type { ExerciseEntry, SetEntry, EffortRPE, UserMode, Units } from '@/types';
 
 interface Props {
   exercise: ExerciseEntry;
@@ -17,11 +18,15 @@ interface Props {
   /** The matching exercise's completed sets from the last time it was trained. */
   lastSets?: SetEntry[];
   activeSetIndex: number | null;
+  /** Index of the set that was just logged and is waiting on an effort rating. */
+  awaitingEffortSetIdx?: number | null;
   disabled?: boolean;
   onActivateSet: (i: number) => void;
   onUpdateSet: (i: number, next: SetEntry) => void;
   onLogSet: (i: number) => void;
   onUnlockSet: (i: number) => void;
+  /** Effort chosen for a just-logged set — gates advancing to the next set. */
+  onEffort?: (i: number, rpe: EffortRPE | undefined) => void;
   onAddSet: () => void;
   onRemoveSet?: () => void;
   /** Whether a set can still be trimmed (more than one set, at least one pending). */
@@ -38,8 +43,8 @@ interface Props {
 }
 
 export function ExerciseCard({
-  exercise, exerciseIndex, mode, units, liveMetric, lastSets, activeSetIndex, disabled,
-  onActivateSet, onUpdateSet, onLogSet, onUnlockSet, onAddSet, onRemoveSet, canRemoveSet,
+  exercise, exerciseIndex, mode, units, liveMetric, lastSets, activeSetIndex, awaitingEffortSetIdx, disabled,
+  onActivateSet, onUpdateSet, onLogSet, onUnlockSet, onEffort, onAddSet, onRemoveSet, canRemoveSet,
   onSwap, onSkip, onSkipSet, onRemove, canRemove, onShowHistory, onStartTimer,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -49,7 +54,26 @@ export function ExerciseCard({
   // but the visible count only includes actually-logged sets.
   const allDone = totalCount > 0 && exercise.sets.every((s) => s.completed);
 
+  const metric = liveMetric ?? exercise.metric ?? 'weight-reps';
+  const showWeight = metric === 'weight-reps' || metric === 'weight-time';
+  const showReps = metric === 'weight-reps' || metric === 'reps';
+  const showTime = metric === 'time' || metric === 'weight-time';
+  const addedWeight = metric === 'reps';
+  const weightCol = showWeight || addedWeight;
+
+  // Build the table columns dynamically so the header and every row align.
+  const cols: { label: string; w: string }[] = [
+    { label: 'SET', w: '1.75rem' },
+    { label: 'PREV', w: 'minmax(40px,1fr)' },
+  ];
+  if (weightCol) cols.push({ label: (showWeight ? '' : '+') + weightLabel(units).toUpperCase(), w: 'minmax(52px,1fr)' });
+  if (showReps) cols.push({ label: 'REPS', w: 'minmax(52px,1fr)' });
+  if (showTime) cols.push({ label: 'TIME', w: 'minmax(52px,1fr)' });
+  cols.push({ label: 'LOG', w: '2.5rem' });
+  const gridTemplate = cols.map((c) => c.w).join(' ');
+
   const stateFor = (setIdx: number, set: SetEntry): SetRowState => {
+    if (awaitingEffortSetIdx === setIdx) return 'awaiting';
     if (setIdx === activeSetIndex) return 'active';
     if (set.completed) return 'locked';
     return 'future';
@@ -77,10 +101,7 @@ export function ExerciseCard({
           <div className="mt-2 font-medium text-base leading-tight">{exercise.name}</div>
           <div className="text-xs text-ink-dim mt-0.5">
             {totalCount} sets · {(() => {
-              const m = exercise.metric ?? 'weight-reps';
-              if (m === 'time' || m === 'weight-time') {
-                return `${exercise.prescribedTimeLow ?? '?'}–${exercise.prescribedTimeHigh ?? '?'}s`;
-              }
+              if (showTime) return `${exercise.prescribedTimeLow ?? '?'}–${exercise.prescribedTimeHigh ?? '?'}s`;
               return `${exercise.prescribedRepsLow ?? '?'}–${exercise.prescribedRepsHigh ?? '?'} reps`;
             })()}
             {mode === 'ADVANCED' && exercise.prescribedRIR != null && ` · ${exercise.prescribedRIR} RIR`}
@@ -124,26 +145,37 @@ export function ExerciseCard({
         </div>
       </div>
 
-      <div className="px-3 pb-3 space-y-2">
-        {exercise.sets.map((set, i) => (
-          <SetLoggerRow
-            key={i}
-            set={set}
-            index={i}
-            mode={mode}
-            units={units}
-            state={stateFor(i, set)}
-            disabled={disabled}
-            metric={liveMetric ?? exercise.metric}
-            lastSet={lastSets ? (lastSets[i] ?? lastSets[lastSets.length - 1]) : undefined}
-            onActivate={() => onActivateSet(i)}
-            onChange={(next) => onUpdateSet(i, next)}
-            onLog={() => onLogSet(i)}
-            onUnlock={() => onUnlockSet(i)}
-            onSkip={onSkipSet ? () => onSkipSet(i) : undefined}
-            onStartTimer={onStartTimer ? () => onStartTimer(i) : undefined}
-          />
-        ))}
+      <div className="px-3 pb-2">
+        {/* Table header */}
+        <div className="grid items-center gap-2 px-1.5 pb-1 border-b border-ink-line" style={{ gridTemplateColumns: gridTemplate }}>
+          {cols.map((c, k) => (
+            <div key={k} className="text-center text-[10px] tracking-wider2 font-semibold text-ink-mute uppercase">{c.label}</div>
+          ))}
+        </div>
+
+        <div className="mt-1 space-y-0.5">
+          {exercise.sets.map((set, i) => (
+            <SetLoggerRow
+              key={i}
+              set={set}
+              index={i}
+              mode={mode}
+              units={units}
+              metric={metric}
+              gridTemplate={gridTemplate}
+              state={stateFor(i, set)}
+              disabled={disabled}
+              lastSet={lastSets ? (lastSets[i] ?? lastSets[lastSets.length - 1]) : undefined}
+              onActivate={() => onActivateSet(i)}
+              onChange={(next) => onUpdateSet(i, next)}
+              onLog={() => onLogSet(i)}
+              onUnlock={() => onUnlockSet(i)}
+              onEffort={onEffort ? (rpe) => onEffort(i, rpe) : undefined}
+              onSkip={onSkipSet ? () => onSkipSet(i) : undefined}
+              onStartTimer={onStartTimer ? () => onStartTimer(i) : undefined}
+            />
+          ))}
+        </div>
       </div>
 
       <div className="px-4 py-2 border-t border-ink-line flex items-center justify-between">
