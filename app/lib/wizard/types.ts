@@ -61,7 +61,7 @@ export interface WizardState {
     volumeFramework: VolumeFramework | null;
     periodizationStrategy: PeriodizationStrategy | null;
   };
-  split: { type: string | null; customDays?: MuscleGroup[][] };
+  split: { type: string | null; customDays?: MuscleGroup[][]; fixedExercises?: boolean };
   prioritization: { tiers: Partial<Record<MuscleGroup, WizTier>> };
   setsAndReps: { repRange: RepRange | null; setTypes: string[]; autoVary: boolean };
   restAndTempo: { restPreference: RestPref | null; tempoEnabled: boolean; tempoStyle: string | null };

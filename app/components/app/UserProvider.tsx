@@ -8,6 +8,7 @@ import type { UserProfile } from '@/types';
 import { DEMO_USER_IDS } from '@/lib/firestore/seed/users';
 import { migrateMacrocyclesForUser } from '@/lib/firestore/migrations/dropMacrocycle';
 import { migrateSessionsToDaysForUser } from '@/lib/firestore/migrations/relabelSessionsToDays';
+import { migrateFixedExercises } from '@/lib/firestore/migrations/fixedExercises';
 
 const ACTIVE_USER_KEY = 'fatrat:activeUser:v1';
 
@@ -51,6 +52,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     // One-shot v0.62 migration — copy sessions/* to days/* with planName denorm.
     if (profile && isFirebaseEnabled() && !profile.migratedSessionsToDays) {
       profile = await migrateSessionsToDaysForUser(profile);
+    }
+    // One-shot — default existing plans to fixed exercises (mock + Firebase).
+    if (profile && !profile.migratedFixedExercises) {
+      profile = await migrateFixedExercises(profile);
     }
     setUser(profile);
     setLoading(false);

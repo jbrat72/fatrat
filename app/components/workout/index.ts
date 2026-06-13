@@ -11,3 +11,5 @@ export * from './SorenessCheckIn';
 export * from './EditableSetTable';
 export * from './SessionDetailModal';
 export * from './SetRow';
+export * from './StructureEditor';
+export * from './StructureSheet';

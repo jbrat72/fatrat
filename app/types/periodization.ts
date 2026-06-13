@@ -73,6 +73,12 @@ export interface Mesocycle {
   /** Per-week structure (calibration / layoff ramp / load / deload). Week 1
    *  being 'cal' triggers e1RM auto-seeding once that week is completed. */
   weekKinds?: ('cal' | 'ramp' | 'load' | 'deload')[];
+  /** Optional set types offered in the day-of structure sheet (beyond straight
+   *  + superset, which are always available). Derived from the wizard. */
+  allowedSetTypes?: ('pyramid' | 'drop')[];
+  /** When true, every week runs week 1's exact exercises (swaps stick) instead
+   *  of rotating for variety. */
+  fixedExercises?: boolean;
 }
 
 export interface Microcycle {

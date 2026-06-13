@@ -9,7 +9,8 @@ import { getRepository } from '@/lib/firestore';
 import { resolveToday, type ResolvedToday } from '@/lib/session/resolveToday';
 import { todayIso } from '@/lib/ui/date';
 import { cardioStats } from '@/lib/ui/cardio';
-import type { WorkoutSession, Mesocycle, Microcycle, Units } from '@/types';
+import { StructureEditor } from '@/components/workout';
+import type { WorkoutSession, Mesocycle, Microcycle, Units, ExerciseEntry, SetStyle } from '@/types';
 
 function formatLongDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
@@ -75,6 +76,11 @@ export default function TodayPage() {
    * Pull a future scheduled session into today. Updates the session's date +
    * dayOfWeek so Today picks it up and the original date becomes an off-day.
    */
+  // Save day-of structure edits (supersets / styles) made on the Today card.
+  const persistStructure = (s: WorkoutSession, exercises: ExerciseEntry[]) => {
+    getRepository().upsertSession({ ...s, exercises });
+  };
+
   const pullSessionToToday = async (s: WorkoutSession) => {
     if (!user) return;
     const date = todayIso();
@@ -152,6 +158,9 @@ export default function TodayPage() {
               micro={micro ?? null}
               dayOrdinal={session?.id === s.id ? dayOrdinal : null}
               units={user.units}
+              editable={!s.completed && s.id === startable?.id && s.exercises.length > 0}
+              allowed={meso?.allowedSetTypes ?? []}
+              onPersist={(exs) => persistStructure(s, exs)}
             />
           ))}
 
@@ -246,7 +255,7 @@ export default function TodayPage() {
 /** Single-session card on Today. Shared by programmed, ad-hoc, and
  *  cardio-only sessions. */
 function SessionCard({
-  session, isPrimary, meso, micro, dayOrdinal, units,
+  session, isPrimary, meso, micro, dayOrdinal, units, editable, allowed, onPersist,
 }: {
   session: WorkoutSession;
   isPrimary: boolean;
@@ -254,8 +263,12 @@ function SessionCard({
   micro: Microcycle | null;
   dayOrdinal: number | null;
   units: Units;
+  editable?: boolean;
+  allowed?: SetStyle[];
+  onPersist?: (exercises: ExerciseEntry[]) => void;
 }) {
   const isCardioOnly = session.exercises.length === 0 && (session.cardio?.length ?? 0) > 0;
+  const [structExs, setStructExs] = useState<ExerciseEntry[]>(session.exercises);
   // Open routes to history when done, /today/workout for a pending session
   // (programmed or ad-hoc; cardio-only completed sessions route to history).
   const openHref = session.completed
@@ -302,6 +315,11 @@ function SessionCard({
             </li>
           ))}
         </ul>
+      ) : editable ? (
+        <div className="mt-4">
+          <div className="text-[11px] text-ink-mute uppercase tracking-wider2 mb-2">Structure · optional</div>
+          <StructureEditor exercises={structExs} allowed={allowed ?? []} onChange={(exs) => { setStructExs(exs); onPersist?.(exs); }} />
+        </div>
       ) : (
         <ul className="mt-4 space-y-2">
           {session.exercises.map((ex, i) => (

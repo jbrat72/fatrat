@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { Button } from '@/components/ui';
-import { ExerciseCard, RestTimer, ExerciseTimer, ExerciseHistorySheet, SwapExerciseModal, SessionFeedbackModal, SorenessCheckIn } from '@/components/workout';
+import { ExerciseCard, RestTimer, ExerciseTimer, ExerciseHistorySheet, SwapExerciseModal, SessionFeedbackModal, SorenessCheckIn, StructureSheet } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
 import { resolveToday } from '@/lib/session/resolveToday';
@@ -38,6 +38,8 @@ export default function WorkoutPage() {
   const [lastPerf, setLastPerf] = useState<Record<string, SetEntry[]>>({});
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [swapFor, setSwapFor] = useState<number | null>(null);
+  const [structureOpen, setStructureOpen] = useState(false);
+  const structureDecided = useRef(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [priorMuscles, setPriorMuscles] = useState<Set<MuscleGroup>>(new Set());
   const [sorenessAsked, setSorenessAsked] = useState<Set<MuscleGroup>>(new Set());
@@ -124,6 +126,17 @@ export default function WorkoutPage() {
     if ((session.soreness ?? []).some((sr) => sr.muscle === muscle)) return;
     setSorenessMuscle(muscle);
   }, [session, activeExerciseIdx, priorMuscles, sorenessAsked, sorenessMuscle, meso]);
+
+  // Ad-hoc workouts have no Today card to structure on beforehand, so offer the
+  // structure sheet once when an ad-hoc session is freshly started.
+  useEffect(() => {
+    if (structureDecided.current || !session) return;
+    const noneLogged = !session.exercises.some((ex) => ex.sets.some((s) => s.completed));
+    if (session.microcycleId == null && session.exercises.length > 1 && noneLogged) {
+      structureDecided.current = true;
+      setStructureOpen(true);
+    }
+  }, [session]);
 
   const queueSave = (next: WorkoutSession) => {
     if (saveDebounce.current) clearTimeout(saveDebounce.current);
@@ -590,6 +603,21 @@ export default function WorkoutPage() {
         onClose={() => setSwapFor(null)}
         onPick={(def) => { if (swapFor != null) swapExercise(swapFor, def); }}
       />
+
+      {structureOpen && session && (
+        <StructureSheet
+          exercises={session.exercises}
+          allowed={meso?.allowedSetTypes ?? []}
+          onCancel={() => setStructureOpen(false)}
+          onStart={(exs) => {
+            const next = { ...session, exercises: exs };
+            setSession(next); queueSave(next); setStructureOpen(false);
+            const focus = findNextPending(next);
+            setActiveExerciseIdx(focus?.exIdx ?? 0);
+            setActiveSetIdx(focus?.setIdx ?? null);
+          }}
+        />
+      )}
 
       <div className="fixed bottom-0 inset-x-0 bg-bg/95 backdrop-blur border-t border-ink-line z-20">
         <div className="mx-auto max-w-md p-3 flex items-center gap-2">

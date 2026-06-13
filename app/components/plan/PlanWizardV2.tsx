@@ -111,8 +111,6 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   const [saving, setSaving] = useState(false);
   const [savedTick, setSavedTick] = useState(false);
   const savedIdRef = useRef<string | undefined>(initialDraftId);
-  const [sel, setSel] = useState<{ di: number; idx: number[] } | null>(null);
-  function toggleSel(di: number, ei: number) { setSel((prev) => { if (!prev || prev.di !== di) return { di, idx: [ei] }; return prev.idx.includes(ei) ? { di, idx: prev.idx.filter((x) => x !== ei) } : { di, idx: [...prev.idx, ei] }; }); }
   const [drag, setDrag] = useState<{ di: number; ei: number } | null>(null);
   function moveExercise(di: number, fromEi: number, toEi: number) {
     setProgram((pr) => {
@@ -133,7 +131,6 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
       c[0][di].exercises = items.flat();
       return c;
     });
-    setSel(null);
   }
   async function saveDraft() {
     if (!onSaveDraft || saving) return;
@@ -659,63 +656,34 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   function renderExercises() {
     const phase = 0;
     const days = program[phase] || [];
-    const enabled = new Set(state.setsAndReps.setTypes);
-    const styleBtns: { id: SetStyle; label: string }[] = [{ id: 'straight', label: 'Straight' }, { id: 'superset', label: 'Superset' }];
-    if (enabled.has('drop') || enabled.has('mads')) styleBtns.push({ id: 'drop', label: 'Drop set' });
-    if (enabled.has('pyramid') || enabled.has('revpyr')) styleBtns.push({ id: 'pyramid', label: 'Pyramid' });
-    const applyStyle = (di: number, style: SetStyle) => {
-      if (!sel || sel.di !== di || sel.idx.length === 0) return;
-      setProgram((pr) => {
-        const c = structuredClone(pr); const day = c[phase][di].exercises;
-        const idx = [...sel.idx].sort((a, b) => a - b);
-        if (style === 'superset') {
-          if (idx.length < 2) return c;
-          const min = idx[0]; const picked = idx.map((i) => day[i]);
-          [...idx].sort((a, b) => b - a).forEach((i) => day.splice(i, 1));
-          const gid = Math.max(0, ...day.map((e) => e.supersetGroup ?? 0)) + 1;
-          picked.forEach((e) => { e.setStyle = 'superset'; e.supersetGroup = gid; });
-          day.splice(min, 0, ...picked);
-        } else {
-          idx.forEach((i) => { const e = day[i]; if (e) { e.setStyle = style; e.supersetGroup = undefined; } });
-        }
-        return c;
-      });
-      setSel(null);
-    };
+    const fixed = state.split.fixedExercises ?? true;
     return (<>
-      <Eyebrow n={16} title="Your program" sub="Swap, add or remove. Select 2+ exercises and tap Superset to pair them (works for your core moves too)." />
+      <Eyebrow n={16} title="Your program" sub="Swap, reorder, or add and remove exercises. Set styles like supersets are chosen on workout day." />
+      <div className="rounded-2xl border border-ink-line bg-bg-card p-3 mb-2.5">
+        <div className="text-[13px] font-semibold mb-2">Exercises week to week</div>
+        <div className="flex gap-2">
+          {([['fixed', 'Same every week'], ['vary', 'Vary for variety']] as const).map(([id, label]) => {
+            const on = (id === 'fixed') === fixed;
+            return <button key={id} type="button" onClick={() => update((s) => { s.split.fixedExercises = id === 'fixed'; })} className={`flex-1 rounded-lg border px-3 py-2 text-[13px] font-medium ${on ? 'border-accent bg-accent/10 text-ink' : 'border-ink-line text-ink-dim'}`}>{label}</button>;
+          })}
+        </div>
+        <p className="text-[11px] text-ink-mute mt-1.5">{fixed ? 'These exact exercises repeat every week — your swaps stick.' : 'Exercises rotate week to week for variety.'}</p>
+      </div>
       {days.map((d, di) => {
         const daySets = d.exercises.reduce((a, e) => a + e.sets, 0);
         const addMuscles = d.dayMuscles.filter((m) => m === 'core' || state.prioritization.tiers[m] != null) as string[];
-        const selHere = sel && sel.di === di ? sel.idx : [];
         return <div key={di} className="rounded-2xl border border-ink-line overflow-hidden mb-2.5">
           <div className="flex justify-between items-center px-4 py-3 bg-bg-elev font-bold text-[14px]">{DOW_FULL[d.dow]} — {d.type}<span className="text-[11px] text-ink-dim font-medium">{d.emphasis ? d.emphasis + ' · ' : ''}{daySets} sets</span></div>
-          {selHere.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 px-4 py-2 border-t border-ink-line bg-accent/5">
-              <span className="text-[12px] text-ink-dim mr-1">{selHere.length} selected</span>
-              {styleBtns.map((b) => <button key={b.id} type="button" disabled={b.id === 'superset' && selHere.length < 2} onClick={() => applyStyle(di, b.id)} className="rounded-md border border-ink-line bg-bg-card px-2.5 py-1 text-[12px] disabled:opacity-40">{b.label}</button>)}
-              <button type="button" onClick={() => setSel(null)} className="text-[12px] text-ink-mute px-1 ml-auto">Clear</button>
-            </div>
-          )}
           {d.exercises.map((e, ei) => {
             const defs = poolDefs(e.muscle);
             const names = defs.map((x) => x.name);
             const list = names.includes(e.name) ? names : [e.name, ...names];
-            const checked = selHere.includes(ei);
-            const grouped = e.supersetGroup != null;
-            const groupStart = grouped && (ei === 0 || d.exercises[ei - 1].supersetGroup !== e.supersetGroup);
-            const styleTag = e.setStyle === 'drop' ? 'Drop' : e.setStyle === 'pyramid' ? 'Pyr' : null;
-            return <div key={ei}>
-              {groupStart && <div className="px-4 pt-2 text-[10px] font-bold uppercase tracking-wider text-accent-hot">⟂ Superset</div>}
-              <div onDragOver={(ev) => { if (drag && drag.di === di) ev.preventDefault(); }} onDrop={() => { if (drag && drag.di === di) moveExercise(di, drag.ei, ei); setDrag(null); }} className={`flex items-center gap-2 px-4 py-2.5 border-t border-ink-line text-[13px] ${grouped ? 'border-l-2 border-l-accent' : ''} ${drag && drag.di === di && drag.ei === ei ? 'opacity-40' : ''}`}>
-                <button type="button" onClick={() => toggleSel(di, ei)} aria-label="Select" className={`w-5 h-5 shrink-0 rounded border flex items-center justify-center text-[11px] ${checked ? 'bg-accent border-accent text-white' : 'border-ink-line text-transparent'}`}>✓</button>
-                <span draggable onDragStart={() => setDrag({ di, ei })} onDragEnd={() => setDrag(null)} className="shrink-0 cursor-grab text-ink-mute select-none text-[14px] leading-none" aria-label="Drag to reorder">⋮⋮</span>
-                <span className="w-[60px] shrink-0 text-[12px] font-semibold text-ink-dim">{cap(e.muscle)}{e.anchor ? ' 🔒' : ''}</span>
-                <select className="flex-1 min-w-0 rounded-lg border border-ink-line bg-bg-input px-2 py-2 text-[13px]" value={e.name} onChange={(ev) => setProgram((pr) => { const c = structuredClone(pr); const ex = c[phase][di].exercises[ei]; const def = defs.find((x) => x.name === ev.target.value); ex.name = ev.target.value; if (def) { ex.exerciseId = def.id; const tb = def.metric === 'time' || def.metric === 'weight-time'; const wasTb = ex.metric === 'time' || ex.metric === 'weight-time'; ex.metric = def.metric || 'weight-reps'; ex.reps = tb ? 30 : (wasTb ? 10 : ex.reps); } return c; })}>{list.map((o) => <option key={o} value={o}>{o}</option>)}</select>
-                {styleTag && <span className="text-[10px] font-bold text-warn shrink-0">{styleTag}</span>}
-                <span className="font-mono text-[12px] text-ink-dim shrink-0">{fmtPresc(e)}</span>
-                <button type="button" onClick={() => { setSel(null); setProgram((pr) => { const c = structuredClone(pr); c[phase][di].exercises.splice(ei, 1); return c; }); }} className="w-7 shrink-0 rounded-md border border-ink-line text-ink-mute hover:border-danger hover:text-danger">✕</button>
-              </div>
+            return <div key={ei} onDragOver={(ev) => { if (drag && drag.di === di) ev.preventDefault(); }} onDrop={() => { if (drag && drag.di === di) moveExercise(di, drag.ei, ei); setDrag(null); }} className={`flex items-center gap-2 px-4 py-2.5 border-t border-ink-line text-[13px] ${drag && drag.di === di && drag.ei === ei ? 'opacity-40' : ''}`}>
+              <span draggable onDragStart={() => setDrag({ di, ei })} onDragEnd={() => setDrag(null)} className="shrink-0 cursor-grab text-ink-mute select-none text-[14px] leading-none" aria-label="Drag to reorder">⋮⋮</span>
+              <span className="w-[60px] shrink-0 text-[12px] font-semibold text-ink-dim">{cap(e.muscle)}{e.anchor ? ' 🔒' : ''}</span>
+              <select className="flex-1 min-w-0 rounded-lg border border-ink-line bg-bg-input px-2 py-2 text-[13px]" value={e.name} onChange={(ev) => setProgram((pr) => { const c = structuredClone(pr); const ex = c[phase][di].exercises[ei]; const def = defs.find((x) => x.name === ev.target.value); ex.name = ev.target.value; if (def) { ex.exerciseId = def.id; const tb = def.metric === 'time' || def.metric === 'weight-time'; const wasTb = ex.metric === 'time' || ex.metric === 'weight-time'; ex.metric = def.metric || 'weight-reps'; ex.reps = tb ? 30 : (wasTb ? 10 : ex.reps); } return c; })}>{list.map((o) => <option key={o} value={o}>{o}</option>)}</select>
+              <span className="font-mono text-[12px] text-ink-dim shrink-0">{fmtPresc(e)}</span>
+              <button type="button" onClick={() => setProgram((pr) => { const c = structuredClone(pr); c[phase][di].exercises.splice(ei, 1); return c; })} className="w-7 shrink-0 rounded-md border border-ink-line text-ink-mute hover:border-danger hover:text-danger">✕</button>
             </div>;
           })}
           <AddRow muscles={addMuscles} onAdd={(m) => setProgram((pr) => {
@@ -727,7 +695,6 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
       })}
     </>);
   }
-
   function programLifts(): { id: string; name: string }[] {
     if (state.equipment.environment === 'bodyweight') return [];
     const items = itemsForEngine(state);

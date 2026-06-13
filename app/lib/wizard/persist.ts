@@ -117,6 +117,7 @@ export function buildWizardInput(
     startingWeights: Object.keys(startingWeights).length ? startingWeights : undefined,
     workOffsets,
     splitType: splitTypeOf(state.split.type),
+    fixedExercises: state.split.fixedExercises ?? true,
     programStyle,
     restSeconds: REST_SEC[state.restAndTempo.restPreference || 'auto'],
   };
@@ -149,7 +150,11 @@ export async function activateWizardProgram(
   // and link the active block back to it so the gallery can flag it Active.
   const tpl = buildCustomTemplate(input);
   const finalTplId = templateId || tpl.id;
-  const meso = { ...prog.mesocycle, equipmentProfileId: state.equipment.profileId, templateId: finalTplId, weekKinds: input.weekKinds };
+  const st = state.setsAndReps.setTypes;
+  const allowedSetTypes: ('pyramid' | 'drop')[] = [];
+  if (st.includes('pyramid') || st.includes('revpyr')) allowedSetTypes.push('pyramid');
+  if (st.includes('drop') || st.includes('mads')) allowedSetTypes.push('drop');
+  const meso = { ...prog.mesocycle, equipmentProfileId: state.equipment.profileId, templateId: finalTplId, weekKinds: input.weekKinds, allowedSetTypes, fixedExercises: input.fixedExercises ?? true };
   await repo.upsertMesocycle(meso);
   for (const mi of prog.microcycles) await repo.upsertMicrocycle(mi);
   for (const s of prog.sessions) await repo.upsertSession(s);

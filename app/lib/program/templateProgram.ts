@@ -265,6 +265,9 @@ export interface CustomProgramInput {
    *  When set, total weeks = weekKinds.length and each week's volume + RIR
    *  follow its kind instead of the default ramp-with-final-deload model. */
   weekKinds?: WeekKind[];
+  /** Repeat week 1's exact exercises every week instead of rotating them for
+   *  variety. Keeps the user's reviewed/swapped picks stable across the block. */
+  fixedExercises?: boolean;
 }
 
 export interface GeneratedProgram {
@@ -297,7 +300,7 @@ function materializeWeeks(input: CustomProgramInput): WeekMaterial[] {
   for (let w = 0; w < totalWeeks; w++) {
     const kind = kinds ? kinds[w]! : null;
     const loadIdx = kinds ? Math.max(0, kinds.slice(0, w + 1).filter((k) => k === 'load').length - 1) : w;
-    const assigned = w === 0 ? input.week1 : assignExercises(layout, input.library, input.allowed, w);
+    const assigned = (w === 0 || input.fixedExercises) ? input.week1 : assignExercises(layout, input.library, input.allowed, w);
     const trainingDays = assigned.filter((d) => d.length > 0);
 
     const slotCount = new Map<MuscleGroup, number>();

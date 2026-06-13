@@ -114,6 +114,8 @@ export interface UserProfile {
   migratedMacroDrop?: boolean;
   /** Set true once the v0.62 sessions→days relabel migration has run for this user. */
   migratedSessionsToDays?: boolean;
+  /** Set true once existing plans have been defaulted to fixed exercises. */
+  migratedFixedExercises?: boolean;
   createdAt: string; // ISO
   updatedAt: string; // ISO
 }

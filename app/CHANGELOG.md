@@ -8,6 +8,54 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.93.0 — 2026-06-08
+
+- Adjust the number of sets before a workout. The day-of structure editor (Today
+  card and the ad-hoc sheet) now has a per-exercise Sets stepper, so you can dial
+  a 5-set exercise down to 3 up front when you're low on energy — instead of
+  starting it and skipping sets. Reducing trims the pending sets; increasing adds
+  sets seeded from the last one.
+
+## v0.92.0 — 2026-06-08
+
+- Existing plans now default to fixed exercises. A one-shot migration rewrites
+  each not-yet-completed future-week session to use week 1's exact exercises
+  (by day and position), so swaps you'd made stop getting overwritten by the
+  week-to-week rotation. Completed/logged sessions are never touched, and active
+  blocks are marked fixed so it only runs once.
+- Ad-hoc workouts now get the day-of structure step too. Since they have no
+  Today card, the structure sheet (supersets / pyramid / drop) appears once when
+  a multi-exercise ad-hoc session is freshly started. Built on the same shared
+  StructureEditor as the Today card.
+
+## v0.91.0 — 2026-06-08
+
+- Plans are now pure straight sets. Removed superset grouping from the plan
+  wizard's review page (page 16); set structure is chosen day-of instead.
+- New on the review page: choose whether the workout repeats the **same
+  exercises every week** (default — your swaps stick) or **varies week to week**
+  for variety. Previously exercises always rotated, discarding manual swaps.
+- Day-of structure moved onto the Today workout card. The upcoming session's
+  card is now interactive: each exercise shows set-type pills (straight default,
+  superset always, plus preferenced pyramid/drop), and tapping Superset pairs it
+  with another exercise — all before you press Start. Removed the separate
+  post-Start structure sheet.
+
+## v0.90.0 — 2026-06-08
+
+- Day-of workout structure. When you start a fresh workout (more than one
+  exercise, nothing logged yet), a "Structure your workout" sheet appears:
+  - Each exercise shows set-type pills — Straight (default) and Superset always,
+    plus Pyramid / Drop if you preferenced them in setup.
+  - Tapping Superset arms the exercise ("waiting") and you pick a partner;
+    they're grouped (lettered A, B…), reordered to be adjacent, and shown
+    together. Two per superset. Tap the tag to unlink.
+  - Drop appends a back-off set; pyramid tags the exercise. Doing nothing and
+    tapping "Start workout" keeps everything straight.
+  - The chosen structure carries into the logger (already superset-aware).
+- Mesocycles now record which optional set types to offer day-of
+  (allowedSetTypes), derived from the wizard's set-types preference.
+
 ## v0.89.0 — 2026-06-08
 
 - Plan week view: removed the box-in-a-box-in-a-box nesting. Each exercise in an
