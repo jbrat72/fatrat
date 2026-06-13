@@ -4,13 +4,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { Card, PageTitle, Button, MuscleBadge } from '@/components/ui';
-import { BodyWeightCheckIn, CardioLogModal, StreakCard, WorkoutPicker } from '@/components/today';
+import { BodyWeightCheckIn, CardioLogModal, StreakCard, WorkoutPicker, TodayWorkoutCard } from '@/components/today';
 import { getRepository } from '@/lib/firestore';
 import { resolveToday, type ResolvedToday } from '@/lib/session/resolveToday';
 import { todayIso } from '@/lib/ui/date';
 import { cardioStats } from '@/lib/ui/cardio';
-import { StructureEditor } from '@/components/workout';
-import type { WorkoutSession, Mesocycle, Microcycle, Units, ExerciseEntry, SetStyle } from '@/types';
+import type { WorkoutSession, Mesocycle, Microcycle, Units, ExerciseEntry } from '@/types';
 
 function formatLongDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
@@ -104,9 +103,6 @@ export default function TodayPage() {
   const todaySessions = today?.todaySessions ?? [];
   // Pending session on today's date — the "Start Workout" button targets it.
   const startable = todaySessions.find((s) => !s.completed) ?? null;
-  const workoutLabel = startable
-    ? (startable.startedAt ? 'Continue Workout' : 'Start Workout')
-    : 'Ad-Hoc Workout';
 
   return (
     <div>
@@ -116,16 +112,14 @@ export default function TodayPage() {
 
         <Card>
           <div className="section-head mb-2">LOG WORKOUT</div>
-          <div className="grid grid-cols-5 gap-2">
-            {startable ? (
-              <Link href="/today/workout" className="col-span-3 block">
-                <Button block>{workoutLabel}</Button>
-              </Link>
-            ) : (
-              <Button block className="col-span-3" onClick={() => setPickerOpen(true)}>{workoutLabel}</Button>
-            )}
-            <Button variant="ghost" block className="col-span-2" onClick={() => setCardioOpen(true)}>Log Cardio</Button>
-          </div>
+          {startable ? (
+            <Button variant="ghost" block onClick={() => setCardioOpen(true)}>Log Cardio</Button>
+          ) : (
+            <div className="grid grid-cols-5 gap-2">
+              <Button block className="col-span-3" onClick={() => setPickerOpen(true)}>Ad-Hoc Workout</Button>
+              <Button variant="ghost" block className="col-span-2" onClick={() => setCardioOpen(true)}>Log Cardio</Button>
+            </div>
+          )}
         </Card>
 
         <BodyWeightCheckIn />
@@ -149,20 +143,29 @@ export default function TodayPage() {
             if (a.completed !== b.completed) return a.completed ? 1 : -1;
             return (a.startedAt ?? '').localeCompare(b.startedAt ?? '');
           })
-          .map((s) => (
-            <SessionCard
-              key={s.id}
-              session={s}
-              isPrimary={session?.id === s.id}
-              meso={meso ?? null}
-              micro={micro ?? null}
-              dayOrdinal={session?.id === s.id ? dayOrdinal : null}
-              units={user.units}
-              editable={!s.completed && s.id === startable?.id && s.exercises.length > 0}
-              allowed={meso?.allowedSetTypes ?? []}
-              onPersist={(exs) => persistStructure(s, exs)}
-            />
-          ))}
+          .map((s) =>
+            !s.completed && s.id === startable?.id && s.exercises.length > 0 ? (
+              <TodayWorkoutCard
+                key={s.id}
+                session={s}
+                meso={meso ?? null}
+                micro={micro ?? null}
+                dayOrdinal={session?.id === s.id ? dayOrdinal : null}
+                units={user.units}
+                allowed={meso?.allowedSetTypes ?? []}
+                onPersist={(exs) => persistStructure(s, exs)}
+              />
+            ) : (
+              <SessionCard
+                key={s.id}
+                session={s}
+                isPrimary={session?.id === s.id}
+                meso={meso ?? null}
+                micro={micro ?? null}
+                dayOrdinal={session?.id === s.id ? dayOrdinal : null}
+                units={user.units}
+              />
+            ))}
 
         {/* Catch-up: a scheduled day was skipped (past + still unfinished).
             Offer to pull that missed workout into today. */}
@@ -255,7 +258,7 @@ export default function TodayPage() {
 /** Single-session card on Today. Shared by programmed, ad-hoc, and
  *  cardio-only sessions. */
 function SessionCard({
-  session, isPrimary, meso, micro, dayOrdinal, units, editable, allowed, onPersist,
+  session, isPrimary, meso, micro, dayOrdinal, units,
 }: {
   session: WorkoutSession;
   isPrimary: boolean;
@@ -263,12 +266,8 @@ function SessionCard({
   micro: Microcycle | null;
   dayOrdinal: number | null;
   units: Units;
-  editable?: boolean;
-  allowed?: SetStyle[];
-  onPersist?: (exercises: ExerciseEntry[]) => void;
 }) {
   const isCardioOnly = session.exercises.length === 0 && (session.cardio?.length ?? 0) > 0;
-  const [structExs, setStructExs] = useState<ExerciseEntry[]>(session.exercises);
   // Open routes to history when done, /today/workout for a pending session
   // (programmed or ad-hoc; cardio-only completed sessions route to history).
   const openHref = session.completed
@@ -315,11 +314,6 @@ function SessionCard({
             </li>
           ))}
         </ul>
-      ) : editable ? (
-        <div className="mt-4">
-          <div className="text-[11px] text-ink-mute uppercase tracking-wider2 mb-2">Structure · optional</div>
-          <StructureEditor exercises={structExs} allowed={allowed ?? []} onChange={(exs) => { setStructExs(exs); onPersist?.(exs); }} />
-        </div>
       ) : (
         <ul className="mt-4 space-y-2">
           {session.exercises.map((ex, i) => (

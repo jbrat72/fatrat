@@ -8,6 +8,19 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.94.0 — 2026-06-13
+
+- Redesigned today's workout card on the Today screen. The cluttered inline
+  structure list is gone. The card now leads with the day label and the target
+  muscle-group pills, followed by an "n Exercises" header. Each exercise is a
+  collapsible row reading "n × Exercise Name" with the prescribed weight × reps
+  (or time / reps) in smaller mono type below. Tap a row to expand it and reveal
+  the set-type buttons (Straight / Superset / Pyramid / Drop, gated by the plan's
+  allowed types) and the Sets stepper. Supersets render grouped under a
+  "Superset A" bracket with an Unlink action. Start Workout lives at the bottom
+  of the card; the top action card now just offers Log Cardio (or an ad-hoc
+  workout when nothing is scheduled).
+
 ## v0.93.0 — 2026-06-08
 
 - Adjust the number of sets before a workout. The day-of structure editor (Today
