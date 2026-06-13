@@ -8,6 +8,15 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.95.0 — 2026-06-13
+
+- The exercise menu (⋮) during a live workout now actually works. Previously
+  "Skip sets" and "Remove" did nothing. The menu now offers: Add set, Remove set
+  (trims the last un-logged set, never below one), Replace exercise (live swap —
+  filtered to your equipment, carries the change), Skip remaining sets (marks the
+  rest skipped so you can finish), and Remove exercise (drops it from today;
+  dissolves an orphaned superset partner; disabled when it's the only exercise).
+
 ## v0.94.0 — 2026-06-13
 
 - Redesigned today's workout card on the Today screen. The cluttered inline

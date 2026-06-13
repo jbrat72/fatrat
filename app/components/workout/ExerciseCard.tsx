@@ -23,10 +23,15 @@ interface Props {
   onLogSet: (i: number) => void;
   onUnlockSet: (i: number) => void;
   onAddSet: () => void;
+  onRemoveSet?: () => void;
+  /** Whether a set can still be trimmed (more than one set, at least one pending). */
+  canRemoveSet?: boolean;
   onSwap?: () => void;
   onSkip?: () => void;
   onSkipSet?: (i: number) => void;
   onRemove?: () => void;
+  /** Whether this exercise can be removed (false when it's the last one). */
+  canRemove?: boolean;
   onShowHistory?: () => void;
   /** Called when the user taps Start timer on a time-based set. */
   onStartTimer?: (setIdx: number) => void;
@@ -34,8 +39,8 @@ interface Props {
 
 export function ExerciseCard({
   exercise, exerciseIndex, mode, units, liveMetric, lastSets, activeSetIndex, disabled,
-  onActivateSet, onUpdateSet, onLogSet, onUnlockSet, onAddSet,
-  onSwap, onSkip, onSkipSet, onRemove, onShowHistory, onStartTimer,
+  onActivateSet, onUpdateSet, onLogSet, onUnlockSet, onAddSet, onRemoveSet, canRemoveSet,
+  onSwap, onSkip, onSkipSet, onRemove, canRemove, onShowHistory, onStartTimer,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const loggedCount = exercise.sets.filter((s) => s.completed && s.setType !== 'skip').length;
@@ -105,11 +110,14 @@ export function ExerciseCard({
               ⋮
             </button>
             {menuOpen && (
-              <div className="absolute right-0 mt-1 w-44 card p-1 z-20">
+              <div className="absolute right-0 mt-1 w-52 card p-1 z-20">
                 <MenuItem onClick={() => { onAddSet(); setMenuOpen(false); }}>+ Add set</MenuItem>
+                {onRemoveSet && (
+                  <MenuItem onClick={() => { onRemoveSet(); setMenuOpen(false); }} disabled={canRemoveSet === false}>− Remove set</MenuItem>
+                )}
                 <MenuItem onClick={() => { onSwap?.(); setMenuOpen(false); }}>↔ Replace exercise</MenuItem>
-                <MenuItem onClick={() => { onSkip?.(); setMenuOpen(false); }}>⏭ Skip sets</MenuItem>
-                <MenuItem onClick={() => { onRemove?.(); setMenuOpen(false); }} danger>✕ Remove</MenuItem>
+                <MenuItem onClick={() => { onSkip?.(); setMenuOpen(false); }}>⏭ Skip remaining sets</MenuItem>
+                <MenuItem onClick={() => { onRemove?.(); setMenuOpen(false); }} danger disabled={canRemove === false}>✕ Remove exercise</MenuItem>
               </div>
             )}
           </div>
@@ -148,13 +156,14 @@ export function ExerciseCard({
   );
 }
 
-function MenuItem({ children, onClick, danger }: { children: React.ReactNode; onClick: () => void; danger?: boolean }) {
+function MenuItem({ children, onClick, danger, disabled }: { children: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={cn(
-        'w-full text-left text-sm px-3 py-2 rounded-md hover:bg-bg-elev',
+        'w-full text-left text-sm px-3 py-2 rounded-md hover:bg-bg-elev disabled:opacity-40 disabled:hover:bg-transparent',
         danger ? 'text-danger' : 'text-ink',
       )}
     >

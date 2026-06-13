@@ -12,6 +12,7 @@ import { nudgeNextSet } from '@/lib/session/nextSetNudge';
 import { planAdvance } from '@/lib/session/advance';
 import { seedWeightsFromCalibration } from '@/lib/periodization/calibration';
 import { defaultRestSec, terminologyMode, isPeriodizedSession } from '@/lib/periodization';
+import { removeExerciseAt } from '@/lib/workout/structure';
 import type { WorkoutSession, SetEntry, ExerciseEntry, SessionFeedback, Mesocycle, Microcycle, ExerciseDefinition, MovementPattern, MuscleGroup, SorenessRating, MuscleSoreness } from '@/types';
 import { todayIso } from '@/lib/ui/date';
 
@@ -367,6 +368,52 @@ export default function WorkoutPage() {
     setSession(next); queueSave(next);
   };
 
+  // Drop the last not-yet-logged set (lower the set count mid-workout). Keeps
+  // completed sets and never goes below one set.
+  const removeSet = (exIdx: number) => {
+    if (!session) return;
+    const exercises = session.exercises.map((ex, i) => {
+      if (i !== exIdx || ex.sets.length <= 1) return ex;
+      const lastPending = [...ex.sets.keys()].reverse().find((j) => !ex.sets[j]!.completed);
+      if (lastPending == null) return ex; // every set logged — nothing to trim
+      const sets = ex.sets.filter((_, j) => j !== lastPending).map((s, j) => ({ ...s, setIndex: j }));
+      return { ...ex, sets };
+    });
+    const next = { ...session, exercises };
+    setSession(next); queueSave(next);
+    if (activeExerciseIdx === exIdx) {
+      const focus = findNextPending(next, { fromExercise: exIdx, fromSet: 0 });
+      setActiveSetIdx(focus?.exIdx === exIdx ? focus.setIdx : null);
+    }
+  };
+
+  // Skip every remaining (un-logged) set in an exercise so the workout can be
+  // finished without doing them. Tagged setType:'skip' so stats ignore them.
+  const skipRemaining = (exIdx: number) => {
+    if (!session) return;
+    const exercises = session.exercises.map((ex, i) =>
+      i === exIdx
+        ? { ...ex, sets: ex.sets.map((s) => (s.completed ? s : { ...s, completed: true, setType: 'skip' as const })) }
+        : ex,
+    );
+    const next = { ...session, exercises };
+    setSession(next); queueSave(next);
+    const focus = findNextPending(next);
+    setActiveExerciseIdx(focus?.exIdx ?? exIdx);
+    setActiveSetIdx(focus?.setIdx ?? null);
+  };
+
+  // Remove an exercise from today's workout entirely. Dissolves an orphaned
+  // superset partner. Won't remove the last remaining exercise.
+  const removeExercise = (exIdx: number) => {
+    if (!session || session.exercises.length <= 1) return;
+    const exercises = removeExerciseAt(session.exercises, exIdx);
+    const next = { ...session, exercises };
+    setSession(next); queueSave(next);
+    setActiveExerciseIdx((idx) => Math.min(idx, exercises.length - 1));
+    setActiveSetIdx(null);
+  };
+
   const completion = useMemo(() => {
     if (!session) return { total: 0, done: 0 };
     let total = 0, done = 0;
@@ -484,8 +531,13 @@ export default function WorkoutPage() {
         onLogSet={(s) => logSet(i, s)}
         onUnlockSet={(s) => unlockSet(i, s)}
         onAddSet={() => addSet(i)}
+        onRemoveSet={() => removeSet(i)}
+        canRemoveSet={ex.sets.length > 1 && ex.sets.some((s) => !s.completed)}
         onShowHistory={() => setHistoryFor(ex.exerciseId)}
         onSwap={() => setSwapFor(i)}
+        onSkip={() => skipRemaining(i)}
+        onRemove={() => removeExercise(i)}
+        canRemove={session.exercises.length > 1}
         onSkipSet={(s) => skipSet(i, s)}
         onStartTimer={(setIdx) => {
           const target = ex.sets[setIdx]?.timeSec ?? ex.prescribedTimeLow ?? 30;
