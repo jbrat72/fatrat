@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Card, Button, MuscleBadge } from '@/components/ui';
 import { SwapExerciseModal } from '@/components/workout';
 import { cn } from '@/lib/ui/cn';
@@ -28,15 +28,26 @@ interface Props {
   dayOrdinal: number | null;
   units: Units;
   allowed: SetStyle[];
-  onPersist: (exercises: ExerciseEntry[]) => void;
+  onPersist: (exercises: ExerciseEntry[]) => void | Promise<unknown>;
 }
 
 export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allowed, onPersist }: Props) {
+  const router = useRouter();
   const [exs, setExs] = useState<ExerciseEntry[]>(session.exercises);
   const [open, setOpen] = useState<Set<number>>(new Set());
   const [listOpen, setListOpen] = useState(true);
   const [pairFrom, setPairFrom] = useState<number | null>(null);
   const [swapFor, setSwapFor] = useState<number | null>(null);
+  const [starting, setStarting] = useState(false);
+
+  // Flush the current edits to the repo BEFORE navigating into the workout, so
+  // the workout page reads the structure the user just set (not a stale doc it
+  // could otherwise re-save on top of).
+  const startWorkout = async () => {
+    if (starting) return;
+    setStarting(true);
+    try { await onPersist(exs); } finally { router.push('/today/workout'); }
+  };
 
   const apply = (next: ExerciseEntry[]) => { setExs(next); onPersist(next); };
   const toggleOpen = (i: number) => setOpen((prev) => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
@@ -167,9 +178,9 @@ export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allo
         </div>
       )}
 
-      <Link href="/today/workout" className="block mt-4">
-        <Button block>{session.startedAt ? 'Continue Workout' : 'Start Workout'}</Button>
-      </Link>
+      <Button block className="mt-4" disabled={starting} onClick={startWorkout}>
+        {starting ? 'Starting…' : session.startedAt ? 'Continue Workout' : 'Start Workout'}
+      </Button>
 
       <SwapExerciseModal
         open={swapFor !== null}
@@ -181,3 +192,4 @@ export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allo
     </Card>
   );
 }
+

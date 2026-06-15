@@ -1,12 +1,13 @@
 /**
  * Backfill non-completed sets in a session with the user's most-recent prior
- * performance of the same exercise. Also apply per-muscle adjustments derived
- * from the most recent feedback (limited to "add sets" — we don't auto-remove
- * sets to avoid losing prescribed work without consent).
+ * performance of the same exercise (weight + reps only).
+ *
+ * This function NEVER changes the set count. Volume changes driven by feedback
+ * or soreness are surfaced as explicit suggestions the user accepts (see
+ * SorenessCheckIn) — applying them silently here was overwriting the set count
+ * the user deliberately set on the Today card every time a workout was opened.
  */
-import type { WorkoutSession, SetEntry, MuscleGroup } from '@/types';
-import type { MuscleAdjustment } from '@/lib/periodization/adjustFromFeedback';
-import { adjustFromFeedback } from '@/lib/periodization/adjustFromFeedback';
+import type { WorkoutSession, SetEntry } from '@/types';
 
 export function hydrateFromHistory(
   session: WorkoutSession,
@@ -48,35 +49,5 @@ export function hydrateFromHistory(
     return { ...ex, sets };
   });
 
-  // Per-muscle feedback adjustment: find the most recent feedback for each muscle
-  // and apply ONLY positive setsDelta (we don't auto-remove sets).
-  const muscleAdjustments = new Map<MuscleGroup, MuscleAdjustment>();
-  for (const prior of sorted) {
-    if (!prior.feedback) continue;
-    const out = adjustFromFeedback(prior.feedback);
-    for (const a of out) {
-      if (!muscleAdjustments.has(a.muscle)) muscleAdjustments.set(a.muscle, a);
-    }
-  }
-
-  const exercisesWithAdjustments = exercises.map((ex) => {
-    const a = muscleAdjustments.get(ex.muscle);
-    if (!a) return ex;
-    if (a.setsDelta > 0) {
-      const last = ex.sets[ex.sets.length - 1];
-      const newSets = [...ex.sets];
-      for (let k = 0; k < a.setsDelta; k++) {
-        newSets.push({
-          setIndex: newSets.length,
-          weightKg: last?.weightKg,
-          reps: last?.reps,
-          completed: false,
-        });
-      }
-      return { ...ex, sets: newSets };
-    }
-    return ex;
-  });
-
-  return { ...session, exercises: exercisesWithAdjustments };
+  return { ...session, exercises };
 }

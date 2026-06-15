@@ -78,9 +78,8 @@ export default function TodayPage() {
   }, [today]);
 
   // Save day-of structure edits (supersets / styles) made on the Today card.
-  const persistStructure = (s: WorkoutSession, exercises: ExerciseEntry[]) => {
+  const persistStructure = (s: WorkoutSession, exercises: ExerciseEntry[]) =>
     getRepository().upsertSession({ ...s, exercises });
-  };
 
   /**
    * Pull a scheduled session into today. Updates the session's date +

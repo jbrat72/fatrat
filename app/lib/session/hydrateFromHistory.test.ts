@@ -66,4 +66,19 @@ describe('hydrateFromHistory', () => {
     const out = hydrateFromHistory(today, []);
     expect(out.exercises[0]!.sets.every((s) => s.reps == null)).toBe(true);
   });
+
+  it('never changes the set count, even when prior feedback asked for more volume', () => {
+    const prior: WorkoutSession = {
+      ...mkSession('p1', '2026-05-01', [{ weight: 100, reps: 8, completed: true }]),
+      feedback: {
+        perMuscle: [{ muscle: 'chest', volume: 'not-enough', pump: 'low', pain: 'none' }],
+        jointPainOverall: 'none',
+        collectedAt: '2026-05-01T00:00:00.000Z',
+      },
+    };
+    // User trimmed today down to 3 sets.
+    const today = mkSession('t1', '2026-05-08', [{}, {}, {}]);
+    const out = hydrateFromHistory(today, [prior]);
+    expect(out.exercises[0]!.sets).toHaveLength(3);
+  });
 });

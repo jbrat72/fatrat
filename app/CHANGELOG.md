@@ -8,6 +8,20 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.96.1 — 2026-06-15
+
+- Fixed set-count edits not sticking. Opening a workout ran `hydrateFromHistory`,
+  which silently re-added sets from the previous session's feedback (e.g. "not
+  enough" volume = +2) and saved that over your doc — so trimming an exercise to
+  3 sets came back as 5 or 4 on Start. Hydration now only backfills weight/reps
+  and never changes the set count; volume suggestions remain opt-in via the
+  soreness/feedback check-ins.
+- Fixed a race where Today-card edits (set counts, swaps, structure) were saved
+  fire-and-forget while "Start Workout" navigated immediately, letting the
+  workout page read a stale session and re-save it on top — dropping the edits.
+  The card now flushes its changes before navigating. This is also the most
+  likely cause of a Plan/Today exercise mismatch on the same day.
+
 ## v0.96.0 — 2026-06-13
 
 - Reworked the in-workout set logger from stacked cards into a compact table:
