@@ -514,8 +514,18 @@ export default function WorkoutPage() {
   const finalizeWorkout = async (feedback: SessionFeedback | null = null) => {
     if (!session) return;
     const repo = getRepository();
+    // Sweep every set that was never logged into a skip (completed:true +
+    // setType:'skip'), so finishing leaves no pending sets and history shows
+    // programmed-but-skipped work. Exercises with zero completed sets stay on
+    // the session (all skipped). Stats filter setType==='skip' out of logged
+    // counts, so this is consistent end-to-end.
+    const sweptExercises = session.exercises.map((ex) => ({
+      ...ex,
+      sets: ex.sets.map((s) => (s.completed ? s : { ...s, completed: true, setType: 'skip' as const })),
+    }));
     const final: WorkoutSession = {
       ...session,
+      exercises: sweptExercises,
       completed: true,
       completedAt: new Date().toISOString(),
       feedback: feedback ?? session.feedback,
@@ -815,7 +825,9 @@ function workedMuscles(session: WorkoutSession): MuscleGroup[] {
   const seen = new Set<MuscleGroup>();
   for (const ex of session.exercises) {
     if (ex.muscle === 'core') continue;
-    if (ex.sets.some((s) => s.completed)) seen.add(ex.muscle);
+    // A muscle counts as worked only with a genuinely logged set — a skipped
+    // set is completed:true but setType:'skip', so it must not count.
+    if (ex.sets.some((s) => s.completed && s.setType !== 'skip')) seen.add(ex.muscle);
   }
   return [...seen];
 }

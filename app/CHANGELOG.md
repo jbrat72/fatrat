@@ -8,6 +8,17 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+
+## v0.97.2 — 2026-06-16
+
+- Finishing a workout now sweeps every set you never logged into a skip, so a
+  finished session leaves nothing pending. Skipped sets are recorded
+  (completed + setType:'skip') rather than dropped, so history shows what was
+  programmed-but-skipped; stats already filter skips out of logged counts. An
+  exercise with zero completed sets stays on the session with all sets skipped.
+- A muscle now counts as "worked" only with a genuinely logged (non-skip) set,
+  so skipping sets never adds a feedback prompt.
+
 ## v0.97.1 — 2026-06-15
 
 - Editing the current plan now prepopulates the wizard. Activating a plan (or

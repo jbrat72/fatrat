@@ -35,3 +35,7 @@ Thumbs.db
 # Firebase service account keys — never commit
 **/serviceAccountKey.json
 **/*-firebase-adminsdk-*.json
+
+# FUSE mount artifacts
+.fuse_hidden*
+**/.fuse_hidden*
