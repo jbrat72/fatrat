@@ -10,6 +10,8 @@ import type { Mesocycle, Microcycle, WorkoutSession } from '@/types';
 import { ChangePlanSheet } from '@/components/plan/ChangePlanSheet';
 import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
 import { activateWizardProgram, saveWizardDraft, saveWizardToGallery } from '@/lib/wizard/persist';
+import { wizardEditFromMeso } from '@/lib/wizard/editFromMeso';
+import type { WizardState, GeneratedDay } from '@/lib/wizard/types';
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -22,6 +24,11 @@ export default function MesoDetailPage() {
   const [sessionsByMicro, setSessionsByMicro] = useState<Record<string, WorkoutSession[]>>({});
   const [changeOpen, setChangeOpen] = useState(false);
   const [editV2Open, setEditV2Open] = useState(false);
+  // Seeds for the edit wizard — from the plan's saved wizard state when present,
+  // otherwise reconstructed from the mesocycle so edits prepopulate.
+  const [editState, setEditState] = useState<WizardState | null>(null);
+  const [editProgram, setEditProgram] = useState<Record<number, GeneratedDay[]> | undefined>(undefined);
+  const [editDraftId, setEditDraftId] = useState<string | undefined>(undefined);
   const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
@@ -113,10 +120,32 @@ export default function MesoDetailPage() {
         sessions={Object.values(sessionsByMicro).flat()}
         onClose={() => setChangeOpen(false)}
         onChanged={() => setRefreshTick((n) => n + 1)}
-        onEdit={() => {
-          // Editing rebuilds the plan in Plan Wizard v2, seeded with its name.
-          // Saving archives the current plan and starts a fresh one.
+        onEdit={async () => {
+          // Editing rebuilds the plan in Plan Wizard v2, prepopulated. Prefer the
+          // wizard state saved on the plan's template; fall back to reconstructing
+          // it from the mesocycle for plans created before it was persisted.
           setChangeOpen(false);
+          let st: WizardState | null = null;
+          let pr: Record<number, GeneratedDay[]> | undefined;
+          let draftId: string | undefined;
+          if (meso.templateId) {
+            const tpl = await getRepository().getTemplate(meso.templateId).catch(() => null);
+            if (tpl?.draftState) {
+              try {
+                const d = JSON.parse(tpl.draftState);
+                st = (d.state ?? d) as WizardState;
+                pr = (d.program ?? {}) as Record<number, GeneratedDay[]>;
+                draftId = tpl.id;
+              } catch { /* fall through to reconstruction */ }
+            }
+          }
+          if (!st && user) {
+            const firstMicroId = [...micros].sort((a, b) => a.weekNumber - b.weekNumber)[0]?.id;
+            const week1 = firstMicroId ? (sessionsByMicro[firstMicroId] ?? []) : [];
+            const rec = wizardEditFromMeso(user, meso, week1);
+            st = rec.state; pr = rec.program;
+          }
+          setEditState(st); setEditProgram(pr); setEditDraftId(draftId);
           setEditV2Open(true);
         }}
       />
@@ -125,6 +154,9 @@ export default function MesoDetailPage() {
           <PlanWizardV2
             user={user}
             initialName={meso.name}
+            initialState={editState ?? undefined}
+            initialProgram={editProgram}
+            initialDraftId={editDraftId}
             onSaveDraft={async (st, pr, id) => (await saveWizardDraft(st, user, pr, id)).id}
             onClose={() => setEditV2Open(false)}
             onSaveToGallery={async (state, program) => {

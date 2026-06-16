@@ -8,6 +8,16 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.97.1 — 2026-06-15
+
+- Editing the current plan now prepopulates the wizard. Activating a plan (or
+  saving one to the gallery) now keeps its full wizard state on the template, so
+  "Edit" reopens every selection as it was. For plans created before this — which
+  have no saved state — the wizard is reconstructed from the mesocycle: name,
+  length, equipment profile, muscle tiers, set types, fixed-exercises flag, days
+  per week, and the full week-1 exercise list. (Goal / experience / training-style
+  aren't stored on a plan, so those reset for you to re-confirm.)
+
 ## v0.97.0 — 2026-06-15
 
 - PREV now resolves more reliably. The "last time" lookup matched only by exact

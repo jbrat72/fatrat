@@ -158,7 +158,9 @@ export async function activateWizardProgram(
   await repo.upsertMesocycle(meso);
   for (const mi of prog.microcycles) await repo.upsertMicrocycle(mi);
   for (const s of prog.sessions) await repo.upsertSession(s);
-  await repo.upsertTemplate({ ...tpl, id: finalTplId, isDraft: false });
+  // Keep the originating wizard state on the template so "Edit plan" can
+  // reopen the wizard fully prepopulated.
+  await repo.upsertTemplate({ ...tpl, id: finalTplId, isDraft: false, draftState: JSON.stringify({ state, program }) });
   return meso;
 }
 
@@ -180,7 +182,7 @@ export async function saveWizardToGallery(
   const input = buildWizardInput(state, days, user, library);
   const tpl = buildCustomTemplate(input);
   const id = templateId || tpl.id;
-  await repo.upsertTemplate({ ...tpl, id, isDraft: false });
+  await repo.upsertTemplate({ ...tpl, id, isDraft: false, draftState: JSON.stringify({ state, program }) });
   return id;
 }
 
