@@ -1,4 +1,4 @@
-import type { BasicFeel, IntermediateFeel, EffortRPE } from '@/types';
+import type { BasicFeel, IntermediateFeel, EffortRPE, UserMode } from '@/types';
 
 /** Map BASIC mode's 3-button feel to RPE. */
 export function rpeFromBasicFeel(feel: BasicFeel): EffortRPE {
@@ -49,4 +49,18 @@ export function rirFromRPE(rpe: EffortRPE): number {
 /** RPE given a target RIR. */
 export function rpeFromRIR(rir: number): EffortRPE {
   return Math.max(1, Math.min(10, 10 - rir));
+}
+
+/** Short, mode-appropriate label for a recorded effort — e.g. "Solid",
+ *  "Hard", or "RPE 8" — used in the in-workout PREV column. */
+export function effortFeelLabel(rpe: EffortRPE, mode: UserMode): string {
+  if (mode === 'ADVANCED') return `RPE ${rpe}`;
+  if (mode === 'BASIC') {
+    const f = basicFeelFromRPE(rpe);
+    return f === 'easy' ? 'Easy' : f === 'just-right' ? 'Just Right' : 'Hard';
+  }
+  const labels: Record<IntermediateFeel, string> = {
+    smooth: 'Easy', solid: 'Solid', tough: 'Tough', grinding: 'Hard', failed: 'Failed',
+  };
+  return labels[intermediateFeelFromRPE(rpe)];
 }

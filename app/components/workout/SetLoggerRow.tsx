@@ -6,6 +6,7 @@ import { InlineNumber } from '@/components/ui';
 import { EffortPicker } from './EffortPicker';
 import { kgToDisplay, displayToKg, weightLabel } from '@/lib/ui/units';
 import { formatPrev } from '@/lib/ui/sets';
+import { effortFeelLabel } from '@/lib/periodization';
 
 export type SetRowState = 'future' | 'active' | 'awaiting' | 'locked';
 
@@ -98,7 +99,14 @@ export function SetLoggerRow({
               : index + 1}
         </div>
 
-        <div className="text-center text-[12px] text-ink-mute tnum truncate">{formatPrev(lastSet, metric, units)}</div>
+        <div className="text-center leading-tight min-w-0">
+          <div className="text-[12px] text-ink-mute tnum truncate">{formatPrev(lastSet, metric, units)}</div>
+          {lastSet?.rpe != null && lastSet.setType !== 'skip' && (
+            <div className={cn('text-[9px] tracking-wide truncate', lastSet.rpe >= 9 ? 'text-danger/70' : 'text-ink-mute/80')}>
+              {effortFeelLabel(lastSet.rpe, mode)}
+            </div>
+          )}
+        </div>
 
         {weightCol && (
           <InlineNumber

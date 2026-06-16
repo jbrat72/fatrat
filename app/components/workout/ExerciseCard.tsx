@@ -6,6 +6,8 @@ import { SetLoggerRow, type SetRowState } from './SetLoggerRow';
 import { weightLabel } from '@/lib/ui/units';
 import type { ExerciseEntry, SetEntry, EffortRPE, UserMode, Units } from '@/types';
 
+type SupersetMode = 'idle' | 'armed' | 'candidate';
+
 interface Props {
   exercise: ExerciseEntry;
   exerciseIndex: number;
@@ -37,6 +39,13 @@ interface Props {
   onRemove?: () => void;
   /** Whether this exercise can be removed (false when it's the last one). */
   canRemove?: boolean;
+  /** Superset pairing (mid-workout). */
+  supersetMode?: SupersetMode;
+  supersetPartnerName?: string;
+  onSuperset?: () => void;
+  onPairHere?: () => void;
+  onCancelSuperset?: () => void;
+  onUnlinkSuperset?: () => void;
   onShowHistory?: () => void;
   /** Called when the user taps Start timer on a time-based set. */
   onStartTimer?: (setIdx: number) => void;
@@ -45,7 +54,9 @@ interface Props {
 export function ExerciseCard({
   exercise, exerciseIndex, mode, units, liveMetric, lastSets, activeSetIndex, awaitingEffortSetIdx, disabled,
   onActivateSet, onUpdateSet, onLogSet, onUnlockSet, onEffort, onAddSet, onRemoveSet, canRemoveSet,
-  onSwap, onSkip, onSkipSet, onRemove, canRemove, onShowHistory, onStartTimer,
+  onSwap, onSkip, onSkipSet, onRemove, canRemove,
+  supersetMode = 'idle', supersetPartnerName, onSuperset, onPairHere, onCancelSuperset, onUnlinkSuperset,
+  onShowHistory, onStartTimer,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const loggedCount = exercise.sets.filter((s) => s.completed && s.setType !== 'skip').length;
@@ -85,12 +96,16 @@ export function ExerciseCard({
       className={cn(
         'p-0 overflow-visible scroll-mt-20',
         allDone && 'border-ok/40',
+        supersetMode === 'armed' && 'border-accent',
       )}
     >
       <div className="px-4 pt-3 pb-2 flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <MuscleBadge muscle={exercise.muscle} />
+            {exercise.supersetGroup != null && (
+              <span className="text-[10px] tracking-wider2 font-semibold uppercase text-accent">⛓ Superset</span>
+            )}
             {allDone && (
               <span className="inline-flex items-center gap-1 text-ok text-[10px] tracking-wider2 font-semibold uppercase">
                 <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10l4 4 8-8"/></svg>
@@ -137,6 +152,9 @@ export function ExerciseCard({
                   <MenuItem onClick={() => { onRemoveSet(); setMenuOpen(false); }} disabled={canRemoveSet === false}>− Remove set</MenuItem>
                 )}
                 <MenuItem onClick={() => { onSwap?.(); setMenuOpen(false); }}>↔ Replace exercise</MenuItem>
+                {exercise.supersetGroup != null
+                  ? onUnlinkSuperset && <MenuItem onClick={() => { onUnlinkSuperset(); setMenuOpen(false); }}>⛓ Unlink superset</MenuItem>
+                  : onSuperset && <MenuItem onClick={() => { onSuperset(); setMenuOpen(false); }}>⛓ Superset with…</MenuItem>}
                 <MenuItem onClick={() => { onSkip?.(); setMenuOpen(false); }}>⏭ Skip remaining sets</MenuItem>
                 <MenuItem onClick={() => { onRemove?.(); setMenuOpen(false); }} danger disabled={canRemove === false}>✕ Remove exercise</MenuItem>
               </div>
@@ -144,6 +162,23 @@ export function ExerciseCard({
           </div>
         </div>
       </div>
+
+      {/* Superset pairing strip */}
+      {supersetMode === 'armed' && (
+        <div className="mx-3 mb-2 flex items-center justify-between gap-2 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2">
+          <span className="text-[12px] text-accent-hot font-medium">Pick another exercise to superset with this one</span>
+          <button type="button" onClick={onCancelSuperset} className="text-[12px] text-ink-mute">Cancel</button>
+        </div>
+      )}
+      {supersetMode === 'candidate' && (
+        <button
+          type="button"
+          onClick={onPairHere}
+          className="mx-3 mb-2 w-[calc(100%-1.5rem)] rounded-lg border border-accent bg-accent/10 px-3 py-2 text-[12px] font-semibold text-accent active:scale-[0.99]"
+        >
+          ⛓ Pair with {supersetPartnerName}
+        </button>
+      )}
 
       <div className="px-3 pb-2">
         {/* Table header */}

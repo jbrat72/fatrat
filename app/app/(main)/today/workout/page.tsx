@@ -12,7 +12,7 @@ import { nudgeNextSet } from '@/lib/session/nextSetNudge';
 import { planAdvance } from '@/lib/session/advance';
 import { seedWeightsFromCalibration } from '@/lib/periodization/calibration';
 import { defaultRestSec, terminologyMode, isPeriodizedSession } from '@/lib/periodization';
-import { removeExerciseAt } from '@/lib/workout/structure';
+import { removeExerciseAt, pairSuperset, unlinkGroup } from '@/lib/workout/structure';
 import type { WorkoutSession, SetEntry, ExerciseEntry, SessionFeedback, Mesocycle, Microcycle, ExerciseDefinition, MovementPattern, MuscleGroup, SorenessRating, MuscleSoreness } from '@/types';
 import { todayIso } from '@/lib/ui/date';
 
@@ -37,11 +37,17 @@ export default function WorkoutPage() {
   // Last-time performance per exercise id (completed sets from the most recent
   // prior session that trained it) — shown under each set as a reference.
   const [lastPerf, setLastPerf] = useState<Record<string, SetEntry[]>>({});
+  // Same prior-performance map keyed by normalized exercise name — a fallback
+  // for when the exercise id drifted (variety pick, swap, library id change) so
+  // PREV still resolves by name.
+  const [lastPerfByName, setLastPerfByName] = useState<Record<string, SetEntry[]>>({});
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [swapFor, setSwapFor] = useState<number | null>(null);
   // A set that's been logged but is waiting on its "how did it feel?" rating.
   // Until effort is picked, focus doesn't advance and the rest timer is held.
   const [pendingEffort, setPendingEffort] = useState<{ exIdx: number; setIdx: number } | null>(null);
+  // Index of the exercise armed for an in-workout superset pairing (null = off).
+  const [supersetFrom, setSupersetFrom] = useState<number | null>(null);
   const [structureOpen, setStructureOpen] = useState(false);
   const structureDecided = useRef(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -70,18 +76,25 @@ export default function WorkoutPage() {
           for (const ex of ps.exercises) trained.add(ex.muscle);
         }
         setPriorMuscles(trained);
-        // Build the "last time" reference: most recent prior completed sets per exercise.
+        // Build the "last time" reference: most recent prior completed sets per
+        // exercise, keyed by both id and normalized name (name is the fallback
+        // when the id drifted between sessions).
         const perf: Record<string, SetEntry[]> = {};
+        const perfByName: Record<string, SetEntry[]> = {};
         const sortedPrior = [...prior].sort((a, b) => b.date.localeCompare(a.date));
         for (const ps of sortedPrior) {
           if (ps.id === s.id) continue;
           for (const ex of ps.exercises) {
-            if (perf[ex.exerciseId]) continue;
+            const nameKey = ex.name.trim().toLowerCase();
+            if (perf[ex.exerciseId] && perfByName[nameKey]) continue;
             const done = ex.sets.filter((x) => x.completed && x.setType !== 'skip' && (x.weightKg != null || x.reps != null || x.timeSec != null));
-            if (done.length) perf[ex.exerciseId] = done;
+            if (!done.length) continue;
+            if (!perf[ex.exerciseId]) perf[ex.exerciseId] = done;
+            if (nameKey && !perfByName[nameKey]) perfByName[nameKey] = done;
           }
         }
         setLastPerf(perf);
+        setLastPerfByName(perfByName);
       }
       setSession(s);
       setMeso(res.mesocycle);
@@ -432,6 +445,28 @@ export default function WorkoutPage() {
     setActiveSetIdx(null);
   };
 
+  // Superset two exercises mid-workout. `startSuperset` arms an exercise;
+  // `completeSuperset` pairs it with the chosen partner (pairSuperset groups +
+  // reorders them adjacent). Focus is recomputed since indices shift.
+  const startSuperset = (i: number) => setSupersetFrom((cur) => (cur === i ? null : i));
+  const completeSuperset = (j: number) => {
+    if (!session || supersetFrom == null || supersetFrom === j) { setSupersetFrom(null); return; }
+    const exercises = pairSuperset(session.exercises, supersetFrom, j);
+    const next = { ...session, exercises };
+    setSession(next); queueSave(next);
+    setSupersetFrom(null);
+    const focus = findNextPending(next);
+    setActiveExerciseIdx(focus?.exIdx ?? 0);
+    setActiveSetIdx(focus?.setIdx ?? null);
+  };
+  const unlinkSuperset = (i: number) => {
+    if (!session) return;
+    const g = session.exercises[i]?.supersetGroup;
+    if (g == null) return;
+    const next = { ...session, exercises: unlinkGroup(session.exercises, g) };
+    setSession(next); queueSave(next);
+  };
+
   const completion = useMemo(() => {
     if (!session) return { total: 0, done: 0 };
     let total = 0, done = 0;
@@ -531,6 +566,13 @@ export default function WorkoutPage() {
     !isStraightened && session.exercises.some((ex) => ex.setStyle != null && ex.setStyle !== 'straight');
   const canToggleStyles = completion.done === 0 && (isStraightened || hasSpecialStyles);
 
+  // Resolve prior performance for an exercise: exact id, then the id it was
+  // swapped from, then a normalized-name match.
+  const priorFor = (ex: ExerciseEntry): SetEntry[] | undefined =>
+    lastPerf[ex.exerciseId]
+    ?? (ex.swappedFromExerciseId ? lastPerf[ex.swappedFromExerciseId] : undefined)
+    ?? lastPerfByName[ex.name.trim().toLowerCase()];
+
   const renderCard = (i: number) => {
     const ex = session.exercises[i]!;
     return (
@@ -541,7 +583,7 @@ export default function WorkoutPage() {
         mode={terminologyMode(user)}
         units={user.units}
         liveMetric={exerciseDefs[ex.exerciseId] ? (exerciseDefs[ex.exerciseId]!.metric ?? 'weight-reps') : undefined}
-        lastSets={lastPerf[ex.exerciseId]}
+        lastSets={priorFor(ex)}
         activeSetIndex={activeExerciseIdx === i ? activeSetIdx : null}
         awaitingEffortSetIdx={pendingEffort?.exIdx === i ? pendingEffort.setIdx : null}
         disabled={isResting}
@@ -558,6 +600,12 @@ export default function WorkoutPage() {
         onSkip={() => skipRemaining(i)}
         onRemove={() => removeExercise(i)}
         canRemove={session.exercises.length > 1}
+        supersetMode={supersetFrom == null ? 'idle' : supersetFrom === i ? 'armed' : 'candidate'}
+        supersetPartnerName={supersetFrom != null ? session.exercises[supersetFrom]?.name : undefined}
+        onSuperset={() => startSuperset(i)}
+        onPairHere={() => completeSuperset(i)}
+        onCancelSuperset={() => setSupersetFrom(null)}
+        onUnlinkSuperset={ex.supersetGroup != null ? () => unlinkSuperset(i) : undefined}
         onSkipSet={(s) => skipSet(i, s)}
         onStartTimer={(setIdx) => {
           const target = ex.sets[setIdx]?.timeSec ?? ex.prescribedTimeLow ?? 30;

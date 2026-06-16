@@ -8,6 +8,19 @@ finished release.
 The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
+## v0.97.0 — 2026-06-15
+
+- PREV now resolves more reliably. The "last time" lookup matched only by exact
+  exercise id, so a lift whose id drifted between sessions (variety pick, swap,
+  or a library id change) showed nothing. It now falls back to the swapped-from
+  id and then a normalized exercise-name match.
+- The PREV column shows the effort you logged last time (Easy / Solid / Tough /
+  Hard / Failed, or RPE in advanced mode) under the weight × reps.
+- You can superset two exercises mid-workout. The exercise ⋮ menu now has
+  "Superset with…" — tap it, then tap "Pair with [exercise]" on another card to
+  group them; grouped exercises show an "Unlink superset" option. Pairing
+  reorders them adjacent and focus alternates between the pair as you log.
+
 ## v0.96.1 — 2026-06-15
 
 - Fixed set-count edits not sticking. Opening a workout ran `hydrateFromHistory`,
