@@ -9,6 +9,15 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.97.4 — 2026-06-16
+
+- Fixed the History progression chart (and personal bests) counting sets from
+  unfinished workouts. Sessions still "Pending" — including ad-hoc test
+  sessions — had their logged sets plotted, so a 6/1 point could read 40 lb
+  even though the finished session that day was 30 lb. Progression, e1RM, and
+  PRs now include finished sessions only, and the exercise dropdown no longer
+  lists exercises that appear solely in unfinished sessions.
+
 ## v0.97.3 — 2026-06-16
 
 - Fixed the Plan page showing the wrong training week. `listMicrocycles`

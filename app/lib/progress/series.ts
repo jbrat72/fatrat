@@ -31,6 +31,7 @@ export function weightSeries(
 ): SeriesPoint[] {
   const points: SeriesPoint[] = [];
   for (const s of [...sessions].sort((a, b) => a.date.localeCompare(b.date))) {
+    if (!s.completed) continue; // only finished workouts feed progression
     const ex = s.exercises.find((e) => e.exerciseId === exerciseId);
     if (!ex) continue;
     const top = pickTopSet(ex);
@@ -57,6 +58,7 @@ export function e1rmSeries(
 ): SeriesPoint[] {
   const points: SeriesPoint[] = [];
   for (const s of [...sessions].sort((a, b) => a.date.localeCompare(b.date))) {
+    if (!s.completed) continue; // only finished workouts feed progression
     const ex = s.exercises.find((e) => e.exerciseId === exerciseId);
     if (!ex) continue;
     const top = pickTopSet(ex);

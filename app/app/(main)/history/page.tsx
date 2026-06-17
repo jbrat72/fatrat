@@ -179,10 +179,13 @@ export default function HistoryPage() {
 
   // Sessions feeding the progression chart, narrowed to the chosen date range.
   const chartSessions = useMemo(() => {
+    // Progression reflects finished workouts only — a pending/unfinished
+    // session's sets must not appear in the chart or the exercise dropdown.
+    const finished = allSessions.filter((s) => s.completed);
     const opt = RANGE_OPTIONS.find((o) => o.value === chartRange);
-    if (!opt || opt.days == null) return allSessions;
+    if (!opt || opt.days == null) return finished;
     const cutoff = isoDaysAgo(opt.days);
-    return allSessions.filter((s) => s.date >= cutoff);
+    return finished.filter((s) => s.date >= cutoff);
   }, [allSessions, chartRange]);
 
   const exerciseOptions = useMemo(() => {

@@ -21,6 +21,7 @@ export interface PersonalBest {
 export function personalBests(sessions: WorkoutSession[]): PersonalBest[] {
   const byExercise = new Map<string, PersonalBest>();
   for (const s of sessions) {
+    if (!s.completed) continue; // PRs come from finished workouts only
     for (const ex of s.exercises) {
       for (const set of ex.sets) {
         if (!set.completed || set.weightKg == null || set.reps == null) continue;
