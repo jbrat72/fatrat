@@ -9,6 +9,14 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.97.5 — 2026-06-16
+
+- Fixed the History progression exercise picker listing the same exercise more
+  than once. When an exercise existed under more than one id (id drift / swaps),
+  the dropdown keyed by id and showed a duplicate row. It now consolidates by
+  name, and the chart matches logged sets by name too, so every variant of an
+  exercise rolls into one line.
+
 ## v0.97.4 — 2026-06-16
 
 - Fixed the History progression chart (and personal bests) counting sets from

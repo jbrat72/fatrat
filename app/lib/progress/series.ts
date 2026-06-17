@@ -6,6 +6,25 @@
 import type { WorkoutSession, EffortRPE } from '@/types';
 import { estimate1RM, isReliableE1RM } from '@/lib/periodization/e1rm';
 
+type SessionExercise = WorkoutSession['exercises'][number];
+export type ExerciseMatcher = (ex: SessionExercise) => boolean;
+
+/** Match a logged exercise by its id (or the id it was swapped from). */
+export function byExerciseId(id: string): ExerciseMatcher {
+  return (ex) => ex.exerciseId === id || ex.swappedFromExerciseId === id;
+}
+
+/** Match by normalized name — consolidates the same exercise across id drift. */
+export function byExerciseName(name: string): ExerciseMatcher {
+  const n = name.trim().toLowerCase();
+  return (ex) => ex.name.trim().toLowerCase() === n;
+}
+
+/** A bare id string is treated as an id match, for backward compatibility. */
+function resolveMatcher(match: string | ExerciseMatcher): ExerciseMatcher {
+  return typeof match === 'function' ? match : byExerciseId(match);
+}
+
 export interface SeriesPoint {
   date: string;          // ISO
   sessionId: string;
@@ -27,12 +46,13 @@ function pickTopSet(sessionExercise: WorkoutSession['exercises'][number]) {
 
 export function weightSeries(
   sessions: WorkoutSession[],
-  exerciseId: string,
+  match: string | ExerciseMatcher,
 ): SeriesPoint[] {
+  const matches = resolveMatcher(match);
   const points: SeriesPoint[] = [];
   for (const s of [...sessions].sort((a, b) => a.date.localeCompare(b.date))) {
     if (!s.completed) continue; // only finished workouts feed progression
-    const ex = s.exercises.find((e) => e.exerciseId === exerciseId);
+    const ex = s.exercises.find(matches);
     if (!ex) continue;
     const top = pickTopSet(ex);
     if (!top) continue;
@@ -54,12 +74,13 @@ export function weightSeries(
 
 export function e1rmSeries(
   sessions: WorkoutSession[],
-  exerciseId: string,
+  match: string | ExerciseMatcher,
 ): SeriesPoint[] {
+  const matches = resolveMatcher(match);
   const points: SeriesPoint[] = [];
   for (const s of [...sessions].sort((a, b) => a.date.localeCompare(b.date))) {
     if (!s.completed) continue; // only finished workouts feed progression
-    const ex = s.exercises.find((e) => e.exerciseId === exerciseId);
+    const ex = s.exercises.find(matches);
     if (!ex) continue;
     const top = pickTopSet(ex);
     if (!top || !isReliableE1RM(top.reps!, top.rpe)) continue;
@@ -80,7 +101,6 @@ export function e1rmSeries(
   return points;
 }
 
-/** All distinct exercises the user has performed at least one logged set of. */
 export interface ExerciseSummary {
   exerciseId: string;
   exerciseName: string;

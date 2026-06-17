@@ -10,7 +10,7 @@ import { AdHocWorkoutModal } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
 import { cardioStats } from '@/lib/ui/cardio';
 import { formatSetValue } from '@/lib/ui/sets';
-import { weightSeries, e1rmSeries } from '@/lib/progress';
+import { weightSeries, e1rmSeries, byExerciseName } from '@/lib/progress';
 import { cleanupArchivedPendingSessions } from '@/lib/session/cleanupArchived';
 import { terminologyMode, usesAdvancedTerminology } from '@/lib/periodization';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
@@ -189,13 +189,16 @@ export default function HistoryPage() {
   }, [allSessions, chartRange]);
 
   const exerciseOptions = useMemo(() => {
-    const map = new Map<string, string>();
+    // Consolidate by normalized name so the same exercise logged under drifted
+    // ids shows once — the chart series matches by name to mirror this.
+    const map = new Map<string, string>(); // normalized name -> display name
     for (const s of chartSessions) {
       for (const ex of s.exercises) {
-        if (!map.has(ex.exerciseId)) map.set(ex.exerciseId, ex.name);
+        const key = ex.name.trim().toLowerCase();
+        if (!map.has(key)) map.set(key, ex.name);
       }
     }
-    return [...map.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+    return [...map.values()].map((name) => ({ id: name, name })).sort((a, b) => a.name.localeCompare(b.name));
   }, [chartSessions]);
 
   // Default to the first exercise; also re-anchor when the range changes and the
@@ -211,17 +214,20 @@ export default function HistoryPage() {
 
   const chartData: SparkPoint[] = useMemo(() => {
     if (selectedExerciseId === 'all' || !user) return [];
+    // selectedExerciseId now holds the exercise's display name; match by name
+    // so id-drifted variants of the same exercise are combined.
+    const matcher = byExerciseName(selectedExerciseId);
     if (chartMetric === 'reps') {
       // Top-set reps for every session — uses weightSeries (unfiltered by e1RM reliability).
-      return weightSeries(chartSessions, selectedExerciseId).map((p) => ({
+      return weightSeries(chartSessions, matcher).map((p) => ({
         x: p.date,
         y: p.reps,
         label: `${p.date} · ${p.reps} reps · ${kgToDisplay(p.value, user.units)} ${weightLabel(user.units)}`,
       }));
     }
     const points = isAdvanced
-      ? e1rmSeries(chartSessions, selectedExerciseId)
-      : weightSeries(chartSessions, selectedExerciseId);
+      ? e1rmSeries(chartSessions, matcher)
+      : weightSeries(chartSessions, matcher);
     return points.map((p) => ({
       x: p.date,
       y: kgToDisplay(p.value, user.units) ?? 0,
