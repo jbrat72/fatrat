@@ -115,7 +115,9 @@ export function firestoreRepository(): DataRepository {
       const uid = currentUid();
       const q = query(subCol(uid, 'microcycles'), where('mesocycleId', '==', mesoId));
       const snap = await getDocs(q);
-      return snap.docs.map((d) => d.data() as Microcycle);
+      return snap.docs
+        .map((d) => d.data() as Microcycle)
+        .sort((a, b) => a.weekNumber - b.weekNumber);
     },
     async getMicrocycle(microId) {
       const uid = currentUid();

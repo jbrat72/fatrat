@@ -34,7 +34,11 @@ export interface AdvanceInput {
 }
 
 export function planAdvance(input: AdvanceInput): AdvancePatch {
-  const { completedSession, microSessions, microcycle, micros, mesocycle } = input;
+  const { completedSession, microSessions, microcycle, mesocycle } = input;
+  // Defensive: the next-week lookup below relies on week order, but callers
+  // pass micros straight from the repo, which historically returned them
+  // unsorted — that activated the wrong week on completion. Sort here too.
+  const micros = [...input.micros].sort((a, b) => a.weekNumber - b.weekNumber);
 
   // Replace the completed session in our local copy to compute "what's pending now".
   const updated = microSessions.map((s) =>

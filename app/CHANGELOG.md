@@ -9,6 +9,17 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.97.3 — 2026-06-16
+
+- Fixed the Plan page showing the wrong training week. `listMicrocycles`
+  returned weeks unsorted, so finishing a week could activate the wrong one,
+  push the plan's week index too far, and strand the real next week as
+  "Upcoming" — the header read e.g. "Week 3 of 8" while you were on week 2.
+  Microcycles are now sorted by week number (both data layers) and the
+  week-advance logic sorts defensively. A one-shot migration repairs plans
+  already in the bad state: week statuses and the plan's current-week index are
+  recomputed from which weeks are fully logged (sessions are never touched).
+
 ## v0.97.2 — 2026-06-16
 
 - Finishing a workout now sweeps every set you never logged into a skip, so a

@@ -116,6 +116,8 @@ export interface UserProfile {
   migratedSessionsToDays?: boolean;
   /** Set true once existing plans have been defaulted to fixed exercises. */
   migratedFixedExercises?: boolean;
+  /** Set true once the unsorted-microcycle week-status/weekIndex repair has run. */
+  migratedWeekStatusRepair?: boolean;
   createdAt: string; // ISO
   updatedAt: string; // ISO
 }

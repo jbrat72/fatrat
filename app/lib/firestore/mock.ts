@@ -152,6 +152,7 @@ export function mockRepository(): DataRepository {
     async listMicrocycles(mesoId) {
       return Object.values(store().microcycles)
         .filter((m) => m.mesocycleId === mesoId)
+        .sort((a, b) => a.weekNumber - b.weekNumber)
         .map(clone);
     },
     async getMicrocycle(microId) {

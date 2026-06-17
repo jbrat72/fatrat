@@ -9,6 +9,7 @@ import { DEMO_USER_IDS } from '@/lib/firestore/seed/users';
 import { migrateMacrocyclesForUser } from '@/lib/firestore/migrations/dropMacrocycle';
 import { migrateSessionsToDaysForUser } from '@/lib/firestore/migrations/relabelSessionsToDays';
 import { migrateFixedExercises } from '@/lib/firestore/migrations/fixedExercises';
+import { migrateWeekStatusRepair } from '@/lib/firestore/migrations/repairWeekStatus';
 
 const ACTIVE_USER_KEY = 'fatrat:activeUser:v1';
 
@@ -56,6 +57,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     // One-shot — default existing plans to fixed exercises (mock + Firebase).
     if (profile && !profile.migratedFixedExercises) {
       profile = await migrateFixedExercises(profile);
+    }
+    // One-shot — repair week statuses / weekIndex broken by the unsorted-
+    // microcycle advance bug (mock + Firebase).
+    if (profile && !profile.migratedWeekStatusRepair) {
+      profile = await migrateWeekStatusRepair(profile);
     }
     setUser(profile);
     setLoading(false);
