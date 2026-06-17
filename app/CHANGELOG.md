@@ -9,6 +9,18 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.98.0 — 2026-06-16
+
+- History progression now works for every exercise type, not just barbell-style
+  weight×reps lifts. The chart reads each exercise's metric and picks the right
+  "top set" — heaviest for weighted lifts, most reps for bodyweight moves
+  (e.g. Bench Dip, Push-up), longest hold for timed holds (e.g. Plank) — so
+  these no longer show "No logged sets." The Weight/Reps toggle adapts to the
+  exercise: Weight+Reps for weighted lifts, Reps only for bodyweight, Time for
+  holds, Weight+Time for loaded holds, and e1RM stays an advanced option for
+  weighted rep work. Skipped sets are excluded from progression and PRs. The
+  per-exercise history page got the same metric-aware treatment.
+
 ## v0.97.5 — 2026-06-16
 
 - Fixed the History progression exercise picker listing the same exercise more

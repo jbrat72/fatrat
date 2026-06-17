@@ -10,12 +10,12 @@ import { AdHocWorkoutModal } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
 import { cardioStats } from '@/lib/ui/cardio';
 import { formatSetValue } from '@/lib/ui/sets';
-import { weightSeries, e1rmSeries, byExerciseName } from '@/lib/progress';
+import { topSetSeries, e1rmSeries, byExerciseName } from '@/lib/progress';
 import { cleanupArchivedPendingSessions } from '@/lib/session/cleanupArchived';
 import { terminologyMode, usesAdvancedTerminology } from '@/lib/periodization';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
 import { cn } from '@/lib/ui/cn';
-import type { Mesocycle, Microcycle, WorkoutSession } from '@/types';
+import type { Mesocycle, Microcycle, WorkoutSession, ExerciseMetric } from '@/types';
 import { todayIso } from '@/lib/ui/date';
 
 interface AddDayInfo {
@@ -24,7 +24,7 @@ interface AddDayInfo {
   dayOfWeek: 0|1|2|3|4|5|6;
 }
 
-type ChartMetric = 'weight' | 'reps';
+type ChartMetric = 'weight' | 'reps' | 'time';
 type ChartRange = '30d' | '60d' | '90d' | '1y' | 'all';
 
 const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -212,41 +212,84 @@ export default function HistoryPage() {
 
   const isAdvanced = !!user && usesAdvancedTerminology(user);
 
+  // The metric of the selected exercise (weight-reps / reps / time / weight-time),
+  // read from its logged sessions. Drives which axes the chart can show.
+  const selectedMetric: ExerciseMetric = useMemo(() => {
+    if (selectedExerciseId === 'all') return 'weight-reps';
+    const matcher = byExerciseName(selectedExerciseId);
+    for (const s of chartSessions) {
+      const ex = s.exercises.find(matcher);
+      if (ex) return ex.metric ?? 'weight-reps';
+    }
+    return 'weight-reps';
+  }, [selectedExerciseId, chartSessions]);
+
+  // Which toggle options apply to this exercise's metric.
+  const availableMetrics: ChartMetric[] = useMemo(() => {
+    switch (selectedMetric) {
+      case 'reps': return ['reps'];
+      case 'time': return ['time'];
+      case 'weight-time': return ['weight', 'time'];
+      default: return ['weight', 'reps'];
+    }
+  }, [selectedMetric]);
+
+  // Keep the selected metric valid when switching to an exercise that doesn't
+  // support it (e.g. from a barbell lift to a plank).
+  useEffect(() => {
+    if (!availableMetrics.includes(chartMetric)) setChartMetric(availableMetrics[0]!);
+  }, [availableMetrics]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // e1RM only applies to weighted rep work, and only for advanced users.
+  const showE1rm = chartMetric === 'weight' && isAdvanced && selectedMetric === 'weight-reps';
+
   const chartData: SparkPoint[] = useMemo(() => {
     if (selectedExerciseId === 'all' || !user) return [];
-    // selectedExerciseId now holds the exercise's display name; match by name
-    // so id-drifted variants of the same exercise are combined.
+    // selectedExerciseId holds the exercise's display name; match by name so
+    // id-drifted variants of the same exercise are combined.
     const matcher = byExerciseName(selectedExerciseId);
-    if (chartMetric === 'reps') {
-      // Top-set reps for every session — uses weightSeries (unfiltered by e1RM reliability).
-      return weightSeries(chartSessions, matcher).map((p) => ({
+    const series = showE1rm ? e1rmSeries(chartSessions, matcher) : topSetSeries(chartSessions, matcher);
+    return series.map((p) => {
+      if (chartMetric === 'reps') {
+        return {
+          x: p.date,
+          y: p.reps ?? 0,
+          isPR: p.isPR,
+          label: `${p.date} · ${p.reps ?? 0} reps${p.weightKg != null ? ` @ ${kgToDisplay(p.weightKg, user.units)} ${weightLabel(user.units)}` : ''}`,
+        };
+      }
+      if (chartMetric === 'time') {
+        return {
+          x: p.date,
+          y: p.timeSec ?? 0,
+          isPR: p.isPR,
+          label: `${p.date} · ${p.timeSec ?? 0}s${p.weightKg != null ? ` @ ${kgToDisplay(p.weightKg, user.units)} ${weightLabel(user.units)}` : ''}`,
+        };
+      }
+      // weight (or e1RM, which already stores its estimate in value)
+      const w = showE1rm ? p.value : (p.weightKg ?? 0);
+      return {
         x: p.date,
-        y: p.reps,
-        label: `${p.date} · ${p.reps} reps · ${kgToDisplay(p.value, user.units)} ${weightLabel(user.units)}`,
-      }));
-    }
-    const points = isAdvanced
-      ? e1rmSeries(chartSessions, matcher)
-      : weightSeries(chartSessions, matcher);
-    return points.map((p) => ({
-      x: p.date,
-      y: kgToDisplay(p.value, user.units) ?? 0,
-      y2: isAdvanced ? p.rpe : undefined,
-      isPR: p.isPR,
-      label: `${p.date} · ${kgToDisplay(p.value, user.units)} ${weightLabel(user.units)} × ${p.reps}${p.rpe != null ? ` @ RPE ${p.rpe}` : ''}`,
-    }));
-  }, [selectedExerciseId, chartMetric, chartSessions, user, isAdvanced]);
+        y: kgToDisplay(w, user.units) ?? 0,
+        y2: isAdvanced ? p.rpe : undefined,
+        isPR: p.isPR,
+        label: `${p.date} · ${kgToDisplay(w, user.units)} ${weightLabel(user.units)}${p.reps != null ? ` × ${p.reps}` : ''}${p.rpe != null ? ` @ RPE ${p.rpe}` : ''}`,
+      };
+    });
+  }, [selectedExerciseId, chartMetric, chartSessions, user, isAdvanced, showE1rm]);
 
   if (!user) return null;
 
   const selectedMeso = selectedMesoId === 'all' ? null : (allMesos.find((m) => m.id === selectedMesoId) ?? null);
-  const weightTabLabel = isAdvanced ? 'e1RM' : 'Weight';
+  const metricTabLabel = (m: ChartMetric) =>
+    m === 'reps' ? 'Reps'
+    : m === 'time' ? 'Time'
+    : (isAdvanced && selectedMetric === 'weight-reps') ? 'e1RM' : 'Weight';
   const chartYLabel =
-    chartMetric === 'reps'
-      ? 'Top-set reps'
-      : isAdvanced
-        ? `e1RM (${weightLabel(user.units)})`
-        : `Top set (${weightLabel(user.units)})`;
+    chartMetric === 'reps' ? 'Top-set reps'
+    : chartMetric === 'time' ? 'Top-set time (s)'
+    : showE1rm ? `e1RM (${weightLabel(user.units)})`
+    : `Top set (${weightLabel(user.units)})`;
 
   return (
     <div>
@@ -459,9 +502,9 @@ export default function HistoryPage() {
             ))}
           </select>
 
-          {selectedExerciseId !== 'all' && (
+          {selectedExerciseId !== 'all' && availableMetrics.length > 1 && (
             <div className="flex gap-1 mb-3">
-              {(['weight', 'reps'] as ChartMetric[]).map((m) => (
+              {availableMetrics.map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -473,7 +516,7 @@ export default function HistoryPage() {
                       : 'bg-bg-input border-ink-line text-ink-dim hover:text-ink',
                   )}
                 >
-                  {m === 'weight' ? weightTabLabel : 'Reps'}
+                  {metricTabLabel(m)}
                 </button>
               ))}
             </div>
@@ -489,6 +532,7 @@ export default function HistoryPage() {
                 data={chartData}
                 showSecond={chartMetric === 'weight' && isAdvanced}
                 yLabel={chartYLabel}
+                key={`${selectedExerciseId}-${chartMetric}`}
               />
               <div className="text-[10px] text-ink-mute mt-1 flex justify-between tnum">
                 <span>{chartData[0]!.x as string}</span>
