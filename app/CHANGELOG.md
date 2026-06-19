@@ -9,6 +9,14 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.98.2 — 2026-06-16
+
+- Fixed the rest/exercise timer alarm being silent on mobile. The Web Audio
+  context was first created when the timer hit zero (inside a setInterval
+  callback), so iOS/Android left it suspended and muted. Audio is now unlocked
+  on the first tap/keypress anywhere in the app, so the end-of-timer double-beep
+  plays. (Still gated by the Sounds setting; phones must not be on silent.)
+
 ## v0.98.1 — 2026-06-16
 
 - Time-based sets (planks, holds, carries) now enter as m:ss on the numeric
