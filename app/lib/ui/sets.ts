@@ -5,6 +5,7 @@
  */
 import type { SetEntry, ExerciseMetric, Units } from '@/types';
 import { kgToDisplay, weightLabel } from './units';
+import { formatSeconds } from './time';
 
 export function formatSetValue(
   set: SetEntry,
@@ -18,8 +19,8 @@ export function formatSetValue(
   const wl = weightLabel(units);
   const wStr = w != null ? `${w} ${wl}` : ph;
   switch (metric) {
-    case 'time':        return `${set.timeSec ?? ph}s`;
-    case 'weight-time': return `${wStr} × ${set.timeSec ?? ph}s`;
+    case 'time':        return set.timeSec != null ? formatSeconds(set.timeSec) : ph;
+    case 'weight-time': return `${wStr} × ${set.timeSec != null ? formatSeconds(set.timeSec) : ph}`;
     case 'reps':        return `× ${set.reps ?? ph}`;
     default:            return `${wStr} × ${set.reps ?? ph}`;
   }
@@ -38,8 +39,8 @@ export function formatPrev(
   if (!set || set.setType === 'skip') return '—';
   const w = kgToDisplay(set.weightKg, units);
   switch (metric) {
-    case 'time':        return set.timeSec != null ? `${set.timeSec}s` : '—';
-    case 'weight-time': return `${w ?? '—'} × ${set.timeSec ?? '—'}s`;
+    case 'time':        return set.timeSec != null ? formatSeconds(set.timeSec) : '—';
+    case 'weight-time': return `${w ?? '—'} × ${set.timeSec != null ? formatSeconds(set.timeSec) : '—'}`;
     case 'reps':        return set.reps != null ? `× ${set.reps}` : '—';
     default:            return w != null || set.reps != null ? `${w ?? '—'} × ${set.reps ?? '—'}` : '—';
   }

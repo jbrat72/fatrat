@@ -78,8 +78,7 @@ export function EditableSetTable({ sets, metric, units, onChange }: Props) {
                     onChange={(n) => updateAt(idx, { timeSec: n })}
                     step={5}
                     min={1}
-                    decimals={0}
-                    unit="s"
+                    time
                     ariaLabel={`Set ${idx + 1} time`}
                   />
                 </div>

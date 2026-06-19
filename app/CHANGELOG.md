@@ -9,6 +9,14 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.98.1 — 2026-06-16
+
+- Time-based sets (planks, holds, carries) now enter as m:ss on the numeric
+  keypad — no ":" key required. Type digits and they fill from the right with
+  the colon shown automatically (e.g. "1","3","0" → 1:30); the +/- buttons step
+  by 5 seconds. Logged times now display as m:ss everywhere (the in-workout
+  logger, ad-hoc logger, set editor, PREV column, and history).
+
 ## v0.98.0 — 2026-06-16
 
 - History progression now works for every exercise type, not just barbell-style

@@ -343,8 +343,7 @@ export function AdHocWorkoutModal({
                                   onChange={(n) => updateSet(exIdx, setIdx, { ...set, timeSec: n })}
                                   step={5}
                                   min={1}
-                                  decimals={0}
-                                  unit="s"
+                                  time
                                   ariaLabel={`${ex.name} set ${setIdx + 1} time`}
                                 />
                               )}

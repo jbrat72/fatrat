@@ -136,8 +136,7 @@ export function SetLoggerRow({
             onChange={(n) => onChange({ ...set, timeSec: n })}
             step={5}
             min={1}
-            decimals={0}
-            unit="s"
+            time
             disabled={inputsDisabled}
             ariaLabel={`Set ${index + 1} time`}
           />

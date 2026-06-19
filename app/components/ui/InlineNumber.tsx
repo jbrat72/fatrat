@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/ui/cn';
+import { formatSeconds, digitsToClock, digitsToSeconds, secondsToDigits } from '@/lib/ui/time';
 
 interface Props {
   value: number | undefined;
@@ -14,6 +15,9 @@ interface Props {
   className?: string;
   disabled?: boolean;
   ariaLabel?: string;
+  /** Time mode: value is seconds, shown/entered as m:ss on a numeric keypad.
+   *  Digits fill from the right (no ":" key needed). */
+  time?: boolean;
 }
 
 /** Tap-to-edit numeric input. Closed: compact box. Open: an oversized
@@ -33,10 +37,12 @@ const TARGET_POPUP_WIDTH = 260;
 export function InlineNumber({
   value, onChange, step = 1, min = 0, max,
   decimals = 0, unit, placeholder = '—',
-  className, disabled, ariaLabel,
+  className, disabled, ariaLabel, time,
 }: Props) {
+  const draftFromValue = (v: number | undefined) =>
+    v == null ? '' : time ? secondsToDigits(v) : String(v);
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<string>(value == null ? '' : String(value));
+  const [draft, setDraft] = useState<string>(draftFromValue(value));
   /** Inline style for the open popup, computed from the cell's screen position. */
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -44,7 +50,7 @@ export function InlineNumber({
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => { if (!open) setDraft(value == null ? '' : String(value)); }, [value, open]);
+  useEffect(() => { if (!open) setDraft(draftFromValue(value)); }, [value, open]); // eslint-disable-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     if (open) requestAnimationFrame(() => { inputRef.current?.focus(); inputRef.current?.select(); });
   }, [open]);
@@ -96,10 +102,17 @@ export function InlineNumber({
   };
   const fmt = (n: number | undefined) => {
     if (n == null) return placeholder;
+    if (time) return formatSeconds(n);
     if (Number.isInteger(n)) return String(n);
     return n.toFixed(decimals);
   };
   const commit = () => {
+    if (time) {
+      const secs = digitsToSeconds(draft);
+      onChange(secs == null ? undefined : clamp(secs));
+      setOpen(false);
+      return;
+    }
     const trimmed = draft.trim();
     if (trimmed === '') onChange(undefined);
     else {
@@ -112,7 +125,7 @@ export function InlineNumber({
     const base = value ?? 0;
     const next = clamp(base + dir * step);
     onChange(next);
-    setDraft(String(next));
+    setDraft(draftFromValue(next));
   };
   // Pointer events unify touch + mouse and fire once per interaction. The
   // previous mouseDown + touchStart pair could both fire on mobile (synthetic
@@ -164,10 +177,10 @@ export function InlineNumber({
           <div className="flex items-stretch gap-2">
             <input
               ref={inputRef}
-              inputMode="decimal"
+              inputMode={time ? 'numeric' : 'decimal'}
               className="flex-1 min-w-0 h-16 px-2 text-center text-xl font-semibold numeric bg-bg-input border border-ink-line rounded-md outline-none focus:border-accent"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              value={time ? digitsToClock(draft) : draft}
+              onChange={(e) => setDraft(time ? e.target.value.replace(/\D/g, '').slice(0, 4) : e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') commit();
                 if (e.key === 'Escape') setOpen(false);
