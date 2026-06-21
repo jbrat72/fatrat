@@ -9,6 +9,12 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.99.3 — 2026-06-21
+
+- Fixed the /debug diagnostics page rendering blank — moved it inside the app
+  shell (it was outside the themed/auth layout) and it now shows status while
+  loading.
+
 ## v0.99.2 — 2026-06-21
 
 - Added a temporary read-only Diagnostics page at /debug to investigate
