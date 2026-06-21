@@ -135,15 +135,30 @@ export default function TodayPage() {
 
         <BodyWeightCheckIn />
 
-        {/* Nothing on today's date and nothing pending in the active micro. */}
+        {/* Nothing on today's date and nothing due in the active micro. With an
+            active plan this is a rest day (the MISSED / UP NEXT cards below
+            surface anything to catch up on); only suggest picking a program
+            when there is genuinely no active plan. */}
         {todaySessions.length === 0 && !session && (
-          <Card>
-            <div className="section-head mb-2">NO SESSION</div>
-            <p className="text-ink-dim text-sm mb-3">
-              Nothing prescribed right now. Pick a program from the Plan tab.
-            </p>
-            <Link href="/plan/templates"><Button block>Pick a program</Button></Link>
-          </Card>
+          meso ? (
+            !missed && (
+              <Card>
+                <div className="section-head mb-2">REST DAY</div>
+                <p className="text-ink-dim text-sm">
+                  No workout scheduled today on {meso.name}.
+                  {nextPending ? ' Your next session is below.' : " You've completed everything scheduled — nice work."}
+                </p>
+              </Card>
+            )
+          ) : (
+            <Card>
+              <div className="section-head mb-2">NO SESSION</div>
+              <p className="text-ink-dim text-sm mb-3">
+                Nothing prescribed right now. Pick a program from the Plan tab.
+              </p>
+              <Link href="/plan/templates"><Button block>Pick a program</Button></Link>
+            </Card>
+          )
         )}
 
         {/* Every session on today's date — pending ones first, then completed. */}

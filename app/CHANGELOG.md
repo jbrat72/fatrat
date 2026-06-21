@@ -9,6 +9,13 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.99.7 — 2026-06-21
+
+- Today no longer shows "No session — pick a program" on a rest day of an active
+  plan. With an active plan and nothing due today it now shows a "Rest day" card
+  (and the next/missed session cards below); the "pick a program" prompt only
+  appears when there is genuinely no active plan.
+
 ## v0.99.6 — 2026-06-21
 
 - The Today "Continue/Start Workout" card now has a "Delete workout" option for
