@@ -10,6 +10,7 @@ import { SwapExerciseModal } from './SwapExerciseModal';
 import { getRepository } from '@/lib/firestore';
 import { cardioStats } from '@/lib/ui/cardio';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
+import { resolveExerciseDef } from '@/lib/exercise/resolveDef';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
 import { PUMP_LABEL, VOLUME_LABEL, PAIN_LABEL } from '@/lib/ui/feedback';
 import { terminologyMode, usesAdvancedTerminology, effortShort, isPeriodizedSession } from '@/lib/periodization';
@@ -79,7 +80,7 @@ export function SessionDetailModal({ sessionId, onClose, onChanged, onAddToDay }
   // Resolve metric from the live exercise def so a stale stored metric (e.g.
   // 'reps' from an old swap) doesn't hide the weight field.
   const metricFor = (ex: ExerciseEntry) =>
-    exDefs[ex.exerciseId] ? (exDefs[ex.exerciseId]!.metric ?? 'weight-reps') : (ex.metric ?? 'weight-reps');
+    resolveExerciseDef(exDefs, ex)?.metric ?? ex.metric ?? 'weight-reps';
 
   const stats = useMemo(() => {
     let sets = 0, total = 0, volumeKg = 0;

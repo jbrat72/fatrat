@@ -9,6 +9,14 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.99.8 — 2026-06-21
+
+- Fixed some exercises showing reps-only (no weight) when logging/editing, even
+  though the library has them as weight+reps. When an exercise's id had drifted
+  from the library entry, the lookup missed and fell back to a stale stored
+  metric. The metric is now resolved by id → swapped-from id → name, so the
+  weight field shows correctly in the workout logger and the history edit view.
+
 ## v0.99.7 — 2026-06-21
 
 - Today no longer shows "No session — pick a program" on a rest day of an active

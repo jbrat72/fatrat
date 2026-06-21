@@ -15,6 +15,7 @@ import { defaultRestSec, terminologyMode, isPeriodizedSession } from '@/lib/peri
 import { removeExerciseAt, pairSuperset, unlinkGroup } from '@/lib/workout/structure';
 import type { WorkoutSession, SetEntry, ExerciseEntry, SessionFeedback, Mesocycle, Microcycle, ExerciseDefinition, MovementPattern, MuscleGroup, SorenessRating, MuscleSoreness } from '@/types';
 import { todayIso } from '@/lib/ui/date';
+import { resolveExerciseDef } from '@/lib/exercise/resolveDef';
 
 
 // todayIso() now imported from @/lib/ui/date — keeps the stamp in the user's local timezone.
@@ -601,7 +602,7 @@ export default function WorkoutPage() {
         exerciseIndex={i}
         mode={terminologyMode(user)}
         units={user.units}
-        liveMetric={exerciseDefs[ex.exerciseId] ? (exerciseDefs[ex.exerciseId]!.metric ?? 'weight-reps') : undefined}
+        liveMetric={(() => { const d = resolveExerciseDef(exerciseDefs, ex); return d ? (d.metric ?? 'weight-reps') : undefined; })()}
         lastSets={priorFor(ex)}
         activeSetIndex={activeExerciseIdx === i ? activeSetIdx : null}
         awaitingEffortSetIdx={pendingEffort?.exIdx === i ? pendingEffort.setIdx : null}
