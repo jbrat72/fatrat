@@ -9,6 +9,16 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.99.0 — 2026-06-16
+
+- Retired the legacy 6-step program wizard. "Use This Template" now opens the
+  current 16-step Plan Wizard, seeded from the built-in program via a new
+  template→wizard converter (goal/experience/baselines reset for you to
+  confirm). Both "Modify" and "Use This Template" now run through Plan Wizard v2.
+- Removed the old `TemplateWizard` component and the now-orphaned
+  starting-weight estimator it was the only caller of. Single-workout templates
+  are unaffected (they keep their own logger flow).
+
 ## v0.98.4 — 2026-06-16
 
 - "Modify" on a program template now opens the current 16-step Plan Wizard,

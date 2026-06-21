@@ -3,10 +3,10 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { PageTitle, Card, Button, MuscleBadge, BackButton } from '@/components/ui';
-import { TemplateWizard } from '@/components/plan/TemplateWizard';
 import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
 import { activateWizardProgram, saveWizardDraft, saveWizardToGallery } from '@/lib/wizard/persist';
 import { wizardEditFromMeso } from '@/lib/wizard/editFromMeso';
+import { wizardFromTemplate } from '@/lib/wizard/fromTemplate';
 import type { WizardState, GeneratedDay } from '@/lib/wizard/types';
 import { SingleWorkoutWizard } from '@/components/plan/SingleWorkoutWizard';
 import { getRepository } from '@/lib/firestore';
@@ -130,7 +130,7 @@ export default function TemplateDetailPage() {
       return;
     }
     if (activePlan) setConfirmOpen(true);
-    else setWizardOpen(true);
+    else openStartFresh();
   };
 
   // Modify a program template in the 16-step Plan Wizard v2, prepopulated from
@@ -157,6 +157,15 @@ export default function TemplateDetailPage() {
     }
     setEditState(st); setEditProgram(pr); setEditDraftId(draftId);
     setModifyMode(true); setWizardOpen(true);
+  };
+
+  // Start a fresh program from a library template — seed the v2 wizard from the
+  // template (no draft id, so finishing creates a new plan rather than editing).
+  const openStartFresh = () => {
+    if (!user) return;
+    const { state, program } = wizardFromTemplate(user, template);
+    setEditState(state); setEditProgram(program); setEditDraftId(undefined);
+    setModifyMode(false); setWizardOpen(true);
   };
 
   return (
@@ -271,17 +280,17 @@ export default function TemplateDetailPage() {
               </p>
               <div className="flex gap-2">
                 <Button variant="ghost" block onClick={() => setConfirmOpen(false)}>Cancel</Button>
-                <Button block onClick={() => { setConfirmOpen(false); setWizardOpen(true); }}>Continue</Button>
+                <Button block onClick={() => { setConfirmOpen(false); openStartFresh(); }}>Continue</Button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modify a program template → the current 16-step Plan Wizard v2,
-          prepopulated. Starting fresh from a template still uses the legacy
-          wizard below. */}
-      {!isWorkout && modifyMode && wizardOpen && user && (
+      {/* Program templates — both "Modify" and "Use This Template" open the
+          current 16-step Plan Wizard v2, seeded (from the saved wizard state
+          when modifying, or converted from the template when starting fresh). */}
+      {!isWorkout && wizardOpen && user && (
         <div className="fixed inset-0 z-50 bg-bg overflow-y-auto">
           <PlanWizardV2
             user={user}
@@ -301,16 +310,6 @@ export default function TemplateDetailPage() {
             }}
           />
         </div>
-      )}
-      {/* Start a fresh program from this template — legacy program wizard. */}
-      {!isWorkout && !modifyMode && (
-        <TemplateWizard
-          open={wizardOpen}
-          initialTemplate={template}
-          modifyTemplateId={undefined}
-          onClose={() => { setWizardOpen(false); setModifyMode(false); }}
-          onSaved={(mode) => router.push(mode === 'activate' ? '/today' : '/plan/templates')}
-        />
       )}
       {/* Workout wizard — only for workout-kind templates, in Modify mode */}
       {isWorkout && (

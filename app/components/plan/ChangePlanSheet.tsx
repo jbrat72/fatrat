@@ -16,7 +16,7 @@ interface Props {
   /** Called after any destructive action so the caller can refetch. */
   onChanged: () => void;
   /** Called when the user picks "Edit this plan". The caller closes this
-   *  sheet and opens the TemplateWizard pre-populated with the active plan. */
+   *  sheet and opens Plan Wizard v2 pre-populated with the active plan. */
   onEdit?: () => void;
 }
 
