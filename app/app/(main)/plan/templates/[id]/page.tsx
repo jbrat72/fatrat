@@ -4,6 +4,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { PageTitle, Card, Button, MuscleBadge, BackButton } from '@/components/ui';
 import { TemplateWizard } from '@/components/plan/TemplateWizard';
+import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
+import { activateWizardProgram, saveWizardDraft, saveWizardToGallery } from '@/lib/wizard/persist';
+import { wizardEditFromMeso } from '@/lib/wizard/editFromMeso';
+import type { WizardState, GeneratedDay } from '@/lib/wizard/types';
 import { SingleWorkoutWizard } from '@/components/plan/SingleWorkoutWizard';
 import { getRepository } from '@/lib/firestore';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
@@ -20,6 +24,9 @@ export default function TemplateDetailPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [modifyMode, setModifyMode] = useState(false);
+  const [editState, setEditState] = useState<WizardState | null>(null);
+  const [editProgram, setEditProgram] = useState<Record<number, GeneratedDay[]> | undefined>(undefined);
+  const [editDraftId, setEditDraftId] = useState<string | undefined>(undefined);
 
 
   useEffect(() => {
@@ -126,6 +133,32 @@ export default function TemplateDetailPage() {
     else setWizardOpen(true);
   };
 
+  // Modify a program template in the 16-step Plan Wizard v2, prepopulated from
+  // the wizard state saved on the template; fall back to reconstructing it from
+  // the active mesocycle for plans created before that state was persisted.
+  const openModify = async () => {
+    let st: WizardState | null = null;
+    let pr: Record<number, GeneratedDay[]> | undefined;
+    let draftId: string | undefined;
+    if (template.draftState) {
+      try {
+        const d = JSON.parse(template.draftState);
+        st = (d.state ?? d) as WizardState;
+        pr = (d.program ?? {}) as Record<number, GeneratedDay[]>;
+        draftId = template.id;
+      } catch { /* fall through to reconstruction */ }
+    }
+    if (!st && user && activePlan && activePlan.templateId === template.id) {
+      const repo = getRepository();
+      const micros = (await repo.listMicrocycles(activePlan.id)).sort((a, b) => a.weekNumber - b.weekNumber);
+      const week1 = micros[0] ? await repo.listSessionsInMicrocycle(micros[0].id) : [];
+      const rec = wizardEditFromMeso(user, activePlan, week1);
+      st = rec.state; pr = rec.program;
+    }
+    setEditState(st); setEditProgram(pr); setEditDraftId(draftId);
+    setModifyMode(true); setWizardOpen(true);
+  };
+
   return (
     <div className="pb-6">
       <div className="px-4 pt-4"><BackButton href="/plan/templates" label="Templates" /></div>
@@ -205,7 +238,7 @@ export default function TemplateDetailPage() {
             block
             variant="ghost"
             size="lg"
-            onClick={() => { setModifyMode(true); setWizardOpen(true); }}
+            onClick={openModify}
           >
             Modify
           </Button>
@@ -245,12 +278,36 @@ export default function TemplateDetailPage() {
         </div>
       )}
 
-      {/* Program wizard — only for program-kind templates */}
-      {!isWorkout && (
+      {/* Modify a program template → the current 16-step Plan Wizard v2,
+          prepopulated. Starting fresh from a template still uses the legacy
+          wizard below. */}
+      {!isWorkout && modifyMode && wizardOpen && user && (
+        <div className="fixed inset-0 z-50 bg-bg overflow-y-auto">
+          <PlanWizardV2
+            user={user}
+            initialName={template.name}
+            initialState={editState ?? undefined}
+            initialProgram={editProgram}
+            initialDraftId={editDraftId}
+            onSaveDraft={async (st, pr, id) => (await saveWizardDraft(st, user, pr, id)).id}
+            onClose={() => { setWizardOpen(false); setModifyMode(false); }}
+            onSaveToGallery={async (st, pr) => {
+              try { await saveWizardToGallery(st, user, pr); setWizardOpen(false); setModifyMode(false); router.push('/plan/templates'); }
+              catch (err) { alert('Could not save to gallery: ' + ((err as Error)?.message ?? 'unknown error')); }
+            }}
+            onComplete={async (st, pr) => {
+              try { await activateWizardProgram(st, pr, user); setWizardOpen(false); setModifyMode(false); router.push('/today'); }
+              catch (err) { alert('Could not save your program: ' + ((err as Error)?.message ?? 'unknown error')); }
+            }}
+          />
+        </div>
+      )}
+      {/* Start a fresh program from this template — legacy program wizard. */}
+      {!isWorkout && !modifyMode && (
         <TemplateWizard
           open={wizardOpen}
           initialTemplate={template}
-          modifyTemplateId={modifyMode ? template.id : undefined}
+          modifyTemplateId={undefined}
           onClose={() => { setWizardOpen(false); setModifyMode(false); }}
           onSaved={(mode) => router.push(mode === 'activate' ? '/today' : '/plan/templates')}
         />

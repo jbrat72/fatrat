@@ -9,6 +9,14 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.98.4 — 2026-06-16
+
+- "Modify" on a program template now opens the current 16-step Plan Wizard,
+  prepopulated, instead of the old 6-step template wizard. It reuses the wizard
+  state saved on the plan (with a reconstruct-from-mesocycle fallback for older
+  plans), matching how "Edit" works from the Plan screen. Starting a brand-new
+  program from a library template still uses the legacy flow for now.
+
 ## v0.98.3 — 2026-06-16
 
 - Fixed plan/template views showing a raw exercise id (e.g. "custom-bzlagne")
