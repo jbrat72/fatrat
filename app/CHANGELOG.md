@@ -9,6 +9,17 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.99.9 — 2026-06-21
+
+- Exercise names must now be unique. Creating or renaming a custom exercise to a
+  name that already exists (built-in or custom, case-insensitive) is blocked
+  with a warning to pick a different name.
+- One-time cleanup merges existing duplicate exercise names into a single
+  canonical exercise (a built-in wins over a custom), deletes the duplicate
+  custom entries, and re-points logged sessions by name — so there's only one id
+  per exercise and history stays intact. This also resolves the stale-metric
+  (missing weight field) issue at its source.
+
 ## v0.99.8 — 2026-06-21
 
 - Fixed some exercises showing reps-only (no weight) when logging/editing, even

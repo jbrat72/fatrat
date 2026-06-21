@@ -10,6 +10,7 @@ import { migrateMacrocyclesForUser } from '@/lib/firestore/migrations/dropMacroc
 import { migrateSessionsToDaysForUser } from '@/lib/firestore/migrations/relabelSessionsToDays';
 import { migrateFixedExercises } from '@/lib/firestore/migrations/fixedExercises';
 import { migrateWeekStatusRepair } from '@/lib/firestore/migrations/repairWeekStatus';
+import { migrateDedupeExerciseNames } from '@/lib/firestore/migrations/dedupeExerciseNames';
 
 const ACTIVE_USER_KEY = 'fatrat:activeUser:v1';
 
@@ -62,6 +63,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     // microcycle advance bug (mock + Firebase).
     if (profile && !profile.migratedWeekStatusRepair) {
       profile = await migrateWeekStatusRepair(profile);
+    }
+    // One-shot — merge duplicate exercise names to a single canonical exercise.
+    if (profile && !profile.migratedDedupeExercises) {
+      profile = await migrateDedupeExerciseNames(profile);
     }
     setUser(profile);
     setLoading(false);

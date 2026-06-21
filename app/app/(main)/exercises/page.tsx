@@ -50,6 +50,7 @@ export default function ExercisesPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Partial<ExerciseDefinition>>(emptyDraft());
+  const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -103,14 +104,14 @@ export default function ExercisesPage() {
   const onToggleFavorite = (id: string) => persistPrefs(toggleFavorite(prefs, id));
   const onToggleHidden = (id: string) => persistPrefs(toggleHidden(prefs, id));
 
-  const openCreate = () => { setEditingId(null); setDraft(emptyDraft()); setFormOpen(true); };
+  const openCreate = () => { setEditingId(null); setDraft(emptyDraft()); setNameError(null); setFormOpen(true); };
   const openEdit = (ex: ExerciseDefinition) => {
     setEditingId(ex.id);
     setDraft({ ...ex, secondaryMuscles: ex.secondaryMuscles ?? [], patterns: ex.patterns ?? [] });
     setManageId(null);
     setFormOpen(true);
   };
-  const closeForm = () => { setFormOpen(false); setEditingId(null); setDraft(emptyDraft()); };
+  const closeForm = () => { setFormOpen(false); setEditingId(null); setDraft(emptyDraft()); setNameError(null); };
 
   // Push a corrected metric into every existing session (plan day) that uses
   // this exercise, so the change shows immediately in active and past plans.
@@ -127,13 +128,19 @@ export default function ExercisesPage() {
   };
 
   const saveExercise = async () => {
-    if (!draft.name?.trim()) return;
+    const name = draft.name?.trim();
+    if (!name) return;
+    // Exercise names must be unique (case-insensitive) across the library and
+    // the user's custom exercises — block a duplicate and tell the user.
+    const norm = name.toLowerCase();
+    const clash = all.find((e) => e.id !== editingId && e.name.trim().toLowerCase() === norm);
+    if (clash) { setNameError(`"${clash.name}" already exists — choose a different name.`); return; }
     const repo = getRepository();
     const original = editingId ? all.find((e) => e.id === editingId) : null;
     const metric: Metric = (draft.metric ?? 'weight-reps') as Metric;
     const ex: ExerciseDefinition = {
       id: editingId ?? 'custom-' + Math.random().toString(36).slice(2, 9),
-      name: draft.name.trim(),
+      name,
       primaryMuscle: (draft.primaryMuscle ?? 'chest') as MuscleGroup,
       equipment: (draft.equipment ?? 'barbell') as EquipmentType,
       secondaryMuscles: (draft.secondaryMuscles ?? []).filter((m) => m !== draft.primaryMuscle),
@@ -317,7 +324,8 @@ export default function ExercisesPage() {
               <button type="button" onClick={closeForm} className="w-9 h-9 rounded-md border border-ink-line text-ink-dim hover:text-ink" aria-label="Close">✕</button>
             </div>
             <div className="px-4 py-3 space-y-4">
-              <TextField label="Name" placeholder="e.g. Cable Y-Raise" value={draft.name ?? ''} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+              <TextField label="Name" placeholder="e.g. Cable Y-Raise" value={draft.name ?? ''} onChange={(e) => { setNameError(null); setDraft((d) => ({ ...d, name: e.target.value })); }} />
+              {nameError && <p className="text-xs text-danger mt-1">{nameError}</p>}
               <div>
                 <div className="text-[10px] tracking-wider2 text-ink-mute uppercase mb-1.5">Primary muscle</div>
                 <div className="flex gap-1.5 flex-wrap">

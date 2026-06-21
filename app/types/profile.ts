@@ -118,6 +118,8 @@ export interface UserProfile {
   migratedFixedExercises?: boolean;
   /** Set true once the unsorted-microcycle week-status/weekIndex repair has run. */
   migratedWeekStatusRepair?: boolean;
+  /** Set true once duplicate exercise names have been merged to one canonical. */
+  migratedDedupeExercises?: boolean;
   createdAt: string; // ISO
   updatedAt: string; // ISO
 }
