@@ -154,16 +154,22 @@ export default function TodayPage() {
             if (a.completed !== b.completed) return a.completed ? 1 : -1;
             return (a.startedAt ?? '').localeCompare(b.startedAt ?? '');
           })
-          .map((s) =>
-            !s.completed && s.id === startable?.id && s.exercises.length > 0 ? (
+          .map((s) => {
+            // Only attach the active plan's meso/micro to a session that actually
+            // belongs to them — otherwise an ad-hoc (or other-week) session would
+            // be mislabeled "Week N · <plan>". Ad-hoc sessions render as ad-hoc.
+            const sMicro = micro && s.microcycleId === micro.id ? micro : null;
+            const sMeso = meso && s.mesocycleId === meso.id ? meso : null;
+            const sDay = sMicro && session?.id === s.id ? dayOrdinal : null;
+            return !s.completed && s.id === startable?.id && s.exercises.length > 0 ? (
               <TodayWorkoutCard
                 key={s.id}
                 session={s}
-                meso={meso ?? null}
-                micro={micro ?? null}
-                dayOrdinal={session?.id === s.id ? dayOrdinal : null}
+                meso={sMeso}
+                micro={sMicro}
+                dayOrdinal={sDay}
                 units={user.units}
-                allowed={meso?.allowedSetTypes ?? []}
+                allowed={sMeso?.allowedSetTypes ?? []}
                 onPersist={(exs) => persistStructure(s, exs)}
               />
             ) : (
@@ -171,13 +177,14 @@ export default function TodayPage() {
                 key={s.id}
                 session={s}
                 isPrimary={session?.id === s.id}
-                meso={meso ?? null}
-                micro={micro ?? null}
-                dayOrdinal={session?.id === s.id ? dayOrdinal : null}
+                meso={sMeso}
+                micro={sMicro}
+                dayOrdinal={sDay}
                 units={user.units}
                 onDelete={deleteAdHoc}
               />
-            ))}
+            );
+          })}
 
         {/* Catch-up: a scheduled day was skipped (past + still unfinished).
             Offer to pull that missed workout into today. */}

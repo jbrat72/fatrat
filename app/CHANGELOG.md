@@ -9,6 +9,14 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.99.5 — 2026-06-21
+
+- Fixed an ad-hoc workout on Today being mislabeled as the plan's next week
+  (e.g. an ad-hoc "Push Day" shown as "Week 3 · Summer 26 Tone · Today"). The
+  Today card was given the active plan's week/plan regardless of the session;
+  now a session only shows a week/plan label when it actually belongs to it, and
+  ad-hoc sessions render as "Ad-Hoc" with their own name.
+
 ## v0.99.4 — 2026-06-21
 
 - Today/Plan no longer blank out intermittently. Their data loads had no error

@@ -145,9 +145,9 @@ export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allo
   return (
     <Card>
       <div className="text-[11px] tracking-wider2 text-ink-mute uppercase">
-        {micro ? `Week ${micro.weekNumber}` : ''}{dayOrdinal ? ` · Day ${dayOrdinal}` : ''}{micro || dayOrdinal ? ' · ' : ''}Today
+        {micro ? `Week ${micro.weekNumber}` : 'Ad-Hoc'}{dayOrdinal ? ` · Day ${dayOrdinal}` : ''} · Today
       </div>
-      {meso?.name && <div className="text-base font-medium leading-tight mt-0.5 mb-3">{meso.name}</div>}
+      {(meso?.name ?? session.name) && <div className="text-base font-medium leading-tight mt-0.5 mb-3">{meso?.name ?? session.name}</div>}
       <div className="flex gap-1.5 flex-wrap mb-4">
         {muscles.map((m) => <MuscleBadge key={m} muscle={m} />)}
       </div>
