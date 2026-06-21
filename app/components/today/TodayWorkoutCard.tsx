@@ -29,9 +29,11 @@ interface Props {
   units: Units;
   allowed: SetStyle[];
   onPersist: (exercises: ExerciseEntry[]) => void | Promise<unknown>;
+  /** Delete an ad-hoc session straight from Today (ad-hoc sessions only). */
+  onDelete?: (id: string) => void;
 }
 
-export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allowed, onPersist }: Props) {
+export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allowed, onPersist, onDelete }: Props) {
   const router = useRouter();
   const [exs, setExs] = useState<ExerciseEntry[]>(session.exercises);
   const [open, setOpen] = useState<Set<number>>(new Set());
@@ -39,6 +41,8 @@ export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allo
   const [pairFrom, setPairFrom] = useState<number | null>(null);
   const [swapFor, setSwapFor] = useState<number | null>(null);
   const [starting, setStarting] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const isAdHoc = !session.microcycleId;
 
   // Flush the current edits to the repo BEFORE navigating into the workout, so
   // the workout page reads the structure the user just set (not a stale doc it
@@ -181,6 +185,11 @@ export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allo
       <Button block className="mt-4" disabled={starting} onClick={startWorkout}>
         {starting ? 'Starting…' : session.startedAt ? 'Continue Workout' : 'Start Workout'}
       </Button>
+      {isAdHoc && onDelete && (
+        <button type="button" onClick={() => setConfirmDel(true)} className="mt-2 w-full text-center text-[12px] text-ink-mute hover:text-danger">
+          Delete workout
+        </button>
+      )}
 
       <SwapExerciseModal
         open={swapFor !== null}
@@ -189,6 +198,18 @@ export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allo
         onClose={() => setSwapFor(null)}
         onPick={(def) => { if (swapFor != null) onSwap(swapFor, def); }}
       />
+    {confirmDel && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setConfirmDel(false)}>
+          <div className="w-full max-w-sm bg-bg-card rounded-2xl border border-ink-line p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="text-base font-semibold">Delete this workout?</div>
+            <p className="text-sm text-ink-dim mt-1.5">This ad-hoc workout will be removed from today. This can't be undone.</p>
+            <div className="mt-4 flex gap-2 justify-end">
+              <Button variant="ghost" onClick={() => setConfirmDel(false)}>Keep it</Button>
+              <Button onClick={() => { setConfirmDel(false); onDelete?.(session.id); }} className="bg-danger border-danger text-white">Delete</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

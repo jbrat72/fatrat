@@ -171,6 +171,7 @@ export default function TodayPage() {
                 units={user.units}
                 allowed={sMeso?.allowedSetTypes ?? []}
                 onPersist={(exs) => persistStructure(s, exs)}
+                onDelete={deleteAdHoc}
               />
             ) : (
               <SessionCard

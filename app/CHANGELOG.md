@@ -9,6 +9,12 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.99.6 — 2026-06-21
+
+- The Today "Continue/Start Workout" card now has a "Delete workout" option for
+  ad-hoc sessions (previously only the secondary session cards did), so an
+  abandoned ad-hoc shown as the primary card can be removed.
+
 ## v0.99.5 — 2026-06-21
 
 - Fixed an ad-hoc workout on Today being mislabeled as the plan's next week
