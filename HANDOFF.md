@@ -55,31 +55,60 @@ Muscle Group.txt`**.
 - **Project root:** `C:\Users\brian\_fatratapp`
 - **App code:** `C:\Users\brian\_fatratapp\app`
 
-### File-write corruption — STILL ACTIVE, workaround is mandatory
+### Why it happens (diagnosed 2026-06-16)
 
-The Edit/Write tools (and the shell mount that `tsc` reads) get out of sync in
-this project: files are truncated mid-file, JSX/TSX is mangled, or null bytes /
-stale copies appear. `tsc` reports `TS1127 Invalid character`, `TS1002
-Unterminated string`, or `TS17008 JSX element has no closing tag`. This was
-constant again through the v0.93 → v0.97 work — it hit nearly every multi-file
-edit.
+The folder is shared into the Linux sandbox over a **virtiofs → FUSE bridge**
+(`/mnt/.virtiofs-root/shared/c/Users/brian/_fatratapp`). It is NOT in OneDrive.
+The bridge handles clean whole-file writes fine (a 444 KB `cp` verified 15/15),
+but it corrupts two specific patterns:
+  1. The **Edit/Write tools' partial-write path** desyncs from the FUSE view —
+     files truncated mid-file, JSX mangled, null bytes appended, stale tails.
+     (`.fuse_hidden*` files are the tell: a process held the file open during a
+     replace.) `tsc` then reports TS1127 / TS1002 / TS17008 / TS1005.
+  2. **git run through the mount** — git's lock→rename corrupts `.git/index` and
+     leaves a stale `.git/index.lock`. (An index reset over FUSE killed the
+     index in the v0.99 session.)
 
-**Workaround — write/repair through bash heredocs:**
+### Rules (mandatory)
 
-    cat > /sessions/<session>/mnt/_fatratapp/path/to/file <<'XEOF'
-    ...full file contents...
-    XEOF
+1. **Never run git in the sandbox / over the mount.** No `git add/commit/reset/
+   checkout/rm` against this repo from bash. All git happens in Brian's Windows
+   PowerShell (the deploy block in §7, which also clears the stale index.lock).
+   Read-only, non-index ops are fine: `git log`, `git show HEAD:path`.
+2. **Write whole files, then verify + retry — never trust a single write.**
+   Build the complete file, write it, then check with `cmp` / `tsc`; if it
+   truncated, write again. Reliable pattern:
 
-The quoted delimiter preserves backticks, `$`, and template literals.
+       cat > /tmp/f <<'XEOF'
+       ...full file...
+       XEOF
+       cp /tmp/f "$MNT/path"; cmp -s /tmp/f "$MNT/path" || cp /tmp/f "$MNT/path"
 
-- The **file tool view (Read) is usually the correct/intended content**; the
-  **bash mount is what tsc reads and is what truncates**. When they disagree,
-  read the correct tail via the Read tool, then repair the mount: `head -N file`
-  to the last good line, append the rest via heredoc, re-run `tsc`.
-- To recover a badly mangled file, prefer `git show HEAD:path` for the pristine
-  version, then rewrite via heredoc.
-- After ANY work, verify: `npx tsc --noEmit` from `app/`. A workspace reconnect
-  sometimes clears the sync lag if it gets bad.
+   For surgical edits, prefer python in-place (read → replace → write) over the
+   Edit tool — but STILL run `tsc` after and repair the tail if it was cut.
+3. **Strip null bytes if they appear:** `tr -d '\000'` (or python
+   `b.replace(b'\x00', b'')`), then restore the lost tail from the Read tool or
+   `git show HEAD:path`.
+4. **For big multi-file work, edit on the local ext4 disk** (`/tmp` — real disk,
+   no bridge): typecheck/test there, then copy changed files back with the
+   verified `cp` above. Optional, but the most robust path.
+5. **After ANY change: `npx tsc --noEmit` from `app/`.** Repair truncations
+   (`head -N` to the last good line, re-append the rest) before continuing. A
+   workspace reconnect can clear a bad sync lag.
+
+### Recovering a corrupt git index (from Windows)
+
+If bash git ever reports `index file corrupt`: from PowerShell run
+`Remove-Item C:\Users\brian\_fatratapp\.git\index.lock,C:\Users\brian\_fatratapp\.git\index -Force -ErrorAction SilentlyContinue`
+then the normal deploy block — `git add -A` rebuilds the index from the working
+tree. The working tree is never affected by index corruption.
+
+### Environment mitigation
+
+Exclude `C:\Users\brian\_fatratapp` from Windows Defender real-time scanning
+(Defender opening files mid-replace is a likely race trigger): Settings →
+Privacy & security → Windows Security → Virus & threat protection → Manage
+settings → Exclusions → Add or remove exclusions → Add a folder.
 
 ---
 

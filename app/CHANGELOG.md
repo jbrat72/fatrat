@@ -9,6 +9,12 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.99.2 — 2026-06-21
+
+- Added a temporary read-only Diagnostics page at /debug to investigate
+  intermittent empty Today/Plan screens, the wrong current-week, and duplicate
+  ad-hoc sessions from real data. Will be removed once those are fixed.
+
 ## v0.99.1 — 2026-06-16
 
 - Added a "Cancel" button to the Plan Wizard (when modifying/editing or building
