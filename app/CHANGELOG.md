@@ -9,6 +9,15 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.98.3 — 2026-06-16
+
+- Fixed plan/template views showing a raw exercise id (e.g. "custom-bzlagne")
+  with no muscle badge. Template exercise slots only stored the exercise id and
+  relied on a live lookup, so a deleted custom exercise lost its name. Templates
+  now denormalize the exercise name and muscle when built, the template view
+  falls back to that stored name, and as a safety net it also recovers names
+  from your logged/programmed sessions — so existing plans display correctly too.
+
 ## v0.98.2 — 2026-06-16
 
 - Fixed the rest/exercise timer alarm being silent on mobile. The Web Audio

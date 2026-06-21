@@ -13,6 +13,11 @@ import type { MuscleGroup } from './exercise';
 
 export interface TemplateExerciseSlot {
   exerciseId: string;
+  /** Denormalized display name, captured at build time so the template still
+   *  reads correctly if the underlying (e.g. custom) exercise is later deleted. */
+  name?: string;
+  /** Denormalized primary muscle, for the same resilience as `name`. */
+  muscle?: MuscleGroup;
   prescribedSets: number;
   /** Reps target (omitted for purely time-based exercises). */
   repsLow?: number;

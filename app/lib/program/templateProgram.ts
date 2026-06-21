@@ -532,6 +532,8 @@ export function buildCustomTemplate(input: CustomProgramInput): ProgramTemplate 
         const timeLow = useTime ? (sw?.timeLow ?? dt.timeLow) : undefined;
         return {
           exerciseId: slot.exerciseId,
+          name: slot.exerciseName,
+          muscle: slot.muscle,
           prescribedSets: wk.setCounts[i]?.[j] ?? 1,
           repsLow,
           repsHigh: useReps && repsLow != null ? Math.max(repsLow, sw?.repsHigh ?? dr.repsHigh) : undefined,

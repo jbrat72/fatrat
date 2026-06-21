@@ -26,16 +26,29 @@ export default function TemplateDetailPage() {
     if (!id || !user) return;
     const load = async () => {
       const repo = getRepository();
-      const [t, exercises, custom, plan] = await Promise.all([
+      const [t, exercises, custom, plan, sessions] = await Promise.all([
         repo.getTemplate(id),
         repo.listGlobalExercises(),
         repo.listUserExercises(user.userId),
         repo.getActivePlan(user.userId),
+        repo.listSessions(user.userId, { limit: 1000 }),
       ]);
       setTemplate(t);
-      // Bundled library first so every id resolves even if the backend's global
-      // list is missing newer entries; repo globals + custom exercises overlay.
       const map: Record<string, ExerciseDefinition> = {};
+      // Lowest priority: names recovered from logged/programmed sessions, so a
+      // deleted custom exercise still resolves to its name instead of a raw id.
+      for (const s of sessions) {
+        for (const ex of s.exercises) {
+          if (!map[ex.exerciseId]) {
+            map[ex.exerciseId] = {
+              id: ex.exerciseId, name: ex.name, primaryMuscle: ex.muscle,
+              equipment: 'bodyweight', patterns: [], metric: ex.metric,
+            };
+          }
+        }
+      }
+      // Bundled library, then repo globals + custom exercises overlay — these
+      // are authoritative and override the session-derived fallbacks.
       for (const e of GLOBAL_EXERCISES) map[e.id] = e;
       for (const e of [...exercises, ...custom]) map[e.id] = e;
       setDefs(map);
@@ -53,7 +66,7 @@ export default function TemplateDetailPage() {
   const workoutEntries: ExerciseEntry[] = isWorkout
     ? (template.weeks[0]?.days[0]?.exercises ?? []).map((slot) => {
         const def = defs[slot.exerciseId];
-        const muscle = def?.primaryMuscle ?? 'core';
+        const muscle = def?.primaryMuscle ?? slot.muscle ?? 'core';
         const metric = def?.metric ?? 'weight-reps';
         const useReps = metric === 'weight-reps' || metric === 'reps';
         const useTime = metric === 'time' || metric === 'weight-time';
@@ -67,7 +80,7 @@ export default function TemplateDetailPage() {
         }));
         return {
           exerciseId: slot.exerciseId,
-          name: def?.name ?? slot.exerciseId,
+          name: def?.name ?? slot.name ?? slot.exerciseId,
           muscle,
           metric,
           prescribedSets: slot.prescribedSets,
@@ -163,11 +176,12 @@ export default function TemplateDetailPage() {
               {day!.exercises.map((slot, si) => {
                 const def = defs[slot.exerciseId];
                 const metric = def?.metric ?? 'weight-reps';
-                const useTime = metric === 'time' || metric === 'weight-time';
+                const useTime = metric === 'time' || metric === 'weight-time' || (slot.timeLow != null && slot.repsLow == null);
+                const badgeMuscle = def?.primaryMuscle ?? slot.muscle;
                 return (
                   <li key={si} className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="font-semibold truncate">{def?.name ?? slot.exerciseId}</div>
+                      <div className="font-semibold truncate">{def?.name ?? slot.name ?? slot.exerciseId}</div>
                       <div className="text-xs text-ink-dim tnum">
                         {slot.prescribedSets} × {useTime
                           ? `${slot.timeLow ?? '?'}–${slot.timeHigh ?? '?'}s`
@@ -175,7 +189,7 @@ export default function TemplateDetailPage() {
                         {slot.startingRIR != null && ` · ${slot.startingRIR} RIR`}
                       </div>
                     </div>
-                    {def && <MuscleBadge muscle={def.primaryMuscle} />}
+                    {badgeMuscle && <MuscleBadge muscle={badgeMuscle} />}
                   </li>
                 );
               })}
