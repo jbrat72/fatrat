@@ -81,6 +81,12 @@ export default function TodayPage() {
   const persistStructure = (s: WorkoutSession, exercises: ExerciseEntry[]) =>
     getRepository().upsertSession({ ...s, exercises });
 
+  // Delete an abandoned ad-hoc session straight from Today.
+  const deleteAdHoc = async (id: string) => {
+    await getRepository().deleteSession(id);
+    setRefreshTick((n) => n + 1);
+  };
+
   /**
    * Pull a scheduled session into today. Updates the session's date +
    * dayOfWeek so Today picks it up and the original date becomes an off-day.
@@ -165,6 +171,7 @@ export default function TodayPage() {
                 micro={micro ?? null}
                 dayOrdinal={session?.id === s.id ? dayOrdinal : null}
                 units={user.units}
+                onDelete={deleteAdHoc}
               />
             ))}
 
@@ -271,7 +278,7 @@ export default function TodayPage() {
 /** Single-session card on Today. Shared by programmed, ad-hoc, and
  *  cardio-only sessions. */
 function SessionCard({
-  session, isPrimary, meso, micro, dayOrdinal, units,
+  session, isPrimary, meso, micro, dayOrdinal, units, onDelete,
 }: {
   session: WorkoutSession;
   isPrimary: boolean;
@@ -279,7 +286,9 @@ function SessionCard({
   micro: Microcycle | null;
   dayOrdinal: number | null;
   units: Units;
+  onDelete?: (id: string) => void;
 }) {
+  const [confirmDel, setConfirmDel] = useState(false);
   const isCardioOnly = session.exercises.length === 0 && (session.cardio?.length ?? 0) > 0;
   // Open routes to history when done, /today/workout for a pending session
   // (programmed or ad-hoc; cardio-only completed sessions route to history).
@@ -287,6 +296,7 @@ function SessionCard({
     ? `/history/session/${session.id}`
     : '/today/workout';
   return (
+    <>
     <Card>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -355,10 +365,26 @@ function SessionCard({
             <Button variant="ghost" size="sm">Plan</Button>
           </Link>
         )}
+        {!session.completed && !session.microcycleId && onDelete && (
+          <Button variant="ghost" size="sm" className="text-danger" onClick={() => setConfirmDel(true)}>Delete</Button>
+        )}
         <Link href={openHref}>
           <Button size="sm">Open</Button>
         </Link>
       </div>
     </Card>
+    {confirmDel && (
+      <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setConfirmDel(false)}>
+        <div className="w-full max-w-sm bg-bg-card rounded-2xl border border-ink-line p-5" onClick={(e) => e.stopPropagation()}>
+          <div className="text-base font-semibold">Delete this workout?</div>
+          <p className="text-sm text-ink-dim mt-1.5">This ad-hoc workout will be removed from today. This can't be undone.</p>
+          <div className="mt-4 flex gap-2 justify-end">
+            <Button variant="ghost" onClick={() => setConfirmDel(false)}>Keep it</Button>
+            <Button onClick={() => { setConfirmDel(false); onDelete?.(session.id); }} className="bg-danger border-danger text-white">Delete</Button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

@@ -109,6 +109,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
     const s = initState(user); if (initialName) s.name = initialName; return s;
   });
   const [saving, setSaving] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
   const [savedTick, setSavedTick] = useState(false);
   const savedIdRef = useRef<string | undefined>(initialDraftId);
   const [drag, setDrag] = useState<{ di: number; ei: number } | null>(null);
@@ -712,7 +713,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
           <div className="flex items-center gap-2 font-bold tracking-wide"><span className="w-2.5 h-2.5 rounded bg-accent" />FATRAT · Plan Wizard</div>
           <div className="flex items-center gap-3">
             <div className="text-[12px] text-ink-dim font-mono">{page + 1} / {TOTAL}</div>
-            {onClose && <button type="button" onClick={() => onClose()} aria-label="Close" className="text-ink-mute hover:text-ink text-lg leading-none px-1">✕</button>}
+            {onClose && <button type="button" onClick={() => setConfirmExit(true)} className="text-ink-mute hover:text-ink text-[13px] font-semibold px-1">Cancel</button>}
           </div>
         </div>
         <div className="h-1 rounded-full bg-ink-line mt-3 overflow-hidden"><i className="block h-full bg-accent rounded-full transition-all" style={{ width: ((page + 1) / TOTAL * 100) + '%' }} /></div>
@@ -728,6 +729,18 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
           </div>
         </div>
       </div>
+      {confirmExit && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setConfirmExit(false)}>
+          <div className="w-full max-w-sm bg-bg-card rounded-2xl border border-ink-line p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="text-base font-semibold">Discard changes?</div>
+            <p className="text-sm text-ink-dim mt-1.5">Your edits to this plan won't be saved. You can save a draft instead to finish later.</p>
+            <div className="mt-4 flex gap-2 justify-end">
+              <Button variant="ghost" onClick={() => setConfirmExit(false)}>Keep editing</Button>
+              <Button onClick={() => { setConfirmExit(false); onClose?.(); }} className="bg-danger border-danger text-white">Discard</Button>
+            </div>
+          </div>
+        </div>
+      )}
       {finishOpen && (
         <FinishPlanModal
           workDayCount={(program[0]?.length ?? 0)}

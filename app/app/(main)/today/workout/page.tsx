@@ -166,6 +166,15 @@ export default function WorkoutPage() {
     router.push('/today');
   };
 
+  // Discard an ad-hoc workout the user decided not to do — deletes the session
+  // entirely (only offered for ad-hoc sessions, never programmed plan days).
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const discardWorkout = async () => {
+    if (saveDebounce.current) clearTimeout(saveDebounce.current);
+    if (session) await getRepository().deleteSession(session.id);
+    router.push('/today');
+  };
+
   const updateSessionNotes = (notes: string) => {
     if (!session) return;
     const next = { ...session, notes };
@@ -749,9 +758,25 @@ export default function WorkoutPage() {
         />
       )}
 
+      {confirmDiscard && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setConfirmDiscard(false)}>
+          <div className="w-full max-w-sm bg-bg-card rounded-2xl border border-ink-line p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="text-base font-semibold">Discard this workout?</div>
+            <p className="text-sm text-ink-dim mt-1.5">It will be removed and won't be saved to your history.</p>
+            <div className="mt-4 flex gap-2 justify-end">
+              <Button variant="ghost" onClick={() => setConfirmDiscard(false)}>Keep going</Button>
+              <Button onClick={discardWorkout} className="bg-danger border-danger text-white">Discard</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="fixed bottom-0 inset-x-0 bg-bg/95 backdrop-blur border-t border-ink-line z-20">
         <div className="mx-auto max-w-md p-3 flex items-center gap-2">
           <Button variant="ghost" onClick={pauseWorkout}>Pause Workout</Button>
+          {!session.microcycleId && (
+            <Button variant="ghost" onClick={() => setConfirmDiscard(true)} className="text-danger">Discard</Button>
+          )}
           <div className="flex-1" />
           <Button onClick={requestFinish} disabled={completion.done === 0} className={completion.done === completion.total ? 'animate-pulseRed shadow-glow' : ''}>
             {completion.done === completion.total ? 'Finish workout' : `Finish (${completion.done}/${completion.total})`}

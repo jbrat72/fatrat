@@ -9,6 +9,16 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.99.1 — 2026-06-16
+
+- Added a "Cancel" button to the Plan Wizard (when modifying/editing or building
+  a plan) — it confirms, discards your unsaved changes, and returns to the
+  previous screen (saving a draft is still offered).
+- Ad-hoc workouts can now be discarded. The in-workout screen shows a "Discard"
+  button for ad-hoc sessions, and an abandoned ad-hoc workout left on the Today
+  screen now has a "Delete" option. Programmed plan days are never deleted this
+  way — only "Pause" (kept) or Finish.
+
 ## v0.99.0 — 2026-06-16
 
 - Retired the legacy 6-step program wizard. "Use This Template" now opens the
