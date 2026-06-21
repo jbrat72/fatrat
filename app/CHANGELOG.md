@@ -9,6 +9,20 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.99.4 — 2026-06-21
+
+- Today/Plan no longer blank out intermittently. Their data loads had no error
+  handling, so a single transient read failure left the screen empty; reads now
+  retry and keep the last-good view on failure.
+- Fixed duplicate ad-hoc workouts. The "reuse today's unfinished session" check
+  failed when its read came back empty, creating a new session each time; that
+  read now retries, so starting an ad-hoc reuses the existing one.
+- Current week now follows the calendar, not early completion. Finishing a week
+  ahead of schedule no longer flips the plan to the next week or shows the next
+  week's first workout as today's — that session waits under "Up next" until its
+  date.
+- (Existing duplicate ad-hoc cards can be removed with the Delete button.)
+
 ## v0.99.3 — 2026-06-21
 
 - Fixed the /debug diagnostics page rendering blank — moved it inside the app

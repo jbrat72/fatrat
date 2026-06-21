@@ -126,16 +126,22 @@ export default function PlanPage() {
     );
   }
 
-  const currentWk = meso.weekIndex + 1;
   const totalWk   = meso.weeks;
   const todayStr  = todayIso();
   const termMode  = terminologyMode(user);
 
-  // Day position within the active training week.
-  const activeMicro = micros.find((m) => m.status === 'active') ?? null;
-  const weekSessions = activeMicro
+  // Current week tracks the CALENDAR, not completion — finishing a week early
+  // must not jump the plan ahead before the next week's dates arrive.
+  const currentWk = meso.startDate
+    ? Math.min(Math.max(Math.floor((Date.parse(todayStr) - Date.parse(meso.startDate)) / (7 * 86400000)) + 1, 1), totalWk)
+    : meso.weekIndex + 1;
+
+  // Day position within the calendar-current week.
+  const displayMicro = micros.find((m) => m.weekNumber === currentWk)
+    ?? micros.find((m) => m.status === 'active') ?? null;
+  const weekSessions = displayMicro
     ? sessions
-        .filter((s) => s.microcycleId === activeMicro.id)
+        .filter((s) => s.microcycleId === displayMicro.id)
         .slice()
         .sort((a, b) => a.date.localeCompare(b.date))
     : [];
@@ -198,7 +204,7 @@ export default function PlanPage() {
               const completed = weekSessions.filter((s) => s.completed).length;
               const skipped = weekSessions.filter((s) => !s.completed && s.date < todayStr).length;
               const isExpanded = expandedWeek === m.id;
-              const isCurrent = m.status === 'active';
+              const isCurrent = m.weekNumber === currentWk;
               const isCompleted = m.status === 'completed';
               const intensity =
                 termMode === 'ADVANCED'

@@ -63,7 +63,10 @@ export async function resolveToday(
     return { mesocycle: meso, microcycle: null, session: null, todaySessions: liveTodaySessions, state: 'none' };
   }
   const microSessions = await repo.listSessionsInMicrocycle(micro.id);
-  const pending = microSessions.find((s) => !s.completed);
+  // Only surface a session that is actually due (dated on/before today). A
+  // future session (e.g. next week's first day, when this week finished early)
+  // must NOT show up as "today's workout" — it appears under "UP NEXT" instead.
+  const pending = microSessions.find((s) => !s.completed && s.date <= isoDate);
   if (pending) {
     return { mesocycle: meso, microcycle: micro, session: pending, todaySessions: liveTodaySessions, state: 'pending' };
   }

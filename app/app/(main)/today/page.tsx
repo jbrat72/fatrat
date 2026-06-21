@@ -8,6 +8,7 @@ import { BodyWeightCheckIn, CardioLogModal, StreakCard, WorkoutPicker, TodayWork
 import { getRepository } from '@/lib/firestore';
 import { resolveToday, type ResolvedToday } from '@/lib/session/resolveToday';
 import { todayIso } from '@/lib/ui/date';
+import { withRetry } from '@/lib/util/retry';
 import { cardioStats } from '@/lib/ui/cardio';
 import type { WorkoutSession, Mesocycle, Microcycle, Units, ExerciseEntry } from '@/types';
 
@@ -38,7 +39,9 @@ export default function TodayPage() {
 
   useEffect(() => {
     if (!user) return;
-    resolveToday(getRepository(), user.userId, todayIso()).then(setToday);
+    withRetry(() => resolveToday(getRepository(), user.userId, todayIso()))
+      .then(setToday)
+      .catch((e) => console.warn('resolveToday failed', e)); // keep last-good UI
   }, [user, refreshTick]);
 
   // Find the earliest pending session dated strictly after today, restricted
@@ -49,7 +52,8 @@ export default function TodayPage() {
     const activeMesoId = today?.mesocycle?.id ?? null;
     if (!activeMesoId) { setNextPending(null); setMissed(null); setOtherDays([]); return; }
     (async () => {
-      const all = await getRepository().listSessions(user.userId, { limit: 200 });
+      const all = await withRetry(() => getRepository().listSessions(user.userId, { limit: 200 })).catch(() => null);
+      if (!all) return; // transient read failure — leave existing state intact
       const todayStr = todayIso();
       const future = all
         .filter((s) => !s.completed && s.date > todayStr && s.mesocycleId === activeMesoId)
@@ -242,7 +246,7 @@ export default function TodayPage() {
           // workout twice doesn't pile up empty drafts). If every today
           // session is completed, create a new one — the user is starting a
           // second workout on top of today's done one.
-          const todays = await repo.listSessionsOnDate(user.userId, date);
+          const todays = await withRetry(() => repo.listSessionsOnDate(user.userId, date));
           const reuse = todays.find((s) => !s.completed);
           const dow = new Date(date + 'T00:00:00').getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6;
           // Ad-hoc workouts are intentionally NOT attached to the active
