@@ -34,6 +34,7 @@ export default function WorkoutPage() {
   // Exercise-timer overlay (time-based sets). 0 = closed.
   const [exerciseTimerSec, setExerciseTimerSec] = useState(0);
   const [exerciseTimerLabel, setExerciseTimerLabel] = useState<string | null>(null);
+  const [timerTarget, setTimerTarget] = useState<{ exIdx: number; setIdx: number } | null>(null);
   const [exerciseDefs, setExerciseDefs] = useState<Record<string, ExerciseDefinition>>({});
   // Last-time performance per exercise id (completed sets from the most recent
   // prior session that trained it) — shown under each set as a reference.
@@ -631,6 +632,7 @@ export default function WorkoutPage() {
           const target = ex.sets[setIdx]?.timeSec ?? ex.prescribedTimeLow ?? 30;
           setExerciseTimerLabel(ex.name);
           setExerciseTimerSec(target);
+          setTimerTarget({ exIdx: i, setIdx });
         }}
       />
     );
@@ -699,7 +701,14 @@ export default function WorkoutPage() {
       <ExerciseTimer
         seconds={exerciseTimerSec}
         label={exerciseTimerLabel ?? undefined}
-        onDismiss={() => { setExerciseTimerSec(0); setExerciseTimerLabel(null); }}
+        onDismiss={(elapsedSec) => {
+          // Pre-fill the held time into the set's time input (user still taps LOG).
+          if (timerTarget && elapsedSec > 0 && session) {
+            const cur = session.exercises[timerTarget.exIdx]?.sets[timerTarget.setIdx];
+            if (cur) updateSet(timerTarget.exIdx, timerTarget.setIdx, { ...cur, timeSec: elapsedSec });
+          }
+          setExerciseTimerSec(0); setExerciseTimerLabel(null); setTimerTarget(null);
+        }}
         soundsEnabled={user?.soundsEnabled !== false}
       />
 

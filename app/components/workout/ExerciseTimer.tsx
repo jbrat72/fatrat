@@ -9,7 +9,8 @@ interface Props {
   /** Optional caption (e.g. exercise name "Plank"). */
   label?: string;
   /** Called when the timer is dismissed (manually or after auto-close). */
-  onDismiss: () => void;
+  /** Called on close with how long was actually held (seconds). */
+  onDismiss: (elapsedSec: number) => void;
   /** When true, plays a double-beep when the timer reaches zero. */
   soundsEnabled?: boolean;
 }
@@ -58,12 +59,14 @@ export function ExerciseTimer({ seconds, label, onDismiss, soundsEnabled = true 
     }
   }, [remaining, seconds, soundsEnabled]);
 
+  const dismiss = () => onDismiss(Math.max(0, Math.round(total.current - remaining)));
+
   if (seconds <= 0) return null;
   const pct = total.current > 0 ? (1 - remaining / total.current) * 100 : 0;
   const done = remaining === 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end" onClick={onDismiss}>
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-end" onClick={dismiss}>
       <div
         className="mx-auto max-w-md w-full bg-bg-card rounded-t-2xl border-t border-ink-line"
         onClick={(e) => e.stopPropagation()}
@@ -96,7 +99,7 @@ export function ExerciseTimer({ seconds, label, onDismiss, soundsEnabled = true 
             </button>
             <button
               type="button"
-              onClick={onDismiss}
+              onClick={dismiss}
               className="h-11 px-5 rounded-lg bg-accent text-white text-sm font-semibold"
             >
               {done ? 'Done' : 'Stop'}

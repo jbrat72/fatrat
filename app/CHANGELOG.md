@@ -9,6 +9,16 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.2 — 2026-06-21
+
+- Removed the temporary /debug diagnostics page.
+- Finishing a timed exercise (e.g. Plank) now pre-fills the held time into that
+  set's time input, so you just tap LOG instead of re-entering it.
+- Timer alarm reliability: the beep now resumes the audio context and schedules
+  the tones only after resume resolves (scheduling on a still-suspended context
+  was being dropped), audio resumes on every interaction, and the alarm is a
+  louder three-tone chime. (On iOS the hardware silent switch still mutes it.)
+
 ## v0.100.1 — 2026-06-21
 
 - Workouts ring now counts completed vs scheduled PROGRAMMED workouts for the
