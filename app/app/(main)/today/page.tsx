@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
 import { Card, PageTitle, Button, MuscleBadge } from '@/components/ui';
-import { BodyWeightCheckIn, CardioLogModal, StreakCard, WorkoutPicker, TodayWorkoutCard, StartWorkoutModal } from '@/components/today';
+import { BodyWeightCheckIn, CardioLogModal, WeeklyRings, WorkoutPicker, TodayWorkoutCard, StartWorkoutModal } from '@/components/today';
 import { getRepository } from '@/lib/firestore';
 import { resolveToday, type ResolvedToday } from '@/lib/session/resolveToday';
 import { todayIso } from '@/lib/ui/date';
@@ -123,7 +123,7 @@ export default function TodayPage() {
     <div>
       <PageTitle title="Today" subtitle={`Welcome back, ${user.displayName}.`} />
       <div className="px-4 space-y-3">
-        <StreakCard />
+        <WeeklyRings />
 
         <Card>
           <div className="section-head mb-2">LOG WORKOUT</div>

@@ -10,6 +10,9 @@
 export type UserMode = 'BASIC' | 'INTERMEDIATE' | 'ADVANCED';
 
 export type Units = 'imperial' | 'metric'; // imperial = lb/in; metric = kg/cm
+
+/** Which metric a Today dashboard ring shows. */
+export type DashboardMetricKey = 'workouts' | 'cardio' | 'program' | 'volume';
 export type Sex = 'male' | 'female' | 'other' | 'prefer-not-to-say';
 
 export type ExperienceTier = 'lt6mo' | '6mo-2yr' | '2yr-plus';
@@ -110,6 +113,10 @@ export interface UserProfile {
   /** Play a double-beep when the rest / exercise timer hits zero. Default on
    *  (undefined === enabled); set false in Settings to mute. */
   soundsEnabled?: boolean;
+  /** Weekly cardio goal in minutes (drives the Cardio ring on Today). */
+  cardioWeeklyGoalMin?: number;
+  /** Which three metrics the Today rings show. Defaults to workouts/cardio/program. */
+  dashboardRings?: DashboardMetricKey[];
   /** Set true once the v0.61 Macrocycle-retirement migration has run for this user. */
   migratedMacroDrop?: boolean;
   /** Set true once the v0.62 sessions→days relabel migration has run for this user. */

@@ -7,7 +7,8 @@ import { ModeSwitchDialog } from '@/components/settings';
 import { getRepository } from '@/lib/firestore';
 import { toJSON, setsCSV } from '@/lib/export';
 import type { ExportBundle } from '@/lib/export';
-import type { UserMode, Units } from '@/types';
+import type { UserMode, Units, DashboardMetricKey } from '@/types';
+import { DASHBOARD_METRIC_OPTIONS, DEFAULT_RINGS } from '@/lib/progress';
 
 function download(filename: string, mime: string, content: string) {
   const blob = new Blob([content], { type: mime });
@@ -50,6 +51,19 @@ export default function SettingsPage() {
 
   const setSoundsEnabled = async (soundsEnabled: boolean) => {
     await getRepository().upsertProfile({ ...user, soundsEnabled, updatedAt: new Date().toISOString() });
+    await refresh();
+  };
+
+  const setRing = async (index: number, key: DashboardMetricKey) => {
+    const rings = [...(user.dashboardRings?.length ? user.dashboardRings : DEFAULT_RINGS)].slice(0, 3);
+    while (rings.length < 3) rings.push(DEFAULT_RINGS[rings.length]!);
+    rings[index] = key;
+    await getRepository().upsertProfile({ ...user, dashboardRings: rings, updatedAt: new Date().toISOString() });
+    await refresh();
+  };
+
+  const setCardioGoal = async (cardioWeeklyGoalMin: number) => {
+    await getRepository().upsertProfile({ ...user, cardioWeeklyGoalMin, updatedAt: new Date().toISOString() });
     await refresh();
   };
 
@@ -114,6 +128,34 @@ export default function SettingsPage() {
           <div className="flex gap-2">
             <ChoicePill value="on" label="On" selected={user.soundsEnabled !== false} onSelect={() => setSoundsEnabled(true)} />
             <ChoicePill value="off" label="Off" selected={user.soundsEnabled === false} onSelect={() => setSoundsEnabled(false)} />
+          </div>
+        </Card>
+
+        <Card>
+          <div className="section-head mb-2">TODAY DASHBOARD</div>
+          <p className="text-xs text-ink-dim mb-2">Pick the three rings shown on the Today screen.</p>
+          {[0, 1, 2].map((i) => {
+            const rings = user.dashboardRings?.length ? user.dashboardRings : DEFAULT_RINGS;
+            const cur = rings[i] ?? DEFAULT_RINGS[i];
+            return (
+              <div key={i} className="mb-2.5">
+                <div className="text-2xs tracking-wider2 text-ink-mute uppercase mb-1">Ring {i + 1}</div>
+                <div className="flex gap-2 flex-wrap">
+                  {DASHBOARD_METRIC_OPTIONS.map((o) => (
+                    <ChoicePill key={o.key} value={o.key} label={o.label} selected={cur === o.key} onSelect={() => setRing(i, o.key)} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          <div className="mt-3 pt-3 border-t border-ink-line">
+            <div className="section-head mb-1">WEEKLY CARDIO GOAL</div>
+            <p className="text-xs text-ink-dim mb-2">Minutes per week — powers the Cardio ring.</p>
+            <div className="flex gap-2 flex-wrap">
+              {[0, 60, 90, 120, 150].map((v) => (
+                <ChoicePill key={v} value={String(v)} label={v === 0 ? 'Off' : `${v} min`} selected={(user.cardioWeeklyGoalMin ?? 0) === v} onSelect={() => setCardioGoal(v)} />
+              ))}
+            </div>
           </div>
         </Card>
 

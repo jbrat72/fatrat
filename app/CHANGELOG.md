@@ -9,6 +9,16 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.0 — 2026-06-21
+
+- Redesigned the Today summary card as three progress rings (donuts):
+  workouts this week, cardio minutes vs goal, and program completion by default.
+  The Cardio ring shows a "set a goal" state (links to Settings) when no weekly
+  cardio goal is set.
+- The three rings are configurable in Settings → Today dashboard: choose any of
+  Workouts, Cardio, Program, or Volume for each ring, and set a weekly cardio
+  goal in minutes.
+
 ## v0.99.10 — 2026-06-21
 
 - Actually fixed the missing weight field when editing past sets. Most library

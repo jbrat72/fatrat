@@ -6,4 +6,5 @@ export * from './personalBests';
 export * from './series';
 export * from './volumeWeek';
 export * from './streak';
+export * from './dashboard';
 export * from './mesoRecap';
