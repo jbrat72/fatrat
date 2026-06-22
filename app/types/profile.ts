@@ -120,6 +120,8 @@ export interface UserProfile {
   migratedWeekStatusRepair?: boolean;
   /** Set true once duplicate exercise names have been merged to one canonical. */
   migratedDedupeExercises?: boolean;
+  /** v2 re-run of the dedupe (also fixes the metric default on re-pointed sessions). */
+  migratedDedupeExercisesV2?: boolean;
   createdAt: string; // ISO
   updatedAt: string; // ISO
 }

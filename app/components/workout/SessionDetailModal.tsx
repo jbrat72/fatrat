@@ -79,8 +79,13 @@ export function SessionDetailModal({ sessionId, onClose, onChanged, onAddToDay }
 
   // Resolve metric from the live exercise def so a stale stored metric (e.g.
   // 'reps' from an old swap) doesn't hide the weight field.
-  const metricFor = (ex: ExerciseEntry) =>
-    resolveExerciseDef(exDefs, ex)?.metric ?? ex.metric ?? 'weight-reps';
+  const metricFor = (ex: ExerciseEntry) => {
+    // A resolved library def is authoritative — many defs omit `metric` and rely
+    // on the 'weight-reps' default, so do NOT fall back to the (possibly stale)
+    // stored metric when a def is found.
+    const d = resolveExerciseDef(exDefs, ex);
+    return d ? (d.metric ?? 'weight-reps') : (ex.metric ?? 'weight-reps');
+  };
 
   const stats = useMemo(() => {
     let sets = 0, total = 0, volumeKg = 0;

@@ -65,7 +65,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       profile = await migrateWeekStatusRepair(profile);
     }
     // One-shot — merge duplicate exercise names to a single canonical exercise.
-    if (profile && !profile.migratedDedupeExercises) {
+    if (profile && !profile.migratedDedupeExercisesV2) {
       profile = await migrateDedupeExerciseNames(profile);
     }
     setUser(profile);

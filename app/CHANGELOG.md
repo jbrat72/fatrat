@@ -9,6 +9,16 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.99.10 — 2026-06-21
+
+- Actually fixed the missing weight field when editing past sets. Most library
+  exercises omit an explicit metric and rely on the weight-reps default; the
+  previous fix fell back to the stale stored metric ('reps') when a resolved
+  def had no explicit metric. A resolved exercise definition is now
+  authoritative (defaults to weight-reps), so the weight field shows. The dedupe
+  migration re-runs (v2) to correct the stored metric on already-merged
+  sessions.
+
 ## v0.99.9 — 2026-06-21
 
 - Exercise names must now be unique. Creating or renaming a custom exercise to a

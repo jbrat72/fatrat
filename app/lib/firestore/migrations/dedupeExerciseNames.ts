@@ -17,7 +17,7 @@ const norm = (s: string) => s.trim().toLowerCase();
 const isCustomId = (id: string) => id.startsWith('custom-');
 
 export async function migrateDedupeExerciseNames(profile: UserProfile): Promise<UserProfile> {
-  if (profile.migratedDedupeExercises) return profile;
+  if (profile.migratedDedupeExercisesV2) return profile;
   const repo = getRepository();
   try {
     const globals = await repo.listGlobalExercises().catch(() => [] as ExerciseDefinition[]);
@@ -59,13 +59,13 @@ export async function migrateDedupeExerciseNames(profile: UserProfile): Promise<
           exerciseId: canon.id,
           name: canon.name,
           muscle: canon.primaryMuscle,
-          metric: canon.metric ?? ex.metric,
+          metric: canon.metric ?? 'weight-reps',
         };
       });
       if (changed) { try { await repo.upsertSession({ ...s, exercises }); } catch { /* keep going */ } }
     }
 
-    const migrated: UserProfile = { ...profile, migratedDedupeExercises: true, updatedAt: new Date().toISOString() };
+    const migrated: UserProfile = { ...profile, migratedDedupeExercises: true, migratedDedupeExercisesV2: true, updatedAt: new Date().toISOString() };
     await repo.upsertProfile(migrated);
     return migrated;
   } catch (err) {
