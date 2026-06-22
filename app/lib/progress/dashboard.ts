@@ -4,7 +4,7 @@
  * The user picks which three show (profile.dashboardRings) in Settings.
  */
 import type { WorkoutSession, UserProfile, Mesocycle, Microcycle, DashboardMetricKey } from '@/types';
-import { streakStats } from './streak';
+import { streakStats, isoWeekStamp } from './streak';
 
 export interface RingMetric {
   key: DashboardMetricKey;
@@ -41,9 +41,21 @@ export function computeRingMetric(
   const base = { key, label: RING_LABELS[key], color: RING_COLORS[key] };
 
   if (key === 'workouts') {
-    const s = streakStats(ctx.sessions, ctx.user, today);
-    const goal = s.thisWeek.planned || ctx.user.daysPerWeek || 0;
-    const value = s.liftingDaysThisWeek;
+    // Completed vs scheduled PROGRAMMED workouts in the current ISO week — the
+    // plan's lifting days (cardio-only / ad-hoc sessions are excluded). Falls
+    // back to days-per-week when no plan sessions are scheduled this week.
+    const stamp = isoWeekStamp(today);
+    const mid = ctx.meso?.id;
+    const wk = mid
+      ? ctx.sessions.filter((s) => s.mesocycleId === mid && isoWeekStamp(new Date(s.date + 'T00:00:00')) === stamp)
+      : [];
+    let goal = wk.length;
+    let value = wk.filter((s) => s.completed).length;
+    if (goal === 0) {
+      const s = streakStats(ctx.sessions, ctx.user, today);
+      goal = s.thisWeek.planned || ctx.user.daysPerWeek || 0;
+      value = s.liftingDaysThisWeek;
+    }
     return { ...base, value, goal, pct: goal ? clamp01(value / goal) : 0, center: goal ? `${value}/${goal}` : `${value}` };
   }
 

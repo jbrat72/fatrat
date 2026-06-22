@@ -9,6 +9,12 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.1 — 2026-06-21
+
+- Workouts ring now counts completed vs scheduled PROGRAMMED workouts for the
+  current week (the plan's lifting days), instead of days-per-week. So a fully
+  completed 4-day week reads 4/4, not 4/3.
+
 ## v0.100.0 — 2026-06-21
 
 - Redesigned the Today summary card as three progress rings (donuts):
