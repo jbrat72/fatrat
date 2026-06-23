@@ -18,6 +18,8 @@ interface Props {
   /** Time mode: value is seconds, shown/entered as m:ss on a numeric keypad.
    *  Digits fill from the right (no ":" key needed). */
   time?: boolean;
+  /** Accent the border (used to mark the active set's inputs). */
+  highlight?: boolean;
 }
 
 /** Tap-to-edit numeric input. Closed: compact box. Open: an oversized
@@ -37,7 +39,7 @@ const TARGET_POPUP_WIDTH = 260;
 export function InlineNumber({
   value, onChange, step = 1, min = 0, max,
   decimals = 0, unit, placeholder = '—',
-  className, disabled, ariaLabel, time,
+  className, disabled, ariaLabel, time, highlight,
 }: Props) {
   const draftFromValue = (v: number | undefined) =>
     v == null ? '' : time ? secondsToDigits(v) : String(v);
@@ -151,7 +153,8 @@ export function InlineNumber({
         disabled={disabled}
         onClick={(e) => { e.stopPropagation(); if (!disabled) setOpen(true); }}
         className={cn(
-          'w-full h-11 px-2 rounded-lg bg-bg-input border border-ink-line',
+          'w-full h-11 px-2 rounded-lg bg-bg-input border',
+          highlight ? 'border-accent' : 'border-ink-line',
           'text-sm font-semibold text-center numeric',
           'transition active:scale-[0.98] hover:border-ink-dim',
           'disabled:opacity-50 disabled:pointer-events-none',

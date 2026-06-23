@@ -9,6 +9,14 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.3 — 2026-06-21
+
+- Clearer active set in the workout logger: the working set's row now has an
+  accent-tinted background, a thicker accent bar, an accent set number, and
+  accent-bordered inputs. The PREV column is larger with the effort tag (Easy /
+  Solid / Hard / Fail) on the line beneath it, and the exercise title + column
+  headers are brighter.
+
 ## v0.100.2 — 2026-06-21
 
 - Removed the temporary /debug diagnostics page.

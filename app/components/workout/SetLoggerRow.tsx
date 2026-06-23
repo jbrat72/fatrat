@@ -82,7 +82,7 @@ export function SetLoggerRow({
       onClick={() => { if (state === 'future') onActivate(); if (isLocked) onUnlock?.(); }}
       className={cn(
         'relative rounded-lg transition',
-        isActive && 'bg-bg-elev',
+        isActive && 'bg-accent/10',
         isAwaiting && 'bg-bg-elev',
         (state === 'future' || isLocked) && 'cursor-pointer',
         isDrop && 'ml-4',
@@ -90,19 +90,19 @@ export function SetLoggerRow({
       )}
     >
       {/* Left accent rule for the active / just-logged row. */}
-      {(isActive || isAwaiting) && <div className="absolute left-0 top-1 bottom-1 w-0.5 rounded bg-accent" />}
+      {(isActive || isAwaiting) && <div className={cn('absolute left-0 top-1 bottom-1 rounded bg-accent', isActive ? 'w-1' : 'w-0.5')} />}
 
       <div className="grid items-center gap-2 px-1.5 py-1.5" style={{ gridTemplateColumns: gridTemplate }}>
-        <div className="text-center text-ink-mute text-sm tabular-nums font-medium">
+        <div className={cn('text-center text-sm tabular-nums font-medium', isActive ? 'text-accent font-semibold' : 'text-ink-mute')}>
           {isDrop ? <span className="text-warn text-[9px] font-semibold tracking-wider2">DROP</span>
             : isSkipped ? <span className="text-ink-mute text-[9px] font-semibold tracking-wider2">SKIP</span>
               : index + 1}
         </div>
 
         <div className="text-center leading-tight min-w-0">
-          <div className="text-[12px] text-ink-mute tnum truncate">{formatPrev(lastSet, metric, units)}</div>
+          <div className="text-[14px] text-ink-dim tnum truncate">{formatPrev(lastSet, metric, units)}</div>
           {lastSet?.rpe != null && lastSet.setType !== 'skip' && (
-            <div className={cn('text-[9px] tracking-wide truncate', lastSet.rpe >= 9 ? 'text-danger/70' : 'text-ink-mute/80')}>
+            <div className={cn('text-[11px] tracking-wide truncate', lastSet.rpe >= 9 ? 'text-danger/70' : 'text-ink-mute/80')}>
               {effortFeelLabel(lastSet.rpe, mode)}
             </div>
           )}
@@ -115,6 +115,7 @@ export function SetLoggerRow({
             step={units === 'imperial' ? 5 : 2.5}
             decimals={1}
             disabled={inputsDisabled}
+            highlight={isActive}
             ariaLabel={`Set ${index + 1} weight`}
           />
         )}
@@ -126,6 +127,7 @@ export function SetLoggerRow({
             step={1}
             decimals={0}
             disabled={inputsDisabled}
+            highlight={isActive}
             ariaLabel={`Set ${index + 1} reps`}
           />
         )}
@@ -138,6 +140,7 @@ export function SetLoggerRow({
             min={1}
             time
             disabled={inputsDisabled}
+            highlight={isActive}
             ariaLabel={`Set ${index + 1} time`}
           />
         )}

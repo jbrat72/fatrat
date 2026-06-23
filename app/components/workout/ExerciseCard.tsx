@@ -113,7 +113,7 @@ export function ExerciseCard({
               </span>
             )}
           </div>
-          <div className="mt-2 font-medium text-base leading-tight">{exercise.name}</div>
+          <div className="mt-2 font-semibold text-base leading-tight text-ink">{exercise.name}</div>
           <div className="text-xs text-ink-dim mt-0.5">
             {totalCount} sets · {(() => {
               if (showTime) return `${exercise.prescribedTimeLow ?? '?'}–${exercise.prescribedTimeHigh ?? '?'}s`;
@@ -184,7 +184,7 @@ export function ExerciseCard({
         {/* Table header */}
         <div className="grid items-center gap-2 px-1.5 pb-1 border-b border-ink-line" style={{ gridTemplateColumns: gridTemplate }}>
           {cols.map((c, k) => (
-            <div key={k} className="text-center text-[10px] tracking-wider2 font-semibold text-ink-mute uppercase">{c.label}</div>
+            <div key={k} className="text-center text-[10px] tracking-wider2 font-semibold text-ink-dim uppercase">{c.label}</div>
           ))}
         </div>
 
