@@ -52,6 +52,11 @@ export function SetLoggerRow({
   const isAwaiting = state === 'awaiting';
   const isLocked = state === 'locked';
   const checked = isAwaiting || isLocked;
+  // Effort tag under PREV: show THIS set's effort once it's been logged + rated,
+  // otherwise fall back to last week's effort.
+  const currentRpe = (isLocked || isAwaiting) && set.rpe != null ? set.rpe : null;
+  const prevRpe = lastSet && lastSet.setType !== 'skip' ? (lastSet.rpe ?? null) : null;
+  const effortRpe = currentRpe ?? prevRpe;
   const inputsDisabled = !isActive || disabled;
 
   // Clear the warning the moment the required fields are filled in.
@@ -101,9 +106,10 @@ export function SetLoggerRow({
 
         <div className="text-center leading-tight min-w-0">
           <div className="text-[14px] text-ink-dim tnum truncate">{formatPrev(lastSet, metric, units)}</div>
-          {lastSet?.rpe != null && lastSet.setType !== 'skip' && (
-            <div className={cn('text-[11px] tracking-wide truncate', lastSet.rpe >= 9 ? 'text-danger/70' : 'text-ink-mute/80')}>
-              {effortFeelLabel(lastSet.rpe, mode)}
+          {effortRpe != null && (
+            <div className={cn('text-[11px] tracking-wide truncate',
+              effortRpe >= 9 ? 'text-danger/80' : currentRpe != null ? 'text-ink-dim' : 'text-ink-mute/80')}>
+              {effortFeelLabel(effortRpe, mode)}
             </div>
           )}
         </div>

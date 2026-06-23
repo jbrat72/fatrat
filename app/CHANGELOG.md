@@ -9,6 +9,14 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.4 — 2026-06-21
+
+- Timer alarm now also plays through an HTML5 audio element (a synthesized WAV
+  primed on first interaction), alongside the Web Audio beep — more reliable
+  across browsers. (iOS hardware silent switch can still mute it.)
+- After a set is logged and rated, the effort tag under PREV shows THIS set's
+  effort instead of last week's.
+
 ## v0.100.3 — 2026-06-21
 
 - Clearer active set in the workout logger: the working set's row now has an
