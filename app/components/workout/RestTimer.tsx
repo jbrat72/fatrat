@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/ui/cn';
 import { doubleBeep } from '@/lib/ui/beep';
 
@@ -20,44 +20,72 @@ function fmt(s: number): string {
 
 export function RestTimer({ seconds, onDismiss, compact, soundsEnabled = true }: Props) {
   const [remaining, setRemaining] = useState(seconds);
-  const total = useRef(seconds);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const totalRef = useRef(seconds);
+  const endAtRef = useRef(0);
   const beepedRef = useRef(false);
+  const alarmRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const dismissRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Keep latest callbacks without re-running the timer effect.
+  const cb = useRef({ onDismiss, soundsEnabled });
+  cb.current = { onDismiss, soundsEnabled };
 
+  const fireAlarm = useCallback(() => {
+    if (beepedRef.current) return;
+    beepedRef.current = true;
+    setRemaining(0);
+    doubleBeep(cb.current.soundsEnabled);
+    if (dismissRef.current) clearTimeout(dismissRef.current);
+    dismissRef.current = setTimeout(() => cb.current.onDismiss?.(), 600);
+  }, []);
+
+  const scheduleAlarm = useCallback((ms: number) => {
+    if (alarmRef.current) clearTimeout(alarmRef.current);
+    alarmRef.current = setTimeout(fireAlarm, Math.max(0, ms));
+  }, [fireAlarm]);
+
+  // (Re)start whenever `seconds` changes. Time is tracked by wall clock so a
+  // throttled/backgrounded tab can't stall the countdown — the deadline
+  // setTimeout still fires near zero, and a visibility/focus check catches up.
   useEffect(() => {
-    setRemaining(seconds);
-    total.current = seconds;
+    if (alarmRef.current) clearTimeout(alarmRef.current);
+    if (tickRef.current) clearInterval(tickRef.current);
     beepedRef.current = false;
-  }, [seconds]);
+    totalRef.current = seconds;
+    if (seconds <= 0) { setRemaining(0); return; }
+    endAtRef.current = Date.now() + seconds * 1000;
+    setRemaining(seconds);
+    scheduleAlarm(seconds * 1000);
+    const tick = () => {
+      const rem = Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000));
+      setRemaining(rem);
+      if (rem <= 0) fireAlarm();
+    };
+    tickRef.current = setInterval(tick, 250);
+    const onVis = () => { if (!document.hidden) tick(); };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', onVis);
+    return () => {
+      if (alarmRef.current) clearTimeout(alarmRef.current);
+      if (tickRef.current) clearInterval(tickRef.current);
+      if (dismissRef.current) clearTimeout(dismissRef.current);
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('focus', onVis);
+    };
+  }, [seconds, scheduleAlarm, fireAlarm]);
 
-  // Tick down once per second while remaining > 0.
-  useEffect(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (remaining <= 0) return;
-    intervalRef.current = setInterval(() => {
-      setRemaining((r) => Math.max(0, r - 1));
-    }, 1000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [remaining > 0]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-dismiss when timer reaches 0 — quick "done" flash, then hide.
-  // Also fire the double-beep once (guarded by beepedRef so a re-render
-  // mid-flash doesn't replay it).
-  useEffect(() => {
-    if (dismissTimer.current) { clearTimeout(dismissTimer.current); dismissTimer.current = null; }
-    if (seconds > 0 && remaining === 0) {
-      if (!beepedRef.current) {
-        beepedRef.current = true;
-        doubleBeep(soundsEnabled);
-      }
-      dismissTimer.current = setTimeout(() => onDismiss?.(), 600);
-    }
-    return () => { if (dismissTimer.current) clearTimeout(dismissTimer.current); };
-  }, [remaining, seconds, onDismiss, soundsEnabled]);
+  const adjust = (delta: number) => {
+    if (delta > 0) beepedRef.current = false; // re-arm if adding time after done
+    endAtRef.current = Math.max(Date.now(), endAtRef.current + delta * 1000);
+    totalRef.current = Math.max(1, totalRef.current + delta);
+    const rem = Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000));
+    setRemaining(rem);
+    if (rem > 0) scheduleAlarm(endAtRef.current - Date.now());
+    else fireAlarm();
+  };
 
   if (seconds <= 0) return null;
-  const pct = total.current > 0 ? (1 - remaining / total.current) * 100 : 0;
+  const pct = totalRef.current > 0 ? (1 - remaining / totalRef.current) * 100 : 0;
   const done = remaining === 0;
 
   return (
@@ -78,27 +106,9 @@ export function RestTimer({ seconds, onDismiss, compact, soundsEnabled = true }:
           </div>
         </div>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setRemaining((r) => Math.max(0, r - 30))}
-            className="h-9 px-3 rounded-lg border border-ink-line text-sm font-semibold"
-          >
-            −30s
-          </button>
-          <button
-            type="button"
-            onClick={() => setRemaining((r) => r + 30)}
-            className="h-9 px-3 rounded-lg border border-ink-line text-sm font-semibold"
-          >
-            +30s
-          </button>
-          <button
-            type="button"
-            onClick={() => onDismiss?.()}
-            className="h-9 px-3 rounded-lg bg-accent text-white text-sm font-semibold"
-          >
-            Skip
-          </button>
+          <button type="button" onClick={() => adjust(-30)} className="h-9 px-3 rounded-lg border border-ink-line text-sm font-semibold">−30s</button>
+          <button type="button" onClick={() => adjust(30)} className="h-9 px-3 rounded-lg border border-ink-line text-sm font-semibold">+30s</button>
+          <button type="button" onClick={() => onDismiss?.()} className="h-9 px-3 rounded-lg bg-accent text-white text-sm font-semibold">Skip</button>
         </div>
       </div>
     </div>

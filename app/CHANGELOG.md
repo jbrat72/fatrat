@@ -9,6 +9,14 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.9 — 2026-06-21
+
+- Timer alarm now fires at the right time. The rest/exercise timers counted down
+  with a per-second setInterval, which browsers throttle/pause when the tab is
+  backgrounded or the screen is off — so the countdown stalled and the beep only
+  fired when you next interacted. Both timers now track time by wall clock with a
+  deadline timeout for the beep, plus a visibility/focus catch-up.
+
 ## v0.100.8 — 2026-06-21
 
 - Reps now pre-fill from last time, like weight does. The generator pre-fills
