@@ -49,7 +49,14 @@ function Ring({ m }: { m: RingMetric }) {
         {!m.needsGoalLink && (
           <circle cx="50" cy="50" r="42" fill="none" stroke={m.color} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${dash} ${CIRC}`} transform="rotate(-90 50 50)" />
         )}
-        <text x="50" y="56" textAnchor="middle" className={m.needsGoalLink ? 'text-ink-mute' : 'text-ink'} fill="currentColor" style={{ fontSize: m.needsGoalLink ? '28px' : '18px', fontWeight: 500 }}>{m.center}</text>
+        {m.needsGoalLink ? (
+          <text x="50" y="58" textAnchor="middle" className="text-ink-mute" fill="currentColor" style={{ fontSize: '28px', fontWeight: 500 }}>{m.center}</text>
+        ) : (
+          <>
+            <text x="50" y="48" textAnchor="middle" className={m.pct > 0 ? 'text-ok' : 'text-danger'} fill="currentColor" style={{ fontSize: '17px', fontWeight: 500 }}>{m.center}</text>
+            <text x="50" y="63" textAnchor="middle" className="text-ink-dim" fill="currentColor" style={{ fontSize: '10px' }}>{m.sub}</text>
+          </>
+        )}
       </svg>
       <div className="text-2xs text-ink-dim mt-1">{m.needsGoalLink ? `${m.label} goal` : m.label}</div>
     </>

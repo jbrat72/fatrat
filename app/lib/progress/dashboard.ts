@@ -12,7 +12,8 @@ export interface RingMetric {
   value: number;
   goal: number;          // 0 = no goal/total
   pct: number;           // 0..1, clamped
-  center: string;        // big center text
+  center: string;        // big center text (percent)
+  sub: string;           // small secondary text (n/n)
   color: string;         // arc hex
   needsGoalLink?: boolean; // true → render the "set a goal" empty state
 }
@@ -39,51 +40,51 @@ export function computeRingMetric(
 ): RingMetric {
   const today = ctx.today ?? new Date();
   const base = { key, label: RING_LABELS[key], color: RING_COLORS[key] };
+  let value = 0;
+  let goal = 0;
+  let unit = '';
 
   if (key === 'workouts') {
     // Completed vs scheduled PROGRAMMED workouts in the current ISO week — the
-    // plan's lifting days (cardio-only / ad-hoc sessions are excluded). Falls
-    // back to days-per-week when no plan sessions are scheduled this week.
+    // plan's lifting days (cardio-only / ad-hoc sessions excluded). Falls back
+    // to days-per-week when no plan sessions are scheduled this week.
     const stamp = isoWeekStamp(today);
     const mid = ctx.meso?.id;
     const wk = mid
       ? ctx.sessions.filter((s) => s.mesocycleId === mid && isoWeekStamp(new Date(s.date + 'T00:00:00')) === stamp)
       : [];
-    let goal = wk.length;
-    let value = wk.filter((s) => s.completed).length;
+    goal = wk.length;
+    value = wk.filter((s) => s.completed).length;
     if (goal === 0) {
       const s = streakStats(ctx.sessions, ctx.user, today);
       goal = s.thisWeek.planned || ctx.user.daysPerWeek || 0;
       value = s.liftingDaysThisWeek;
     }
-    return { ...base, value, goal, pct: goal ? clamp01(value / goal) : 0, center: goal ? `${value}/${goal}` : `${value}` };
-  }
-
-  if (key === 'cardio') {
+  } else if (key === 'cardio') {
     const s = streakStats(ctx.sessions, ctx.user, today);
-    const goal = ctx.user.cardioWeeklyGoalMin ?? 0;
-    const value = s.cardioMinutesThisWeek;
-    if (goal <= 0) return { ...base, value, goal: 0, pct: 0, center: '+', needsGoalLink: true };
-    return { ...base, value, goal, pct: clamp01(value / goal), center: `${value}` };
-  }
-
-  if (key === 'program') {
+    goal = ctx.user.cardioWeeklyGoalMin ?? 0;
+    value = s.cardioMinutesThisWeek;
+    unit = 'm';
+    if (goal <= 0) return { ...base, value, goal: 0, pct: 0, center: '+', sub: '', needsGoalLink: true };
+  } else if (key === 'program') {
     const mid = ctx.meso?.id;
     const inMeso = mid ? ctx.sessions.filter((s) => s.mesocycleId === mid) : [];
-    const goal = inMeso.length;
-    const value = inMeso.filter((s) => s.completed).length;
-    return { ...base, value, goal, pct: goal ? clamp01(value / goal) : 0, center: goal ? `${Math.round((value / goal) * 100)}%` : '—' };
-  }
-
-  // volume — hard (completed, non-skip) sets vs prescribed sets in the active week
-  const activeMicro = ctx.micros.find((m) => m.status === 'active') ?? null;
-  const weekSessions = activeMicro ? ctx.sessions.filter((s) => s.microcycleId === activeMicro.id) : [];
-  let done = 0, planned = 0;
-  for (const s of weekSessions) {
-    for (const ex of s.exercises) {
-      planned += ex.prescribedSets ?? ex.sets.length;
-      done += ex.sets.filter((set) => set.completed && set.setType !== 'skip').length;
+    goal = inMeso.length;
+    value = inMeso.filter((s) => s.completed).length;
+  } else {
+    // volume — hard (completed, non-skip) sets vs prescribed sets this week
+    const activeMicro = ctx.micros.find((m) => m.status === 'active') ?? null;
+    const weekSessions = activeMicro ? ctx.sessions.filter((s) => s.microcycleId === activeMicro.id) : [];
+    for (const s of weekSessions) {
+      for (const ex of s.exercises) {
+        goal += ex.prescribedSets ?? ex.sets.length;
+        value += ex.sets.filter((set) => set.completed && set.setType !== 'skip').length;
+      }
     }
   }
-  return { ...base, value: done, goal: planned, pct: planned ? clamp01(done / planned) : 0, center: planned ? `${done}/${planned}` : `${done}` };
+
+  const pct = goal ? clamp01(value / goal) : 0;
+  const center = goal ? `${Math.round(pct * 100)}%` : '—';
+  const sub = goal ? `${value}/${goal}${unit}` : `${value}${unit}`;
+  return { ...base, value, goal, pct, center, sub };
 }

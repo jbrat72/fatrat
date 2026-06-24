@@ -9,6 +9,12 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.5 — 2026-06-21
+
+- Today rings now show both the percentage (large, green when in progress / red
+  at 0%) and the raw count (n/n, e.g. 2/4, 10/32, 0/90m) beneath it, for every
+  metric.
+
 ## v0.100.4 — 2026-06-21
 
 - Timer alarm now also plays through an HTML5 audio element (a synthesized WAV
