@@ -9,6 +9,14 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.8 — 2026-06-21
+
+- Reps now pre-fill from last time, like weight does. The generator pre-fills
+  reps at the prescribed low end, so history-hydration (which only filled blank
+  fields) never replaced them — reps always showed the bottom of the range. A
+  fresh session now prefers last time's weight AND reps over the prescribed
+  defaults.
+
 ## v0.100.7 — 2026-06-21
 
 - The cardio-goal card now also shows on the Plan screen when there's no active

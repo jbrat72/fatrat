@@ -40,10 +40,14 @@ export function hydrateFromHistory(
       if (s.completed) return s;
       const prior = priorByIndex.get(i) ?? lastCompletedPrior;
       if (!prior) return s;
+      // Prefer last time's values over the prescribed defaults — the generator
+      // pre-fills reps at the range's low end, so `s.reps ?? prior.reps` would
+      // never pick up last time's reps. This only runs on a fresh session (no
+      // sets logged yet), so overwriting the prescription is safe.
       return {
         ...s,
-        weightKg: s.weightKg ?? prior.weightKg,
-        reps:     s.reps     ?? prior.reps,
+        weightKg: prior.weightKg ?? s.weightKg,
+        reps:     prior.reps     ?? s.reps,
       };
     });
     return { ...ex, sets };
