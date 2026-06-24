@@ -62,7 +62,7 @@ function Ring({ m }: { m: RingMetric }) {
     </>
   );
   if (m.needsGoalLink) {
-    return <Link href="/settings" className="flex-1" aria-label={`Set a ${m.label.toLowerCase()} goal`}>{body}</Link>;
+    return <Link href="/plan" className="flex-1" aria-label={`Set a ${m.label.toLowerCase()} goal`}>{body}</Link>;
   }
   return <div className="flex-1">{body}</div>;
 }

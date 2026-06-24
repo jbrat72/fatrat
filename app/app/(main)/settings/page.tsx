@@ -62,8 +62,8 @@ export default function SettingsPage() {
     await refresh();
   };
 
-  const setCardioGoal = async (cardioWeeklyGoalMin: number) => {
-    await getRepository().upsertProfile({ ...user, cardioWeeklyGoalMin, updatedAt: new Date().toISOString() });
+  const setShowCardioGoal = async (showCardioGoal: boolean) => {
+    await getRepository().upsertProfile({ ...user, showCardioGoal, updatedAt: new Date().toISOString() });
     await refresh();
   };
 
@@ -149,12 +149,11 @@ export default function SettingsPage() {
             );
           })}
           <div className="mt-3 pt-3 border-t border-ink-line">
-            <div className="section-head mb-1">WEEKLY CARDIO GOAL</div>
-            <p className="text-xs text-ink-dim mb-2">Minutes per week — powers the Cardio ring.</p>
-            <div className="flex gap-2 flex-wrap">
-              {[0, 60, 90, 120, 150].map((v) => (
-                <ChoicePill key={v} value={String(v)} label={v === 0 ? 'Off' : `${v} min`} selected={(user.cardioWeeklyGoalMin ?? 0) === v} onSelect={() => setCardioGoal(v)} />
-              ))}
+            <div className="section-head mb-1">CARDIO GOAL CARD</div>
+            <p className="text-xs text-ink-dim mb-2">Show the cardio-goal card on the Plan screen (you set the goal there).</p>
+            <div className="flex gap-2">
+              <ChoicePill value="on" label="Show" selected={user.showCardioGoal !== false} onSelect={() => setShowCardioGoal(true)} />
+              <ChoicePill value="off" label="Hide" selected={user.showCardioGoal === false} onSelect={() => setShowCardioGoal(false)} />
             </div>
           </div>
         </Card>

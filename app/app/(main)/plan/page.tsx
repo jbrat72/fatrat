@@ -6,6 +6,7 @@ import { SetRow } from '@/components/workout';
 import { PageTitle, Card, Button, ModeChip, MuscleBadge, MUSCLE_COLOR } from '@/components/ui';
 import { VolumeDashboard } from '@/components/plan/VolumeDashboard';
 import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
+import { CardioGoalCard } from '@/components/plan/CardioGoalCard';
 import { activateWizardProgram, saveWizardDraft, saveWizardToGallery } from '@/lib/wizard/persist';
 import { ChangePlanSheet } from '@/components/plan/ChangePlanSheet';
 import { WeekCalendar, CalendarLegend } from '@/components/history';
@@ -174,6 +175,8 @@ export default function PlanPage() {
             </div>
           </div>
         </Card>
+
+        {user.showCardioGoal !== false && <CardioGoalCard />}
 
         <Card>
           <div className="section-head mb-3">TRAINING WEEKS</div>

@@ -113,8 +113,10 @@ export interface UserProfile {
   /** Play a double-beep when the rest / exercise timer hits zero. Default on
    *  (undefined === enabled); set false in Settings to mute. */
   soundsEnabled?: boolean;
-  /** Weekly cardio goal in minutes (drives the Cardio ring on Today). */
+  /** Weekly cardio goal in minutes (drives the Cardio ring on Today; set on Plan). */
   cardioWeeklyGoalMin?: number;
+  /** Show the cardio-goal card on the Plan screen. Default on (undefined). */
+  showCardioGoal?: boolean;
   /** Which three metrics the Today rings show. Defaults to workouts/cardio/program. */
   dashboardRings?: DashboardMetricKey[];
   /** Set true once the v0.61 Macrocycle-retirement migration has run for this user. */

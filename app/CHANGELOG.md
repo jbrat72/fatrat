@@ -9,6 +9,14 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.6 — 2026-06-21
+
+- Cardio goal moved to the Plan screen: a small card shows the current weekly
+  goal (or a "Set Goal" button when none), and you type the minutes into a box.
+- Settings now just toggles whether that cardio-goal card shows on Plan
+  (the minute picker there was removed). The Today cardio ring's "set a goal"
+  state now links to Plan.
+
 ## v0.100.5 — 2026-06-21
 
 - Today rings now show both the percentage (large, green when in progress / red
