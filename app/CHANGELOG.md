@@ -9,6 +9,11 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.7 — 2026-06-21
+
+- The cardio-goal card now also shows on the Plan screen when there's no active
+  training plan, not just when one exists.
+
 ## v0.100.6 — 2026-06-21
 
 - Cardio goal moved to the Plan screen: a small card shows the current weekly

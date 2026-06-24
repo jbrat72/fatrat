@@ -93,7 +93,7 @@ export default function PlanPage() {
     return (
       <div>
         <PageTitle title="Plan" />
-        <div className="px-4">
+        <div className="px-4 space-y-3">
           <Card>
             <div className="section-head mb-2">NO TRAINING PLAN</div>
             <p className="text-ink-dim text-sm mb-4">
@@ -104,6 +104,7 @@ export default function PlanPage() {
               <Button variant="ghost" onClick={() => { setEditName(null); setWizardOpen(true); }}>Build a custom program</Button>
             </div>
           </Card>
+          {user.showCardioGoal !== false && <CardioGoalCard />}
         </div>
 {wizardOpen && user && (
           <div className="fixed inset-0 z-50 bg-bg overflow-y-auto">
