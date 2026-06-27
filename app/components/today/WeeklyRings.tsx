@@ -10,7 +10,7 @@ import type { Mesocycle, Microcycle, WorkoutSession } from '@/types';
 
 const CIRC = 2 * Math.PI * 42; // r = 42
 
-export function WeeklyRings() {
+export function WeeklyRings({ refreshKey = 0 }: { refreshKey?: number }) {
   const { user } = useUser();
   const [metrics, setMetrics] = useState<RingMetric[] | null>(null);
 
@@ -26,7 +26,7 @@ export function WeeklyRings() {
         setMetrics(keys.map((k) => computeRingMetric(k, { sessions, user, meso: meso as Mesocycle | null, micros })));
       } catch { /* keep last-good */ }
     })();
-  }, [user]);
+  }, [user, refreshKey]);
 
   if (!user || !metrics) return null;
 

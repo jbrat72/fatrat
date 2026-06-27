@@ -123,7 +123,7 @@ export default function TodayPage() {
     <div>
       <PageTitle title="Today" subtitle={`Welcome back, ${user.displayName}.`} />
       <div className="px-4 space-y-3">
-        <WeeklyRings />
+        <WeeklyRings refreshKey={refreshTick} />
 
         <Card>
           <div className="section-head mb-2">LOG WORKOUT</div>

@@ -9,6 +9,13 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.12 — 2026-06-21
+
+- Today rings now refresh immediately after logging cardio (and other changes),
+  instead of only updating when you leave and return to Today.
+- Fixed runaway decimals in the cardio ring — minutes are now rounded
+  (e.g. 99/90m instead of 98.9833…/90m).
+
 ## v0.100.11 — 2026-06-21
 
 - Cardio duration entry fixed properly: live reformatting was fighting the caret

@@ -85,6 +85,7 @@ export function computeRingMetric(
 
   const pct = goal ? clamp01(value / goal) : 0;
   const center = goal ? `${Math.round(pct * 100)}%` : '—';
-  const sub = goal ? `${value}/${goal}${unit}` : `${value}${unit}`;
+  const shown = Math.round(value);
+  const sub = goal ? `${shown}/${goal}${unit}` : `${shown}${unit}`;
   return { ...base, value, goal, pct, center, sub };
 }
