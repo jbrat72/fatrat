@@ -9,6 +9,13 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.10 — 2026-06-21
+
+- Fixed cardio duration entry. The numeric keypad has no colon, so typing
+  "5523" was stored as a raw number instead of 55:23. The field now auto-formats
+  m:ss as you type digits (filling from the right, colon inserted automatically),
+  matching the in-workout timer input.
+
 ## v0.100.9 — 2026-06-21
 
 - Timer alarm now fires at the right time. The rest/exercise timers counted down

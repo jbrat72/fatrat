@@ -8,10 +8,32 @@ import {
   kmToDisplayDistance, displayDistanceToKm,
   kphToDisplaySpeed, displaySpeedToKph,
   distanceLabel, speedLabel, paceLabel, formatPace,
-  formatDuration, parseDurationToMinutes,
 } from '@/lib/ui/units';
 import type { CardioActivity, CardioEntry, WorkoutSession } from '@/types';
 import { todayIso } from '@/lib/ui/date';
+
+// Duration is stored in minutes; the field is entered/shown as m:ss with the
+// colon auto-inserted (digits fill from the right — no ":" key needed).
+const clockFromDigits = (digits: string): string => {
+  const d = digits.replace(/\D/g, '');
+  if (!d) return '';
+  const ss = d.slice(-2);
+  const mm = d.slice(0, -2);
+  return `${mm || '0'}:${ss.padStart(2, '0')}`;
+};
+const minutesFromDigits = (digits: string): number | undefined => {
+  const d = digits.replace(/\D/g, '');
+  if (!d) return undefined;
+  const ss = parseInt(d.slice(-2) || '0', 10);
+  const mm = parseInt(d.slice(0, -2) || '0', 10);
+  return mm + ss / 60;
+};
+const digitsFromMinutes = (min: number): string => {
+  const total = Math.round(min * 60);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}${String(s).padStart(2, '0')}`;
+};
 
 interface Props {
   open: boolean;
@@ -51,7 +73,7 @@ export function CardioLogModal({
   const { user } = useUser();
   const [activity, setActivity] = useState<CardioActivity>('treadmill');
   const [duration, setDuration] = useState<number | undefined>(20);
-  const [durationStr, setDurationStr] = useState('20:00');
+  const [durationStr, setDurationStr] = useState(digitsFromMinutes(20));
   const [distance, setDistance] = useState<number | undefined>();
   const [speed, setSpeed] = useState<number | undefined>();
   const [incline, setIncline] = useState<number | undefined>(0);
@@ -87,7 +109,7 @@ export function CardioLogModal({
     if (!last) {
       // No history yet — reset to sensible blank defaults for this mode.
       setDuration(20);
-      setDurationStr('20:00');
+      setDurationStr(digitsFromMinutes(20));
       setDistance(undefined);
       setSpeed(undefined);
       setIncline(0);
@@ -97,7 +119,7 @@ export function CardioLogModal({
       return;
     }
     setDuration(last.durationMin ?? 20);
-    setDurationStr(formatDuration(last.durationMin ?? 20));
+    setDurationStr(digitsFromMinutes(last.durationMin ?? 20));
     setDistance(last.distanceKm != null ? kmToDisplayDistance(last.distanceKm, user.units) : undefined);
     setSpeed(last.speedKph != null ? kphToDisplaySpeed(last.speedKph, user.units) : undefined);
     setIncline(last.inclinePct ?? 0);
@@ -208,10 +230,13 @@ export function CardioLogModal({
               <input
                 type="text"
                 inputMode="numeric"
-                value={durationStr}
-                onChange={(e) => { setDurationStr(e.target.value); setDuration(parseDurationToMinutes(e.target.value)); }}
-                onBlur={() => { if (duration != null) setDurationStr(formatDuration(duration)); }}
-                placeholder="mm:ss"
+                value={clockFromDigits(durationStr)}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 5);
+                  setDurationStr(digits);
+                  setDuration(minutesFromDigits(digits));
+                }}
+                placeholder="m:ss"
                 aria-label="Duration"
                 className="w-full bg-bg-input border border-ink-line rounded-lg px-3 py-2 text-sm text-center tnum focus:border-accent outline-none"
               />
