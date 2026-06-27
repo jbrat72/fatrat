@@ -74,6 +74,7 @@ export function CardioLogModal({
   const [activity, setActivity] = useState<CardioActivity>('treadmill');
   const [duration, setDuration] = useState<number | undefined>(20);
   const [durationStr, setDurationStr] = useState(digitsFromMinutes(20));
+  const [durFocused, setDurFocused] = useState(false);
   const [distance, setDistance] = useState<number | undefined>();
   const [speed, setSpeed] = useState<number | undefined>();
   const [incline, setIncline] = useState<number | undefined>(0);
@@ -230,7 +231,9 @@ export function CardioLogModal({
               <input
                 type="text"
                 inputMode="numeric"
-                value={clockFromDigits(durationStr)}
+                value={durFocused ? durationStr : clockFromDigits(durationStr)}
+                onFocus={() => setDurFocused(true)}
+                onBlur={() => setDurFocused(false)}
                 onChange={(e) => {
                   const digits = e.target.value.replace(/\D/g, '').slice(0, 5);
                   setDurationStr(digits);

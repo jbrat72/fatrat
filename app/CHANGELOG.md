@@ -9,6 +9,13 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.11 — 2026-06-21
+
+- Cardio duration entry fixed properly: live reformatting was fighting the caret
+  (typing 5523 produced 005:52). The field now shows the raw digits while you're
+  typing and formats to m:ss on blur — type 5523, tap away, see 55:23. Clearing
+  it shows an empty field, not 0:00.
+
 ## v0.100.10 — 2026-06-21
 
 - Fixed cardio duration entry. The numeric keypad has no colon, so typing
