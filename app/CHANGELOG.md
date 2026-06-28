@@ -9,6 +9,13 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.100.13 — 2026-06-21
+
+- Fixed the alarm sounding at random times (e.g. when first tapping/scrolling).
+  The audio "prime" on first interaction muted itself with volume=0, which iOS
+  ignores, so the beep played at full volume while priming. It now primes with
+  `muted` (honored on iOS) and unmutes for the real alarm.
+
 ## v0.100.12 — 2026-06-21
 
 - Today rings now refresh immediately after logging cardio (and other changes),

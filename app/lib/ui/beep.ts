@@ -78,9 +78,10 @@ export function unlockAudio(): void {
     const a = audioEl();
     if (a) {
       _audioPrimed = true;
-      const v = a.volume;
-      a.volume = 0;
-      a.play().then(() => { a.pause(); a.currentTime = 0; a.volume = v; }).catch(() => { a.volume = v; });
+      // iOS ignores `volume`, so mute (which it honors) to prime silently, then
+      // unmute once paused so the real alarm is audible later.
+      a.muted = true;
+      a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; }).catch(() => { a.muted = false; });
     }
   }
 }
@@ -94,7 +95,7 @@ export function doubleBeep(enabled = true): void {
     if (c.state === 'suspended') c.resume().then(play).catch(() => {}); else play();
   }
   const a = audioEl();
-  if (a) { try { a.currentTime = 0; a.play().catch(() => {}); } catch { /* ignore */ } }
+  if (a) { try { a.muted = false; a.currentTime = 0; a.play().catch(() => {}); } catch { /* ignore */ } }
 }
 
 // Resume + prime audio on every interaction so a later timer beep can sound.
