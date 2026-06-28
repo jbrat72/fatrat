@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { PageTitle, Card, Button } from '@/components/ui';
 import { useUser } from '@/components/app';
-import { EquipmentManager, ProfileInfoCard } from '@/components/settings';
+import { EquipmentManager, ProfileInfoCard, CardioFavoritesCard } from '@/components/settings';
 
 export default function ProfilePage() {
   const { user } = useUser();
@@ -15,6 +15,8 @@ export default function ProfilePage() {
         <ProfileInfoCard />
 
         <EquipmentManager />
+
+        <CardioFavoritesCard />
 
         <Link href="/exercises" className="block">
           <Card className="hover:border-ink-dim transition-colors">

@@ -11,6 +11,7 @@ import {
 } from '@/lib/ui/units';
 import type { CardioActivity, CardioEntry, WorkoutSession } from '@/types';
 import { todayIso } from '@/lib/ui/date';
+import { CARDIO_ACTIVITIES } from '@/lib/cardio/activities';
 
 // Duration is stored in minutes; the field is entered/shown as m:ss with the
 // colon auto-inserted (digits fill from the right — no ":" key needed).
@@ -46,24 +47,13 @@ interface Props {
   planName?: string;
 }
 
-const ACTIVITIES: { value: CardioActivity; label: string }[] = [
-  { value: 'treadmill', label: 'Treadmill' },
-  { value: 'bike', label: 'Bike' },
-  { value: 'walking', label: 'Walking' },
-  { value: 'running-outdoor', label: 'Running' },
-  { value: 'elliptical', label: 'Elliptical' },
-  { value: 'rower', label: 'Rower' },
-  { value: 'stair-climber', label: 'Stair climber' },
-  { value: 'swimming', label: 'Swimming' },
-  { value: 'other', label: 'Other' },
-];
-
 type InputMode = 'treadmill' | 'distance' | 'resistance' | 'simple';
 
 function inputModeFor(a: CardioActivity): InputMode {
   if (a === 'treadmill') return 'treadmill';
   if (a === 'bike' || a === 'walking' || a === 'running-outdoor' || a === 'swimming') return 'distance';
   if (a === 'elliptical' || a === 'rower' || a === 'stair-climber') return 'resistance';
+  // 'pickleball' and 'other' fall through to 'simple' -- time-based with avg HR.
   return 'simple';
 }
 
@@ -82,6 +72,14 @@ export function CardioLogModal({
   const [hr, setHr] = useState<number | undefined>();
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+
+  const favorites = user?.cardioFavorites ?? [];
+  const hasFavorites = favorites.length > 0;
+  // Favorites first; "Show all" reveals the rest. With no favorites set, show all.
+  const visibleActivities = hasFavorites && !showAll
+    ? CARDIO_ACTIVITIES.filter((a) => favorites.includes(a.value))
+    : CARDIO_ACTIVITIES;
 
   // Most-recent CardioEntry per activity, computed from user history when the modal opens.
   const [lastByActivity, setLastByActivity] = useState<Partial<Record<CardioActivity, CardioEntry>>>({});
@@ -102,6 +100,15 @@ export function CardioLogModal({
     })();
     return () => { cancelled = true; };
   }, [open, user]);
+
+  // On open, default the selection to the first favorite (if any) so a hidden
+  // non-favorite activity isn't the active choice. Reset the "show all" toggle.
+  useEffect(() => {
+    if (!open) return;
+    setShowAll(false);
+    const favs = user?.cardioFavorites ?? [];
+    if (favs.length && !favs.includes(activity)) setActivity(favs[0]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // When the activity selection changes, prefill from the most-recent entry of that type.
   useEffect(() => {
@@ -217,9 +224,16 @@ export function CardioLogModal({
 
         <div className="px-4 py-3 space-y-4 pb-8">
           <div>
-            <div className="section-head mb-2">ACTIVITY</div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="section-head">ACTIVITY</div>
+              {hasFavorites && (
+                <button type="button" onClick={() => setShowAll((s) => !s)} className="text-[11px] text-accent font-semibold">
+                  {showAll ? 'Show favorites' : 'Show all'}
+                </button>
+              )}
+            </div>
             <div className="flex gap-2 flex-wrap">
-              {ACTIVITIES.map((a) => (
+              {visibleActivities.map((a) => (
                 <ChoicePill key={a.value} value={a.value} label={a.label} selected={activity === a.value} onSelect={(v) => setActivity(v as CardioActivity)} />
               ))}
             </div>

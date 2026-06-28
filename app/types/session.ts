@@ -67,6 +67,7 @@ export type CardioActivity =
   | 'running-outdoor'
   | 'stair-climber'
   | 'swimming'
+  | 'pickleball'
   | 'other';
 
 export interface CardioEntry {

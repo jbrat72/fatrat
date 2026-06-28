@@ -9,6 +9,14 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.102.3 — 2026-06-21
+
+- New "Cardio favorites" filter in Profile: pick the activities you do most and
+  the Log Cardio picker surfaces them first (with a "Show all" toggle for the
+  rest).
+- Added Pickleball as a cardio activity — time-based with an avg heart rate
+  input.
+
 ## v0.102.2 — 2026-06-21
 
 - Plan Wizard now surfaces a "set up your equipment first" prompt (linking to

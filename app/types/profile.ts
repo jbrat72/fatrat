@@ -7,6 +7,8 @@
  * terminology; INTERMEDIATE/ADVANCED users may opt into advanced terms.
  */
 
+import type { CardioActivity } from './session';
+
 export type UserMode = 'BASIC' | 'INTERMEDIATE' | 'ADVANCED';
 
 export type Units = 'imperial' | 'metric'; // imperial = lb/in; metric = kg/cm
@@ -117,6 +119,9 @@ export interface UserProfile {
   cardioWeeklyGoalMin?: number;
   /** Show the cardio-goal card on the Plan screen. Default on (undefined). */
   showCardioGoal?: boolean;
+  /** Preferred cardio activities -- surfaced first in the Log Cardio picker.
+   *  Empty/undefined means no filter (all activities shown). */
+  cardioFavorites?: CardioActivity[];
   /** Which three metrics the Today rings show. Defaults to workouts/cardio/program. */
   dashboardRings?: DashboardMetricKey[];
   /** Set true once the v0.61 Macrocycle-retirement migration has run for this user. */
