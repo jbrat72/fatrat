@@ -9,6 +9,16 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.101.0 — 2026-06-21
+
+- Editing a plan from the Plan tab (Change → Edit) now reopens the wizard
+  prepopulated with the plan's current setup (from saved wizard state, or
+  reconstructed from the mesocycle), instead of an empty wizard.
+- The wizard's "From your profile" panel now reflects your live profile
+  (age/sex/weight) instead of a stale snapshot saved with the plan — so age
+  matches the Profile screen.
+- Profile: Birthday and Sex now share a row with smaller inputs.
+
 ## v0.100.13 — 2026-06-21
 
 - Fixed the alarm sounding at random times (e.g. when first tapping/scrolling).

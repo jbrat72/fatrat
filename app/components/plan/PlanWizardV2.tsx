@@ -105,7 +105,18 @@ export interface PlanWizardV2Props {
 
 export function PlanWizardV2({ user, initialName, initialState, initialProgram, initialDraftId, onClose, onComplete, onSaveToGallery, onSaveDraft }: PlanWizardV2Props) {
   const [state, setState] = useState<WizardState>(() => {
-    if (initialState) return structuredClone(initialState);
+    if (initialState) {
+      // Profile basics are read-only from the FATRAT profile — refresh them from
+      // the live user so an old saved plan doesn't show stale age/sex/weight.
+      const s = structuredClone(initialState);
+      s.profile = {
+        ...s.profile,
+        ageBand: ageBandFromDob(user.dob),
+        sex: user.sex === 'female' ? 'female' : 'male',
+        bodyWeightKg: user.weightKg ?? s.profile.bodyWeightKg,
+      };
+      return s;
+    }
     const s = initState(user); if (initialName) s.name = initialName; return s;
   });
   const [saving, setSaving] = useState(false);

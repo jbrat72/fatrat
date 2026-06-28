@@ -91,16 +91,18 @@ export function ProfileInfoCard() {
             <span className="text-[11px] text-ink-mute uppercase tracking-wide">Name</span>
             <input className={field} value={name} onChange={(e) => setName(e.target.value)} />
           </label>
-          <label className="block">
-            <span className="text-[11px] text-ink-mute uppercase tracking-wide">Birthday</span>
-            <input type="date" className={field} value={dob} onChange={(e) => setDob(e.target.value)} />
-          </label>
-          <div>
-            <span className="text-[11px] text-ink-mute uppercase tracking-wide">Sex</span>
-            <select className={field} value={sex} onChange={(e) => setSex(e.target.value as Sex)}>
-              <option value="">—</option>
-              {SEX_OPTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-            </select>
+          <div className="flex gap-3">
+            <label className="flex-1 min-w-0">
+              <span className="text-[11px] text-ink-mute uppercase tracking-wide">Birthday</span>
+              <input type="date" className={field} value={dob} onChange={(e) => setDob(e.target.value)} />
+            </label>
+            <label className="flex-1 min-w-0">
+              <span className="text-[11px] text-ink-mute uppercase tracking-wide">Sex</span>
+              <select className={field} value={sex} onChange={(e) => setSex(e.target.value as Sex)}>
+                <option value="">—</option>
+                {SEX_OPTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+            </label>
           </div>
           <div className="flex gap-3">
             <label className="flex-1">

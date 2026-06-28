@@ -8,6 +8,8 @@ import { VolumeDashboard } from '@/components/plan/VolumeDashboard';
 import { PlanWizardV2 } from '@/components/plan/PlanWizardV2';
 import { CardioGoalCard } from '@/components/plan/CardioGoalCard';
 import { activateWizardProgram, saveWizardDraft, saveWizardToGallery } from '@/lib/wizard/persist';
+import { wizardEditFromMeso } from '@/lib/wizard/editFromMeso';
+import type { WizardState, GeneratedDay } from '@/lib/wizard/types';
 import { ChangePlanSheet } from '@/components/plan/ChangePlanSheet';
 import { WeekCalendar, CalendarLegend } from '@/components/history';
 import { CardioLogModal } from '@/components/today';
@@ -51,6 +53,9 @@ export default function PlanPage() {
   // When set, the wizard opens pre-populated with the user's current plan
   // ("Edit this plan" path from the Change Plan sheet).
   const [editName, setEditName] = useState<string | null>(null);
+  const [editState, setEditState] = useState<WizardState | null>(null);
+  const [editProgram, setEditProgram] = useState<Record<number, GeneratedDay[]> | undefined>(undefined);
+  const [editDraftId, setEditDraftId] = useState<string | undefined>(undefined);
   const [changeSheet, setChangeSheet] = useState(false);
   const [moveSheet, setMoveSheet] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -286,11 +291,32 @@ export default function PlanPage() {
         sessions={sessions}
         onClose={() => setChangeSheet(false)}
         onChanged={() => setRefreshTick((n) => n + 1)}
-        onEdit={() => {
-          // Edit rebuilds the plan in Plan Wizard v2, seeded with its name.
-          // Saving archives the current plan and starts a fresh one.
-          setEditName(meso.name);
+        onEdit={async () => {
+          // Reopen Plan Wizard v2 prepopulated: prefer the wizard state saved on
+          // the plan's template; fall back to reconstructing it from the meso.
           setChangeSheet(false);
+          setEditName(meso.name);
+          let st: WizardState | null = null;
+          let pr: Record<number, GeneratedDay[]> | undefined;
+          let draftId: string | undefined;
+          if (meso.templateId) {
+            const tpl = await getRepository().getTemplate(meso.templateId).catch(() => null);
+            if (tpl?.draftState) {
+              try {
+                const d = JSON.parse(tpl.draftState);
+                st = (d.state ?? d) as WizardState;
+                pr = (d.program ?? {}) as Record<number, GeneratedDay[]>;
+                draftId = tpl.id;
+              } catch { /* fall through */ }
+            }
+          }
+          if (!st && user) {
+            const first = [...micros].sort((a, b) => a.weekNumber - b.weekNumber)[0];
+            const week1 = first ? sessions.filter((s) => s.microcycleId === first.id) : [];
+            const rec = wizardEditFromMeso(user, meso, week1);
+            st = rec.state; pr = rec.program;
+          }
+          setEditState(st); setEditProgram(pr); setEditDraftId(draftId);
           setWizardOpen(true);
         }}
       />
@@ -406,14 +432,17 @@ export default function PlanPage() {
             <PlanWizardV2
               user={user}
               initialName={editName ?? undefined}
+              initialState={editState ?? undefined}
+              initialProgram={editProgram}
+              initialDraftId={editDraftId}
               onSaveDraft={async (st, pr, id) => (await saveWizardDraft(st, user, pr, id)).id}
-              onClose={() => { setWizardOpen(false); setEditName(null); }}
+              onClose={() => { setWizardOpen(false); setEditName(null); setEditState(null); setEditProgram(undefined); setEditDraftId(undefined); }}
               onSaveToGallery={async (st, pr) => {
-                try { await saveWizardToGallery(st, user, pr); setWizardOpen(false); setEditName(null); setRefreshTick((n) => n + 1); }
+                try { await saveWizardToGallery(st, user, pr); setWizardOpen(false); setEditName(null); setEditState(null); setRefreshTick((n) => n + 1); }
                 catch (e) { alert('Could not save to gallery: ' + ((e as Error)?.message ?? 'unknown error')); }
               }}
               onComplete={async (st, pr) => {
-                try { await activateWizardProgram(st, pr, user); setWizardOpen(false); setEditName(null); setRefreshTick((n) => n + 1); }
+                try { await activateWizardProgram(st, pr, user); setWizardOpen(false); setEditName(null); setEditState(null); setRefreshTick((n) => n + 1); }
                 catch (e) { alert('Could not save your program: ' + ((e as Error)?.message ?? 'unknown error')); }
               }}
             />
