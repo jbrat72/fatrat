@@ -125,6 +125,16 @@ export default function TodayPage() {
       <div className="px-4 space-y-3">
         <WeeklyRings refreshKey={refreshTick} />
 
+        {!(user.equipmentProfiles ?? []).some((p) => (p.items?.length ?? 0) > 0) && (
+          <Card>
+            <div className="section-head mb-1">FINISH SETUP</div>
+            <p className="text-sm text-ink-dim mb-3">
+              Set up your equipment and exercises so your plans use what you actually have.
+            </p>
+            <Link href="/profile"><Button block>Set up equipment &amp; exercises</Button></Link>
+          </Card>
+        )}
+
         <Card>
           <div className="section-head mb-2">LOG WORKOUT</div>
           <div className="grid grid-cols-5 gap-2">

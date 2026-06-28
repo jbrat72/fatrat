@@ -9,6 +9,7 @@
  * program; Chunk 3 wires materialization to Firestore + Edit-this-plan.
  */
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui';
 import { FinishPlanModal } from './FinishPlanModal';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
@@ -152,6 +153,8 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
     finally { setSaving(false); }
   }
   const [page, setPage] = useState(0);
+  const [bypassEquip, setBypassEquip] = useState(false);
+  const router = useRouter();
   const [program, setProgram] = useState<Record<number, GeneratedDay[]>>(() => initialProgram ?? {});
   const isResuming = !!initialState;
   // On resume, every page was already completed — treat them as seen so the
@@ -717,6 +720,40 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
 
   /* ---------- chrome ---------- */
   const genBtn = page === 14; const lastBtn = page === 15;
+
+  // Gate: if the user hasn't configured any equipment yet, surface the same
+  // "set up equipment & exercises" prompt as the Today screen before they build
+  // a plan -- otherwise the program silently falls back to bodyweight-only.
+  // Editing/resuming an existing plan skips the gate.
+  const hasEquipment = (user.equipmentProfiles ?? []).some((p) => (p.items?.length ?? 0) > 0);
+  if (!hasEquipment && !isResuming && !bypassEquip) {
+    return (
+      <div className="max-w-[720px] mx-auto h-screen overflow-y-auto px-[18px]">
+        <div className="sticky top-0 z-20 bg-bg/90 backdrop-blur border-b border-ink-line -mx-[18px] px-[18px] pt-3.5 pb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 font-bold tracking-wide"><span className="w-2.5 h-2.5 rounded bg-accent" />FATRAT &middot; Plan Wizard</div>
+          {onClose && <button type="button" onClick={() => onClose()} className="text-ink-mute hover:text-ink text-[13px] font-semibold px-1">Cancel</button>}
+        </div>
+        <div className="pt-10 max-w-md mx-auto">
+          <div className="text-[11px] font-semibold uppercase tracking-widest text-accent">Finish setup</div>
+          <h1 className="text-2xl font-bold tracking-tight mt-1.5 mb-2">Set up your equipment first</h1>
+          <p className="text-[14px] text-ink-dim leading-relaxed mb-6">
+            Your program is built around the gear you actually have. Add your
+            equipment and exercises in your profile, then come back to build a
+            plan that fits.
+          </p>
+          <Button block onClick={() => router.push('/profile')}>Set up equipment &amp; exercises</Button>
+          <button
+            type="button"
+            onClick={() => setBypassEquip(true)}
+            className="block w-full text-center text-[13px] text-ink-mute hover:text-ink mt-4"
+          >
+            Continue with bodyweight only
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div ref={scrollRef} className="max-w-[720px] mx-auto h-screen overflow-y-auto pb-[140px]">
       <div className="sticky top-0 z-20 bg-bg/90 backdrop-blur border-b border-ink-line px-[18px] pt-3.5 pb-3">

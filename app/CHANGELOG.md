@@ -9,6 +9,33 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.102.2 — 2026-06-21
+
+- Plan Wizard now surfaces a "set up your equipment first" prompt (linking to
+  your profile) when no equipment is configured, instead of silently building a
+  bodyweight-only program. Includes a "Continue with bodyweight only" escape
+  hatch; editing/resuming an existing plan skips the prompt.
+
+## v0.102.1 — 2026-06-21
+
+- New signups start with no equipment selected (instead of a full default), and
+  Today shows a "Finish setup — set up your equipment & exercises" card linking
+  to Profile until at least one equipment item is configured.
+
+## v0.102.0 — 2026-06-21
+
+- Streamlined signup from 7 steps to 2: "About you" (name, DOB, sex, units,
+  height, weight) and "Pick your mode". The experience, equipment, constraints,
+  baseline, and confirmation steps were removed — they're redundant now that the
+  Plan wizard collects goal/experience/training style and equipment is managed
+  on Profile (a full "My Gym" profile is created by default) and per‑program.
+  Mode/terminology are still chosen at signup and editable in Settings.
+
+## v0.101.1 — 2026-06-21
+
+- Onboarding step 1: fixed the date-of-birth control overlapping the Sex buttons
+  (stacked the two fields so the native date picker has room).
+
 ## v0.101.0 — 2026-06-21
 
 - Editing a plan from the Plan tab (Change → Edit) now reopens the wizard
