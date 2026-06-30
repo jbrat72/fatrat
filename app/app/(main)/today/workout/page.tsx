@@ -26,6 +26,9 @@ export default function WorkoutPage() {
   const router = useRouter();
   const { user } = useUser();
   const [session, setSession] = useState<WorkoutSession | null>(null);
+  // False until the first load resolves -- lets us show "Loading..." instead of a
+  // dead-end before we know whether there's a session to work on.
+  const [loaded, setLoaded] = useState(false);
   const [meso, setMeso] = useState<Mesocycle | null>(null);
   const [micro, setMicro] = useState<Microcycle | null>(null);
   const [activeExerciseIdx, setActiveExerciseIdx] = useState<number>(0);
@@ -65,8 +68,18 @@ export default function WorkoutPage() {
     if (!user) return;
     const load = async () => {
       const repo = getRepository();
-      const res = await resolveToday(repo, user.userId, todayIso());
+      // Retry briefly to beat the read-after-write race: right after an ad-hoc
+      // session is created (Start Workout) the server read can lag the write,
+      // which would otherwise strand the user on a dead-end "nothing here".
+      let res = await resolveToday(repo, user.userId, todayIso());
+      for (let i = 0; i < 3 && !res.session; i++) {
+        await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+        res = await resolveToday(repo, user.userId, todayIso());
+      }
       let s = res.session;
+      // No session to work on -- don't trap the user on the nav-less workout
+      // screen; bounce back to the full Today shell.
+      if (!s) { setLoaded(true); router.replace('/today'); return; }
       if (s) {
         const prior = await repo.listSessions(user.userId, { limit: 100 });
         const hydrated = hydrateFromHistory(s, prior);
@@ -123,6 +136,7 @@ export default function WorkoutPage() {
         if (focus) { setActiveExerciseIdx(focus.exIdx); setActiveSetIdx(focus.setIdx); }
         else { setActiveSetIdx(null); }
       }
+      setLoaded(true);
     };
     load();
   }, [user]);
@@ -572,12 +586,16 @@ export default function WorkoutPage() {
     }
 
     setSession(final);
+    // Finishing a mesocycle shows its recap; any other finish returns to the
+    // full Today screen (the completed session shows there as a card).
     if (mesoCompletedId) router.push(`/plan/recap/${mesoCompletedId}`);
-    else router.push(`/history/session/${final.id}`);
+    else router.push('/today');
   };
 
-  if (!user) return <div className="p-6 text-ink-dim">Loading…</div>;
-  if (!session) return <div className="p-6 text-ink-dim">Nothing prescribed right now. Check the Plan tab.</div>;
+  if (!user || !loaded) return <div className="p-6 text-ink-dim">Loading…</div>;
+  // No session resolved -- the load effect has already redirected to /today; show
+  // a brief placeholder rather than the old nav-less dead-end while it happens.
+  if (!session) return <div className="p-6 text-ink-dim">Loading…</div>;
 
   const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][session.dayOfWeek];
   const isResting = restSec > 0;

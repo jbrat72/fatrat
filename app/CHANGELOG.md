@@ -9,6 +9,15 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.102.4 — 2026-06-21
+
+- Fixed a workout dead-end: starting a workout no longer occasionally strands you
+  on a nav-less "Check the Plan tab" screen (the session read now retries past
+  the write race, and bounces to Today if there's genuinely nothing to do).
+- Finishing a workout now returns to the full Today screen (mesocycle completion
+  still shows its recap). Opening a just-finished session from History retries
+  the read so it no longer shows blank.
+
 ## v0.102.3 — 2026-06-21
 
 - New "Cardio favorites" filter in Profile: pick the activities you do most and
