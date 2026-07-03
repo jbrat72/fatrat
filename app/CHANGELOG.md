@@ -9,6 +9,13 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.102.5 — 2026-06-21
+
+- Fixed the workout screen getting stuck on "Loading…": a failed session read no
+  longer hangs the spinner. If there's nothing to work on you now get a clear
+  "Back to Today" button (plus the automatic redirect), so the nav-less screen
+  can't strand you.
+
 ## v0.102.4 — 2026-06-21
 
 - Fixed a workout dead-end: starting a workout no longer occasionally strands you

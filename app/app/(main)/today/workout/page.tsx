@@ -138,7 +138,9 @@ export default function WorkoutPage() {
       }
       setLoaded(true);
     };
-    load();
+    // Never hang on "Loading…": if the load rejects (transient read error), mark
+    // loaded and fall back to the no-session screen instead of an infinite spinner.
+    load().catch((e) => { console.warn('workout load failed', e); setLoaded(true); });
   }, [user]);
 
   // Soreness check-in: when the active exercise is the first one for a muscle
@@ -593,9 +595,15 @@ export default function WorkoutPage() {
   };
 
   if (!user || !loaded) return <div className="p-6 text-ink-dim">Loading…</div>;
-  // No session resolved -- the load effect has already redirected to /today; show
-  // a brief placeholder rather than the old nav-less dead-end while it happens.
-  if (!session) return <div className="p-6 text-ink-dim">Loading…</div>;
+  // No session resolved. The load effect also tries to redirect to /today, but
+  // this screen has no bottom nav, so always give an explicit way back rather
+  // than risk stranding the user.
+  if (!session) return (
+    <div className="p-6 space-y-4">
+      <p className="text-ink-dim">Nothing to work on right now.</p>
+      <Button onClick={() => router.replace('/today')}>Back to Today</Button>
+    </div>
+  );
 
   const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][session.dayOfWeek];
   const isResting = restSec > 0;
