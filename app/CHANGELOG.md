@@ -9,6 +9,12 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.102.7 — 2026-06-21
+
+- Fixed the Plan page occasionally showing "No training plan" when one exists:
+  the plan read now retries past a transient empty result and keeps the last-good
+  view instead of blanking.
+
 ## v0.102.6 — 2026-06-21
 
 - Today no longer nags about a missed workout once you've trained since (e.g.

@@ -16,6 +16,7 @@ import { CardioLogModal } from '@/components/today';
 import { AdHocWorkoutModal } from '@/components/workout';
 import { useRouter } from 'next/navigation';
 import { getRepository } from '@/lib/firestore';
+import { withRetry } from '@/lib/util/retry';
 import { todayIso } from '@/lib/ui/date';
 import { cn } from '@/lib/ui/cn';
 import { terminologyMode } from '@/lib/periodization';
@@ -65,16 +66,23 @@ export default function PlanPage() {
     if (!user) return;
     const load = async () => {
       const repo = getRepository();
-      const active = await repo.getActivePlan(user.userId);
-      setMeso(active);
-      if (!active) { setMicros([]); setSessions([]); return; }
-      const ms = await repo.listMicrocycles(active.id);
-      ms.sort((a, b) => a.weekNumber - b.weekNumber);
-      setMicros(ms);
-      const ssArr = await Promise.all(ms.map((mi) => repo.listSessionsInMicrocycle(mi.id)));
-      setSessions(ssArr.flat());
-      const cur = ms.find((mi) => mi.status === 'active') ?? ms[0];
-      if (cur) setExpandedWeek(cur.id);
+      try {
+        // Retry the plan read -- a transient server read (e.g. right after an
+        // app-update reload) coming back empty would otherwise blank a plan that
+        // is actually there.
+        const active = await withRetry(() => repo.getActivePlan(user.userId));
+        setMeso(active);
+        if (!active) { setMicros([]); setSessions([]); return; }
+        const ms = await withRetry(() => repo.listMicrocycles(active.id));
+        ms.sort((a, b) => a.weekNumber - b.weekNumber);
+        setMicros(ms);
+        const ssArr = await Promise.all(ms.map((mi) => repo.listSessionsInMicrocycle(mi.id)));
+        setSessions(ssArr.flat());
+        const cur = ms.find((mi) => mi.status === 'active') ?? ms[0];
+        if (cur) setExpandedWeek(cur.id);
+      } catch (e) {
+        console.warn('plan load failed', e); // keep last-good UI rather than blanking
+      }
     };
     load();
   }, [user, refreshTick]);
