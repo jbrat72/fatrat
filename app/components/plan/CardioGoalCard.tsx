@@ -1,11 +1,13 @@
 'use client';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useUser } from '@/components/app';
 import { Card, Button } from '@/components/ui';
 import { getRepository } from '@/lib/firestore';
 
-/** Plan-screen card to view/set the weekly cardio goal (minutes). */
-export function CardioGoalCard() {
+/** Plan-screen card to view/set the weekly cardio goal (minutes).
+ *  With `embedded`, renders its inner content only (no Card chrome) so it can
+ *  sit inside another card, e.g. the Current Training Plan card. */
+export function CardioGoalCard({ embedded = false }: { embedded?: boolean } = {}) {
   const { user, refresh } = useUser();
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState('');
@@ -24,8 +26,12 @@ export function CardioGoalCard() {
     } finally { setSaving(false); }
   };
 
+  const Wrapper = embedded
+    ? ({ children }: { children: ReactNode }) => <div>{children}</div>
+    : ({ children }: { children: ReactNode }) => <Card>{children}</Card>;
+
   return (
-    <Card>
+    <Wrapper>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="section-head">CARDIO GOAL</div>
@@ -56,6 +62,6 @@ export function CardioGoalCard() {
           <Button size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
         </div>
       )}
-    </Card>
+    </Wrapper>
   );
 }

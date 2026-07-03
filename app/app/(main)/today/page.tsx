@@ -63,7 +63,14 @@ export default function TodayPage() {
       const past = all
         .filter((s) => !s.completed && s.date < todayStr && s.mesocycleId === activeMesoId)
         .sort((a, b) => a.date.localeCompare(b.date));
-      setMissed(past[past.length - 1] ?? null);
+      const missedCandidate = past[past.length - 1] ?? null;
+      // Don't nag about a missed day once the user has trained since -- if any
+      // session was completed after that date, they've moved on (e.g. into the
+      // next week), so the old skip is water under the bridge.
+      const trainedSince = missedCandidate
+        ? all.some((s) => s.completed && s.date > missedCandidate.date)
+        : false;
+      setMissed(trainedSince ? null : missedCandidate);
       // Any other pending day (not today) — newest-missed first, then upcoming.
       setOtherDays([...past.slice().reverse(), ...future]);
     })();

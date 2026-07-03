@@ -73,11 +73,15 @@ export function nudgeNextSet(
   // nudge behavior — only an explicit easy-week signal disables it.)
   const isEasyWeek = microTargetRIR != null && microTargetRIR >= 2;
   if (isEasyWeek) {
-    return { ...nextRaw, weightKg: roundToDisplay(just.weightKg, units), reps: nextRaw.reps };
+    // Carry the reps just performed onto the next set (like weight), rather than
+    // snapping back to the prescribed low end.
+    return { ...nextRaw, weightKg: roundToDisplay(just.weightKg, units), reps: just.reps ?? nextRaw.reps };
   }
 
   let nextWeight = just.weightKg;
-  let nextReps = nextRaw.reps;
+  // Default the next set's reps to what was just done -- only the failure/grind
+  // branches below reset it to the low end of the range.
+  let nextReps = just.reps ?? nextRaw.reps;
 
   if (rpe != null && rpe >= 9.5) {
     nextWeight = Math.max(0, just.weightKg - big);

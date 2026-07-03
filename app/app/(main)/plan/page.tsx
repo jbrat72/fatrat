@@ -180,9 +180,12 @@ export default function PlanPage() {
               <Button variant="ghost" size="sm" onClick={() => setChangeSheet(true)}>Change</Button>
             </div>
           </div>
+          {user.showCardioGoal !== false && (
+            <div className="mt-3 pt-3 border-t border-ink-line">
+              <CardioGoalCard embedded />
+            </div>
+          )}
         </Card>
-
-        {user.showCardioGoal !== false && <CardioGoalCard />}
 
         <Card>
           <div className="section-head mb-3">TRAINING WEEKS</div>
@@ -214,7 +217,11 @@ export default function PlanPage() {
               const skipped = weekSessions.filter((s) => !s.completed && s.date < todayStr).length;
               const isExpanded = expandedWeek === m.id;
               const isCurrent = m.weekNumber === currentWk;
-              const isCompleted = m.status === 'completed';
+              // A week before the calendar-current one is in the past -- treat it
+              // as done even if its stored status never advanced, so a prior week
+              // never shows as "Upcoming".
+              const isPast = m.weekNumber < currentWk;
+              const isCompleted = m.status === 'completed' || isPast;
               const intensity =
                 termMode === 'ADVANCED'
                   ? (m.targetRIR != null ? `${m.targetRIR} RIR` : null)

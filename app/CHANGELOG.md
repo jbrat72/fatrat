@@ -9,6 +9,17 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.102.6 — 2026-06-21
+
+- Today no longer nags about a missed workout once you've trained since (e.g.
+  after moving into the next week).
+- Logging a set now carries both the weight AND the reps you just did onto the
+  next set, instead of snapping reps back to the range's low end.
+- The weekly Cardio Goal now lives inside the Current Training Plan card instead
+  of being its own card.
+- Fixed the Weeks list showing a past week as "Upcoming" — earlier weeks now read
+  as done once the plan has moved past them.
+
 ## v0.102.5 — 2026-06-21
 
 - Fixed the workout screen getting stuck on "Loading…": a failed session read no
