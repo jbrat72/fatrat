@@ -9,6 +9,13 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.102.9 — 2026-06-21
+
+- Plan page now auto-expands the calendar-current week instead of a stale
+  'active' microcycle that could open a past week.
+- Fixed the Birthday/Sex fields overlapping on the Profile card (inputs can now
+  shrink; the native date field no longer overflows its column).
+
 ## v0.102.8 — 2026-06-21
 
 - Fixed the Plan page loading its header but showing empty Training Weeks/Weeks:

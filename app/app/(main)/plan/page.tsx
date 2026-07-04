@@ -89,7 +89,12 @@ export default function PlanPage() {
         setMeso(active);
         setMicros(ms);
         setSessions(ssArr.flat());
-        const cur = ms.find((mi) => mi.status === 'active') ?? ms[0];
+        // Auto-expand the CALENDAR-current week, not whichever micro is flagged
+        // 'active' (that flag can lag behind, opening a past week).
+        const curWk = active.startDate
+          ? Math.min(Math.max(Math.floor((Date.parse(todayIso()) - Date.parse(active.startDate)) / (7 * 86400000)) + 1, 1), active.weeks)
+          : active.weekIndex + 1;
+        const cur = ms.find((mi) => mi.weekNumber === curWk) ?? ms.find((mi) => mi.status === 'active') ?? ms[0];
         if (cur) setExpandedWeek(cur.id);
       } catch (e) {
         console.warn('plan load failed', e); // keep last-good UI rather than blanking

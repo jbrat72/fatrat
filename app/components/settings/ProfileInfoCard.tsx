@@ -74,7 +74,7 @@ export function ProfileInfoCard() {
   const age = ageFrom(user.dob);
   const summary = [age != null ? `${age} yr` : null, user.sex && user.sex !== 'prefer-not-to-say' ? user.sex : null]
     .filter(Boolean).join(' · ');
-  const field = 'w-full bg-bg-input border border-ink-line rounded-md px-2.5 py-2 text-sm';
+  const field = 'w-full min-w-0 box-border bg-bg-input border border-ink-line rounded-md px-2.5 py-2 text-sm';
 
   return (
     <Card>
@@ -94,7 +94,7 @@ export function ProfileInfoCard() {
           <div className="flex gap-3">
             <label className="flex-1 min-w-0">
               <span className="text-[11px] text-ink-mute uppercase tracking-wide">Birthday</span>
-              <input type="date" className={field} value={dob} onChange={(e) => setDob(e.target.value)} />
+              <input type="date" className={`${field} appearance-none`} value={dob} onChange={(e) => setDob(e.target.value)} />
             </label>
             <label className="flex-1 min-w-0">
               <span className="text-[11px] text-ink-mute uppercase tracking-wide">Sex</span>
