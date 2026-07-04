@@ -71,12 +71,23 @@ export default function PlanPage() {
         // app-update reload) coming back empty would otherwise blank a plan that
         // is actually there.
         const active = await withRetry(() => repo.getActivePlan(user.userId));
-        setMeso(active);
-        if (!active) { setMicros([]); setSessions([]); return; }
-        const ms = await withRetry(() => repo.listMicrocycles(active.id));
+        if (!active) { setMeso(null); setMicros([]); setSessions([]); return; }
+        // An active plan ALWAYS has microcycles — an empty read is a transient
+        // race, so retry a few times (withRetry only retries throws, not empties)
+        // before trusting it.
+        let ms = await withRetry(() => repo.listMicrocycles(active.id));
+        for (let i = 0; i < 4 && ms.length === 0; i++) {
+          await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+          ms = await withRetry(() => repo.listMicrocycles(active.id));
+        }
+        // Still empty after retries — keep the last-good view instead of showing
+        // the plan header with empty weeks.
+        if (ms.length === 0) return;
         ms.sort((a, b) => a.weekNumber - b.weekNumber);
+        const ssArr = await Promise.all(ms.map((mi) => withRetry(() => repo.listSessionsInMicrocycle(mi.id))));
+        // Commit everything together so the header never renders ahead of weeks.
+        setMeso(active);
         setMicros(ms);
-        const ssArr = await Promise.all(ms.map((mi) => repo.listSessionsInMicrocycle(mi.id)));
         setSessions(ssArr.flat());
         const cur = ms.find((mi) => mi.status === 'active') ?? ms[0];
         if (cur) setExpandedWeek(cur.id);

@@ -9,6 +9,12 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.102.8 — 2026-06-21
+
+- Fixed the Plan page loading its header but showing empty Training Weeks/Weeks:
+  the microcycle read now retries an empty result (an active plan always has
+  weeks) and commits all reads together, so the plan never renders half-loaded.
+
 ## v0.102.7 — 2026-06-21
 
 - Fixed the Plan page occasionally showing "No training plan" when one exists:
