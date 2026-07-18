@@ -9,6 +9,17 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.106.1 — 2026-07-18
+
+- Fixed the v0.106.0 deployment failure: the workout page's new stable-handler
+  hooks (useRef/useMemo) were placed after the early returns — a
+  rules-of-hooks violation that `next build`'s lint rejects (tsc + vitest
+  don't catch it). Moved above the returns.
+- Hardened `/plan/templates/workouts` with a Suspense boundary around
+  `useSearchParams()` so the route prerenders in any environment.
+- `npm run build` is now part of the pre-ship verification for these batches,
+  not just typecheck + tests.
+
 ## v0.106.0 — 2026-07-18
 
 Structure & performance (Phase 3 of the codebase audit). No feature changes.

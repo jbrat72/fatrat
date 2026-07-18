@@ -580,6 +580,54 @@ export default function WorkoutPage() {
     return out;
   }, [session]);
 
+  // ---- Stable per-card handlers -------------------------------------------
+  // ExerciseCard is memoized; inline closures re-created per render would
+  // defeat that (every keystroke re-rendered every card × every row). The
+  // ref always holds the freshest handler implementations, and the per-index
+  // bundles below keep their identity until the exercise COUNT changes — so
+  // an edit inside exercise 3 re-renders only exercise 3's card.
+  const handlersRef = useRef({
+    activateSet, updateSet, logSet, setEffort, unlockSet, addSet, removeSet,
+    skipRemaining, removeExercise, startSuperset, completeSuperset, unlinkSuperset, skipSet,
+    showHistoryAt: (i: number) => {
+      const ex = sessionRef.current?.exercises[i];
+      if (ex) setHistoryFor(ex.exerciseId);
+    },
+    swapFor: (i: number) => setSwapFor(i),
+    cancelSuperset: () => setSupersetFrom(null),
+    startTimer: (i: number, setIdx: number) => {
+      const ex = sessionRef.current?.exercises[i];
+      if (!ex) return;
+      setExerciseTimerLabel(ex.name);
+      setExerciseTimerSec(ex.sets[setIdx]?.timeSec ?? ex.prescribedTimeLow ?? 30);
+      setTimerTarget({ exIdx: i, setIdx });
+    },
+  });
+  handlersRef.current = { ...handlersRef.current, activateSet, updateSet, logSet, setEffort, unlockSet, addSet, removeSet, skipRemaining, removeExercise, startSuperset, completeSuperset, unlinkSuperset, skipSet };
+
+  const exCount = session?.exercises.length ?? 0;
+  const cardHandlers = useMemo(() =>
+    Array.from({ length: exCount }, (_, i) => ({
+      onActivateSet: (s: number) => handlersRef.current.activateSet(i, s),
+      onUpdateSet: (s: number, next: SetEntry) => handlersRef.current.updateSet(i, s, next),
+      onLogSet: (s: number) => handlersRef.current.logSet(i, s),
+      onEffort: (s: number, rpe: SetEntry['rpe']) => handlersRef.current.setEffort(i, s, rpe),
+      onUnlockSet: (s: number) => handlersRef.current.unlockSet(i, s),
+      onAddSet: () => handlersRef.current.addSet(i),
+      onRemoveSet: () => handlersRef.current.removeSet(i),
+      onShowHistory: () => handlersRef.current.showHistoryAt(i),
+      onSwap: () => handlersRef.current.swapFor(i),
+      onSkip: () => handlersRef.current.skipRemaining(i),
+      onRemove: () => handlersRef.current.removeExercise(i),
+      onSuperset: () => handlersRef.current.startSuperset(i),
+      onPairHere: () => handlersRef.current.completeSuperset(i),
+      onCancelSuperset: () => handlersRef.current.cancelSuperset(),
+      onUnlinkSuperset: () => handlersRef.current.unlinkSuperset(i),
+      onSkipSet: (s: number) => handlersRef.current.skipSet(i, s),
+      onStartTimer: (s: number) => handlersRef.current.startTimer(i, s),
+    })),
+  [exCount]);
+
   // Workout finish: collect feedback for any muscle still missing it, then
   // finalize. If every worked muscle already has feedback, finalize straight.
   const requestFinish = () => {
@@ -687,53 +735,6 @@ export default function WorkoutPage() {
     ?? (ex.swappedFromExerciseId ? lastPerf[ex.swappedFromExerciseId] : undefined)
     ?? lastPerfByName[ex.name.trim().toLowerCase()];
 
-  // ---- Stable per-card handlers -------------------------------------------
-  // ExerciseCard is memoized; inline closures re-created per render would
-  // defeat that (every keystroke re-rendered every card × every row). The
-  // ref always holds the freshest handler implementations, and the per-index
-  // bundles below keep their identity until the exercise COUNT changes — so
-  // an edit inside exercise 3 re-renders only exercise 3's card.
-  const handlersRef = useRef({
-    activateSet, updateSet, logSet, setEffort, unlockSet, addSet, removeSet,
-    skipRemaining, removeExercise, startSuperset, completeSuperset, unlinkSuperset, skipSet,
-    showHistoryAt: (i: number) => {
-      const ex = sessionRef.current?.exercises[i];
-      if (ex) setHistoryFor(ex.exerciseId);
-    },
-    swapFor: (i: number) => setSwapFor(i),
-    cancelSuperset: () => setSupersetFrom(null),
-    startTimer: (i: number, setIdx: number) => {
-      const ex = sessionRef.current?.exercises[i];
-      if (!ex) return;
-      setExerciseTimerLabel(ex.name);
-      setExerciseTimerSec(ex.sets[setIdx]?.timeSec ?? ex.prescribedTimeLow ?? 30);
-      setTimerTarget({ exIdx: i, setIdx });
-    },
-  });
-  handlersRef.current = { ...handlersRef.current, activateSet, updateSet, logSet, setEffort, unlockSet, addSet, removeSet, skipRemaining, removeExercise, startSuperset, completeSuperset, unlinkSuperset, skipSet };
-
-  const exCount = session?.exercises.length ?? 0;
-  const cardHandlers = useMemo(() =>
-    Array.from({ length: exCount }, (_, i) => ({
-      onActivateSet: (s: number) => handlersRef.current.activateSet(i, s),
-      onUpdateSet: (s: number, next: SetEntry) => handlersRef.current.updateSet(i, s, next),
-      onLogSet: (s: number) => handlersRef.current.logSet(i, s),
-      onEffort: (s: number, rpe: SetEntry['rpe']) => handlersRef.current.setEffort(i, s, rpe),
-      onUnlockSet: (s: number) => handlersRef.current.unlockSet(i, s),
-      onAddSet: () => handlersRef.current.addSet(i),
-      onRemoveSet: () => handlersRef.current.removeSet(i),
-      onShowHistory: () => handlersRef.current.showHistoryAt(i),
-      onSwap: () => handlersRef.current.swapFor(i),
-      onSkip: () => handlersRef.current.skipRemaining(i),
-      onRemove: () => handlersRef.current.removeExercise(i),
-      onSuperset: () => handlersRef.current.startSuperset(i),
-      onPairHere: () => handlersRef.current.completeSuperset(i),
-      onCancelSuperset: () => handlersRef.current.cancelSuperset(),
-      onUnlinkSuperset: () => handlersRef.current.unlinkSuperset(i),
-      onSkipSet: (s: number) => handlersRef.current.skipSet(i, s),
-      onStartTimer: (s: number) => handlersRef.current.startTimer(i, s),
-    })),
-  [exCount]);
 
   const renderCard = (i: number) => {
     const ex = session.exercises[i]!;

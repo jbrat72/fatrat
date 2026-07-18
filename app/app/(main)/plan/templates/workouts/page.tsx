@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/components/app';
@@ -10,7 +10,21 @@ import type { ProgramTemplate, UserMode } from '@/types';
 
 const MODE_RANK: Record<UserMode, number> = { BASIC: 0, INTERMEDIATE: 1, ADVANCED: 2 };
 
+/**
+ * useSearchParams() requires a Suspense boundary above it or `next build`
+ * fails prerendering this route with missing-suspense-with-csr-bailout
+ * (surfaces whenever the shell renders children at build time, e.g. a
+ * no-Firebase/mock build).
+ */
 export default function WorkoutTemplatesPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-ink-dim">Loading…</div>}>
+      <WorkoutTemplates />
+    </Suspense>
+  );
+}
+
+function WorkoutTemplates() {
   const { user } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
