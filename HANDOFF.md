@@ -1,33 +1,25 @@
 # FATRAT — Project Handoff
 
-_Last updated: 2026-06-15 (app v0.97.1)_
+_Last updated: 2026-07-18 (app v0.103.0)_
 
 Paste this file (or point the new chat at it) to bring a fresh session up to speed.
 
 ---
 
-## 0. NEXT TASK — Finish → mark incomplete sets as skipped
+## 0. NEXT TASK — none assigned
 
-When the user taps **Finish** on a workout, every exercise/set that was **not
-completed** should be marked **skipped** (not left pending, not silently
-dropped). Today, finishing finalizes the session as-is.
+The task that sat here at v0.97.1 (Finish → mark incomplete sets as skipped)
+shipped in v0.98. Nothing is queued — ask Brian for direction.
 
-- Logger + finish flow live in `app/(main)/today/workout/page.tsx`
-  (`requestFinish` → `finalizeWorkout`). Skipped sets are modeled as
-  `SetEntry.completed === true` with `setType: 'skip'` (see `skipSet` /
-  `skipRemaining` already in that file — reuse that shape).
-- Make finalize sweep all exercises: any set with `!completed` becomes
-  `{ completed: true, setType: 'skip' }`. Stats already filter `setType==='skip'`
-  out of "logged" counts, so this should be consistent end-to-end.
-- Watch the per-muscle feedback gate: `musclesMissingFeedback` / the final
-  `SessionFeedbackModal` already runs on finish — confirm marking-skipped
-  doesn't change which muscles count as "worked" (worked = has ≥1 *completed
-  non-skip* set, so skipping shouldn't add feedback prompts).
-- Verify with `npx tsc --noEmit`, bump version, changelog entry.
-
-Prompt Brian to confirm: should an exercise with **zero** completed sets stay
-on the session (all skipped) or be removed? Default assumption: keep it, all
-sets skipped, so history shows it was programmed-but-skipped.
+Open threads worth raising first:
+- **v0.103.0 shipped without a full typecheck.** The mount degraded mid-session
+  (see §2) and `tsc` stalled. The four changed files were syntax-verified with
+  the TypeScript parser, but no type pass ran. Re-run `npx tsc --noEmit` from
+  PowerShell early next session; fix anything it surfaces.
+- **Set defaults changed** in v0.102.6 / v0.103.0 (reps now carry to the next
+  set; swapping an exercise prefills from that exercise's own history). Worth
+  confirming on a real workout that weight AND reps populate.
+- Performance analytics (§10) is still the main un-started feature.
 
 ---
 
@@ -109,6 +101,28 @@ Exclude `C:\Users\brian\_fatratapp` from Windows Defender real-time scanning
 (Defender opening files mid-replace is a likely race trigger): Settings →
 Privacy & security → Windows Security → Virus & threat protection → Manage
 settings → Exclusions → Add or remove exclusions → Add a folder.
+
+### When the bridge goes SLOW (seen 2026-07-18)
+
+A separate failure mode from corruption: the mount degrades until it is
+I/O-bound rather than broken. Symptom — `npx tsc --noEmit` never finishes
+(15+ min vs the usual ~20s) while `uptime` shows load ~0.00, i.e. blocked on
+I/O, not CPU. `du` / `find` over the mount hang too, and truncated writes get
+more frequent at the same time.
+
+What to do:
+- **Run the typecheck on Windows instead** — ask Brian to run
+  `cd C:\Users\brian\_fatratapp\app ; npx tsc --noEmit` (native, ~20s, no
+  bridge). This is the reliable fallback.
+- **Syntax-only check inside the sandbox** (fast; catches the truncation class
+  but NOT type errors): copy changed files to `/tmp`, then parse each with
+  TypeScript's own parser — `ts.createSourceFile(p, src, Latest, true,
+  ScriptKind.TSX).parseDiagnostics`.
+- Background a long `tsc` with `setsid nohup ... &` and poll a logfile; a plain
+  `&` job dies when the bash call returns (every call is a separate shell).
+- `node_modules/.bin/esbuild` will not execute off this mount.
+- **A fresh session gets a fresh mount** — the actual fix. Tell Brian to start a
+  new chat, not reboot; his files and repo are never at risk.
 
 ---
 
@@ -271,7 +285,7 @@ set types, fixed flag, days, week-1 exercises; goal/experience/style reset).
 Bump three files in sync on every change: `lib/version.ts` (`APP_VERSION`),
 `package.json` `"version"`, and `app/CHANGELOG.md` (newest on top). Semver.
 
-**Current version: 0.97.1.**
+**Current version: 0.103.0.**
 
 PowerShell deploy (Brian copies this verbatim; note the `;` separators and the
 index.lock guard):
@@ -305,7 +319,63 @@ One-shot migrations run on sign-in (gated by profile flags, idempotent):
 
 ---
 
-## 9. Recent work (v0.67 → v0.97, condensed — full detail in app/CHANGELOG.md)
+## 9. Recent work (v0.67 → v0.103.0, condensed — full detail in app/CHANGELOG.md)
+
+### v0.98 → v0.103.0 (most recent session)
+
+- **Finish sweeps incomplete sets to skipped** (v0.98) — the old §0 task.
+  `workedMuscles` excludes skips so feedback prompts are unchanged.
+- **Week / plan correctness**: microcycles sorted by `weekNumber` in both repos
+  + defensive sort in `planAdvance`; `migratedWeekStatusRepair` migration. Plan's
+  current week is CALENDAR-derived (`meso.startDate` vs today); the Weeks list
+  treats any earlier week as past so it never reads "Upcoming"; Plan auto-expands
+  the calendar-current week, not the stale `status === 'active'` one.
+- **History charts are metric-aware** (weight vs reps vs time) via
+  `lib/exercise/resolveDef.ts`. A resolved library def is AUTHORITATIVE for
+  metric — `def ? (def.metric ?? 'weight-reps') : (ex.metric ?? 'weight-reps')`.
+  Falling back to the stored metric resurrected a stale 'reps' and hid the weight
+  field. Unique exercise names enforced on create/edit + `dedupeExerciseNames`
+  migration (a V2 flag re-runs it to fix metrics on re-pointed sessions).
+- **Timers + alarm**: wall-clock deadlines (`endAtRef` + `setTimeout` +
+  visibility/focus catch-up) — `setInterval` was throttled and fired late.
+  `lib/ui/beep.ts` runs two paths (Web Audio resume-then-schedule + a
+  synthesized-WAV `<audio>`); prime with `muted`, NOT `volume = 0` — iOS ignores
+  volume and it fired the alarm on scroll.
+- **Today dashboard**: `WeeklyRings` (3 donuts) + `lib/progress/dashboard.ts`;
+  metrics configurable in Settings (`dashboardRings`); the workouts ring counts
+  SCHEDULED sessions, not `daysPerWeek`. Cardio goal now sits INSIDE the Current
+  Training Plan card on Plan (`CardioGoalCard embedded`), with a Settings toggle.
+- **Cardio**: mm:ss entry (raw digits while focused, format on blur — a live
+  reformat fought the caret); Cardio favorites filter in Profile
+  (`cardioFavorites`) driving the Log Cardio picker; Pickleball added, time-based
+  with avg HR. Shared list in `lib/cardio/activities.ts`.
+- **Onboarding trimmed to 2 steps** (About you + Mode). New users get an EMPTY
+  equipment profile, so Today shows a "finish setup" nudge and the Plan Wizard
+  gates on equipment (with a bodyweight-only bypass).
+- **Set defaults**: `hydrateFromHistory` prefers prior weight AND reps over the
+  prescription (the generator pre-fills reps at the range low, so `s.reps ??`
+  never picked up last time's). `nudgeNextSet` carries the just-logged reps to
+  the next set — only the RPE >= 9 branches reset to the low end. Swapping an
+  exercise mid-workout prefills from the swapped-IN exercise's own history.
+- **Read hardening** (the recurring "no data / no plan" class): Firestore reads
+  go to the server with no offline cache, so one transient read blanks a screen.
+  Pattern — `withRetry` (retries THROWS) + retry-on-EMPTY where a non-empty
+  result is guaranteed (an active plan always has microcycles) + commit related
+  reads together + keep-last-good on failure. Applied to Today, Plan,
+  WeeklyRings, SessionDetailModal and the workout page.
+- **The workout screen can't strand you**: it hides the bottom nav, so a null
+  session used to be a dead end. Now — retry the session read, a `loaded` flag,
+  auto-redirect to `/today`, an explicit "Back to Today" button, and
+  `load().catch()` so a rejected read can't hang on "Loading…". Finishing a
+  workout returns to Today (mesocycle completion still shows its recap).
+- **Missed-workout nag** is suppressed once any session was completed after the
+  skipped date. Swap-with-another-day labels rows with the muscles trained, sorts
+  chronologically, and is limited to the 3 most recent skips + next 2 scheduled.
+- **Ad-hoc respects equipment**: `WorkoutPicker` filters template slots through
+  `canUseExercise(def, itemsForProfile(user))` — hides undoable workouts, drops
+  unusable exercises, and counts only what you can actually perform.
+
+### Earlier (v0.67 → v0.97.1)
 
 - **Plan Wizard v2** (the big rebuild): goals → experience → schedule →
   equipment profile → training style → split → prioritization tiers → sets/reps
@@ -334,7 +404,6 @@ One-shot migrations run on sign-in (gated by profile flags, idempotent):
 
 ## 10. Upcoming / back burner
 
-- **Finish → mark incomplete as skipped** — see §0 (the next task).
 - **Performance analytics** — "what worked" over completed blocks. Advanced:
   Stimulus-to-Fatigue Ratio per exercise; Basic/Intermediate: same in plain
   language. Needs a research pass on the math + a UI surface (Insights tab? post-
