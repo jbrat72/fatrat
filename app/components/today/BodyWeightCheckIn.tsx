@@ -5,16 +5,14 @@ import { useUser } from '@/components/app';
 import { getRepository } from '@/lib/firestore';
 import { kgToDisplay, displayToKg, weightLabel } from '@/lib/ui/units';
 import { todayIso } from '@/lib/ui/date';
+import { isoWeekStamp as weekStamp } from '@/lib/progress/streak';
 
 const DISMISS_KEY = 'fatrat:bw-dismissed-week';
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-function isoWeekStamp(d = new Date()): string {
-  const day = d.getDay() || 7;
-  const monday = new Date(d);
-  monday.setDate(d.getDate() - day + 1);
-  return monday.toISOString().slice(0, 10);
-}
+/** Local-timezone week stamp — the old inline version went through
+ *  toISOString(), which rolls the week over a day early/late off-UTC. */
+const isoWeekStamp = (d = new Date()) => weekStamp(d);
 
 export function BodyWeightCheckIn() {
   const { user } = useUser();
@@ -45,13 +43,19 @@ export function BodyWeightCheckIn() {
   const save = async () => {
     if (value == null) return;
     setSaving(true);
-    await getRepository().addBodyWeight(user.userId, {
-      date: todayIso(),
-      weightKg: displayToKg(value, user.units) ?? 0,
-    });
-    setSaved(true);
-    setSaving(false);
-    setTimeout(() => setShow(false), 800);
+    try {
+      await getRepository().addBodyWeight(user.userId, {
+        date: todayIso(),
+        weightKg: displayToKg(value, user.units) ?? 0,
+      });
+      setSaved(true);
+      setTimeout(() => setShow(false), 800);
+    } catch (e) {
+      console.warn('body weight save failed', e);
+    } finally {
+      // Without this a rejected write left the button stuck on "Saving…".
+      setSaving(false);
+    }
   };
 
   const dismiss = () => {

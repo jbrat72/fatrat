@@ -12,6 +12,7 @@
  */
 import type { WorkoutSession, EffortRPE, ExerciseMetric } from '@/types';
 import { estimate1RM, isReliableE1RM } from '@/lib/periodization/e1rm';
+import { isPerformedSet } from '@/lib/session/performedSets';
 
 type SessionExercise = WorkoutSession['exercises'][number];
 export type ExerciseMatcher = (ex: SessionExercise) => boolean;
@@ -43,7 +44,7 @@ export function metricOf(ex: SessionExercise): ExerciseMetric {
  */
 function pickTopSet(ex: SessionExercise) {
   const metric = metricOf(ex);
-  const done = ex.sets.filter((s) => s.completed && s.setType !== 'skip');
+  const done = ex.sets.filter(isPerformedSet);
   let qualified: typeof done;
   switch (metric) {
     case 'reps':
@@ -173,7 +174,7 @@ export function exerciseSummaries(sessions: WorkoutSession[]): ExerciseSummary[]
   const map = new Map<string, ExerciseSummary>();
   for (const s of sessions) {
     for (const ex of s.exercises) {
-      const logged = ex.sets.filter((x) => x.completed).length;
+      const logged = ex.sets.filter(isPerformedSet).length;
       if (logged === 0) continue;
       const cur = map.get(ex.exerciseId);
       if (!cur) {

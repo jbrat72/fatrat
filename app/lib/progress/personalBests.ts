@@ -3,6 +3,7 @@
  * Also produces a "PR sets" set (sessionId+exerciseId+setIndex) for flame icons.
  */
 import type { WorkoutSession, EffortRPE } from '@/types';
+import { isPerformedSet } from '@/lib/session/performedSets';
 
 export interface PersonalBest {
   exerciseId: string;
@@ -24,7 +25,9 @@ export function personalBests(sessions: WorkoutSession[]): PersonalBest[] {
     if (!s.completed) continue; // PRs come from finished workouts only
     for (const ex of s.exercises) {
       for (const set of ex.sets) {
-        if (!set.completed || set.weightKg == null || set.reps == null) continue;
+        // isPerformedSet: a skipped set is completed:true + setType:'skip' and
+        // keeps its prefilled weight/reps — it must never mint a PR.
+        if (!isPerformedSet(set) || set.weightKg == null || set.reps == null) continue;
         const existing = byExercise.get(ex.exerciseId);
         if (
           !existing ||

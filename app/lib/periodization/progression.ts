@@ -10,6 +10,15 @@ import type {
   EffortRPE,
 } from '@/types';
 import { rirFromRPE } from './rpe';
+import { isPerformedSet } from '@/lib/session/performedSets';
+
+/** Top set among sets actually performed (skips carry prefilled weight/reps
+ *  and must not drive the next prescription). */
+function performedTopSet(sets: SetEntry[], requireValues = true): SetEntry | undefined {
+  return sets
+    .filter((s) => isPerformedSet(s) && (!requireValues || (s.weightKg != null && s.reps != null)))
+    .sort((a, b) => (b.weightKg ?? 0) - (a.weightKg ?? 0))[0];
+}
 
 export interface PriorPerformance {
   /** Sets logged in the most recent session of this exercise (most recent first not required). */
@@ -59,9 +68,7 @@ export function nextLinear(
   opts: LinearOptions = {},
 ): Prescription {
   const o = { ...DEFAULT_LINEAR, ...opts };
-  const topSet = prior.sets
-    .filter((s) => s.completed && s.weightKg != null && s.reps != null)
-    .sort((a, b) => (b.weightKg ?? 0) - (a.weightKg ?? 0))[0];
+  const topSet = performedTopSet(prior.sets);
 
   const lastWeight = topSet?.weightKg ?? 0;
   const lastReps = topSet?.reps ?? prior.prescribedRepsLow;
@@ -104,9 +111,7 @@ export function nextRIRBased(
   weekIndex: number,
   weeksInMeso: number,
 ): Prescription {
-  const topSet = prior.sets
-    .filter((s) => s.completed && s.weightKg != null && s.reps != null)
-    .sort((a, b) => (b.weightKg ?? 0) - (a.weightKg ?? 0))[0];
+  const topSet = performedTopSet(prior.sets);
 
   const lastWeight = topSet?.weightKg ?? 0;
   const lastRpe = topSet?.rpe;
@@ -147,9 +152,7 @@ export function nextSetProgression(
   mev: number,
   mrv: number,
 ): Prescription {
-  const topSet = prior.sets
-    .filter((s) => s.completed)
-    .sort((a, b) => (b.weightKg ?? 0) - (a.weightKg ?? 0))[0];
+  const topSet = performedTopSet(prior.sets, false);
   const sets = Math.min(mrv, mev + weekIndex);
   return {
     weightKg: topSet?.weightKg ?? 0,
@@ -176,9 +179,7 @@ export function nextUndulating(
     [12, 15],
   ];
   const [lo, hi] = bands[dayOfWeekIndex % bands.length]!;
-  const topSet = prior.sets
-    .filter((s) => s.completed)
-    .sort((a, b) => (b.weightKg ?? 0) - (a.weightKg ?? 0))[0];
+  const topSet = performedTopSet(prior.sets, false);
 
   // Translate prior heavy set to lighter band roughly by % drop.
   const dropFactor = lo >= 10 ? 0.7 : lo >= 7 ? 0.85 : 1;

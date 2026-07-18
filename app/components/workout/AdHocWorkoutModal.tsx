@@ -138,6 +138,7 @@ export function AdHocWorkoutModal({
   const save = async () => {
     if (!hasContent || saving) return;
     setSaving(true);
+    try {
     const repo = getRepository();
 
     // Keep only sets the user actually filled in; drop exercises left empty.
@@ -150,7 +151,7 @@ export function AdHocWorkoutModal({
       })
       .filter((e) => e.sets.length > 0);
 
-    if (exercises.length === 0) { setSaving(false); return; }
+    if (exercises.length === 0) return;
 
     const dow = new Date(date + 'T00:00:00').getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6;
     // Only merge into an existing session if it's still pending — merging
@@ -190,9 +191,15 @@ export function AdHocWorkoutModal({
     }
 
     await repo.upsertSession(session);
-    setSaving(false);
     onSaved?.();
     onClose();
+    } catch (e) {
+      console.warn('ad-hoc save failed', e);
+    } finally {
+      // Always release the flag — a rejected write used to leave the button
+      // stuck on "Saving…" forever.
+      setSaving(false);
+    }
   };
 
   return (

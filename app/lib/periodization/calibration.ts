@@ -9,6 +9,7 @@
 import type { DataRepository } from '@/lib/firestore/repository';
 import type { Mesocycle, Microcycle } from '@/types';
 import { estimate1RM, isReliableE1RM } from './e1rm';
+import { isPerformedSet } from '@/lib/session/performedSets';
 
 /** Inverse Epley — the working weight to hit `reps` given an estimated 1RM. */
 function workingWeight(e1RM: number, reps: number): number {
@@ -27,7 +28,9 @@ export async function seedWeightsFromCalibration(
   for (const s of calSessions) {
     for (const ex of s.exercises) {
       for (const set of ex.sets) {
-        if (!set.completed || set.weightKg == null || set.reps == null) continue;
+        // Skipped calibration sets carry prescribed weight/reps and no RPE —
+        // without this filter they'd seed every later week from phantom lifts.
+        if (!isPerformedSet(set) || set.weightKg == null || set.reps == null) continue;
         if (!isReliableE1RM(set.reps, set.rpe)) continue;
         const est = estimate1RM({ weight: set.weightKg, reps: set.reps, rpe: set.rpe });
         if (est > 0 && est > (e1[ex.exerciseId] ?? 0)) e1[ex.exerciseId] = est;

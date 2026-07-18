@@ -51,6 +51,18 @@ export function InlineNumber({
   const inputRef = useRef<HTMLInputElement>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Live value for the hold-to-repeat interval. The interval captures `bump`
+  // from the render where the press started; reading the `value` prop there
+  // re-bumps the SAME base every tick (the hold froze after one step). The
+  // ref is advanced synchronously inside bump so repeated ticks compound.
+  const valueRef = useRef(value);
+  useEffect(() => { valueRef.current = value; }, [value]);
+  // Never leak a live repeat interval past unmount (a press that unmounted
+  // the row mid-hold kept firing onChange forever).
+  useEffect(() => () => {
+    if (longPressRef.current) clearTimeout(longPressRef.current);
+    if (tickRef.current) clearInterval(tickRef.current);
+  }, []);
 
   useEffect(() => { if (!open) setDraft(draftFromValue(value)); }, [value, open]); // eslint-disable-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
@@ -124,8 +136,9 @@ export function InlineNumber({
     setOpen(false);
   };
   const bump = (dir: 1 | -1) => {
-    const base = value ?? 0;
+    const base = valueRef.current ?? 0;
     const next = clamp(base + dir * step);
+    valueRef.current = next;
     onChange(next);
     setDraft(draftFromValue(next));
   };

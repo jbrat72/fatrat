@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useUser } from '@/components/app';
 import { Button, ChoicePill, InlineNumber } from '@/components/ui';
 import { cn } from '@/lib/ui/cn';
@@ -74,6 +74,12 @@ export function CardioLogModal({
   const [saving, setSaving] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
+  // Once the user has typed anything, the async history prefill (which can
+  // land AFTER they started typing) must not overwrite their input. Reset on
+  // open and on activity change — those are deliberate prefill moments.
+  const touched = useRef(false);
+  const touch = <A extends unknown[]>(fn: (...a: A) => void) => (...a: A) => { touched.current = true; fn(...a); };
+
   const favorites = user?.cardioFavorites ?? [];
   const hasFavorites = favorites.length > 0;
   // Favorites first; "Show all" reveals the rest. With no favorites set, show all.
@@ -106,13 +112,21 @@ export function CardioLogModal({
   useEffect(() => {
     if (!open) return;
     setShowAll(false);
+    touched.current = false;
     const favs = user?.cardioFavorites ?? [];
     if (favs.length && !favs.includes(activity)) setActivity(favs[0]);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // When the activity selection changes, prefill from the most-recent entry of that type.
+  const prevActivity = useRef(activity);
   useEffect(() => {
     if (!user) return;
+    const activityChanged = prevActivity.current !== activity;
+    prevActivity.current = activity;
+    if (activityChanged) touched.current = false;
+    // A late-resolving fetch re-runs this effect via lastByActivity — bail if
+    // the user already typed, instead of clobbering their entry.
+    if (touched.current) return;
     const last = lastByActivity[activity];
     if (!last) {
       // No history yet — reset to sensible blank defaults for this mode.
@@ -161,6 +175,7 @@ export function CardioLogModal({
   const save = async () => {
     if (!duration) return;
     setSaving(true);
+    try {
     const repo = getRepository();
     const date = dateOverride ?? todayIso();
     const dow = new Date(date + 'T00:00:00').getDay() as 0|1|2|3|4|5|6;
@@ -206,9 +221,15 @@ export function CardioLogModal({
       };
     }
     await repo.upsertSession(session);
-    setSaving(false);
     onSaved?.();
     onClose();
+    } catch (e) {
+      console.warn('cardio save failed', e);
+    } finally {
+      // Always release the flag — a rejected write used to leave the button
+      // stuck on "Saving…" forever.
+      setSaving(false);
+    }
   };
 
   const derivedDistanceDisp = kmToDisplayDistance(derivedDistanceKm, units);
@@ -249,6 +270,7 @@ export function CardioLogModal({
                 onFocus={() => setDurFocused(true)}
                 onBlur={() => setDurFocused(false)}
                 onChange={(e) => {
+                  touched.current = true;
                   const digits = e.target.value.replace(/\D/g, '').slice(0, 5);
                   setDurationStr(digits);
                   setDuration(minutesFromDigits(digits));
@@ -263,11 +285,11 @@ export function CardioLogModal({
               <>
                 <div>
                   <div className="section-head mb-2">SPEED</div>
-                  <InlineNumber value={speed} onChange={setSpeed} step={0.1} decimals={1} unit={speedLabel(units)} ariaLabel="Speed" />
+                  <InlineNumber value={speed} onChange={touch(setSpeed)} step={0.1} decimals={1} unit={speedLabel(units)} ariaLabel="Speed" />
                 </div>
                 <div>
                   <div className="section-head mb-2">INCLINE</div>
-                  <InlineNumber value={incline} onChange={setIncline} step={0.5} decimals={1} unit="%" ariaLabel="Incline" />
+                  <InlineNumber value={incline} onChange={touch(setIncline)} step={0.5} decimals={1} unit="%" ariaLabel="Incline" />
                 </div>
               </>
             )}
@@ -275,14 +297,14 @@ export function CardioLogModal({
             {mode === 'distance' && (
               <div>
                 <div className="section-head mb-2">DISTANCE</div>
-                <InlineNumber value={distance} onChange={setDistance} step={0.1} decimals={2} unit={distanceLabel(units)} ariaLabel="Distance" />
+                <InlineNumber value={distance} onChange={touch(setDistance)} step={0.1} decimals={2} unit={distanceLabel(units)} ariaLabel="Distance" />
               </div>
             )}
 
             {mode === 'resistance' && (
               <div>
                 <div className="section-head mb-2">RESISTANCE</div>
-                <InlineNumber value={resistance} onChange={setResistance} step={1} decimals={0} min={1} max={10} unit="/10" ariaLabel="Resistance" />
+                <InlineNumber value={resistance} onChange={touch(setResistance)} step={1} decimals={0} min={1} max={10} unit="/10" ariaLabel="Resistance" />
               </div>
             )}
           </div>
@@ -319,7 +341,7 @@ export function CardioLogModal({
 
             <div>
               <div className="section-head mb-2">AVG HEART RATE</div>
-              <InlineNumber value={hr} onChange={setHr} step={1} decimals={0} unit="bpm" ariaLabel="Heart rate" />
+              <InlineNumber value={hr} onChange={touch(setHr)} step={1} decimals={0} unit="bpm" ariaLabel="Heart rate" />
             </div>
           </div>
 
@@ -327,7 +349,7 @@ export function CardioLogModal({
             <div className="section-head mb-2">NOTES</div>
             <textarea
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => { touched.current = true; setNotes(e.target.value); }}
               className="w-full min-h-[64px] px-3 py-2 rounded-lg bg-bg-input text-ink border border-ink-line focus:border-accent outline-none text-sm"
               placeholder="Anything to remember about this session…"
             />

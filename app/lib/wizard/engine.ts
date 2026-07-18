@@ -210,7 +210,11 @@ export function generateWeek(
         exercises.push({ exerciseId: e.id, name: e.name, muscle: m, sets, reps: countFor(state, e, anchor), metric: e.metric || 'weight-reps', setStyle: 'straight', anchor });
       }
     });
-    return { dow: dows[di], type: day.type, dayMuscles: day.muscles, emphasis: di === 0 && emph.length ? `${emph[0]} emphasis` : '', exercises };
+    // Copy day.muscles: for preset splits it's a reference to the shared
+    // DAY_MUSCLES arrays (and for custom splits, to wizard state) — the core
+    // block below pushes 'core' into dayMuscles, and mutating the shared
+    // array permanently polluted every later dayLayout() in the process.
+    return { dow: dows[di], type: day.type, dayMuscles: [...day.muscles], emphasis: di === 0 && emph.length ? `${emph[0]} emphasis` : '', exercises };
   });
 
   // core as its own group — rotated day to day so it varies

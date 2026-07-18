@@ -273,10 +273,14 @@ export function SingleWorkoutWizard({ open, onClose, modifyTemplateId, initialTe
     try {
       await repo.upsertTemplate(tpl);
       onSaved?.();
+      close();
+    } catch (e) {
+      // Keep the wizard open so nothing typed is lost; closing on a failed
+      // save silently discarded the workout.
+      console.warn('workout template save failed', e);
     } finally {
       setSaving(false);
     }
-    close();
   };
 
   return (

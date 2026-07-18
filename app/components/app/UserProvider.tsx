@@ -17,6 +17,10 @@ const ACTIVE_USER_KEY = 'fatrat:activeUser:v1';
 interface UserContextValue {
   user: UserProfile | null;
   loading: boolean;
+  /** Set when the profile load (or a migration) threw — AppShell shows a retry
+   *  screen instead of blanking forever or bouncing to /onboarding (which
+   *  could re-onboard an existing user over their data). */
+  loadError: string | null;
   /** The Firebase auth user when Firebase is enabled; null in mock mode or signed out. */
   firebaseUser: FirebaseUser | null;
   setActiveUserId: (id: string) => Promise<void>;
@@ -34,6 +38,7 @@ function defaultUserId(): string {
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   // Only used in mock mode (no Firebase env config).
   const [activeId, setActiveIdState] = useState<string>(() => defaultUserId());
@@ -44,32 +49,42 @@ export function UserProvider({ children }: { children: ReactNode }) {
   // refreshes after an edit must stay silent.
   const load = async (id: string, opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
-    const repo = getRepository();
-    let profile = await repo.getProfile(id);
-    // One-shot v0.61 migration — drop Macrocycle for real Firestore users.
-    // Mock mode does not need it (seed key bump re-seeds).
-    if (profile && isFirebaseEnabled() && !profile.migratedMacroDrop) {
-      profile = await migrateMacrocyclesForUser(profile);
+    try {
+      const repo = getRepository();
+      let profile = await repo.getProfile(id);
+      // One-shot v0.61 migration — drop Macrocycle for real Firestore users.
+      // Mock mode does not need it (seed key bump re-seeds).
+      if (profile && isFirebaseEnabled() && !profile.migratedMacroDrop) {
+        profile = await migrateMacrocyclesForUser(profile);
+      }
+      // One-shot v0.62 migration — copy sessions/* to days/* with planName denorm.
+      if (profile && isFirebaseEnabled() && !profile.migratedSessionsToDays) {
+        profile = await migrateSessionsToDaysForUser(profile);
+      }
+      // One-shot — default existing plans to fixed exercises (mock + Firebase).
+      if (profile && !profile.migratedFixedExercises) {
+        profile = await migrateFixedExercises(profile);
+      }
+      // One-shot — repair week statuses / weekIndex broken by the unsorted-
+      // microcycle advance bug (mock + Firebase).
+      if (profile && !profile.migratedWeekStatusRepair) {
+        profile = await migrateWeekStatusRepair(profile);
+      }
+      // One-shot — merge duplicate exercise names to a single canonical exercise.
+      if (profile && !profile.migratedDedupeExercisesV2) {
+        profile = await migrateDedupeExerciseNames(profile);
+      }
+      setUser(profile);
+      setLoadError(null);
+    } catch (e) {
+      // Without this path a transient read error left loading=true forever
+      // (AppShell blanks the app) — and a null user would have bounced an
+      // EXISTING account to /onboarding.
+      console.warn('profile load failed', e);
+      setLoadError(e instanceof Error ? e.message : 'Could not load your profile.');
+    } finally {
+      setLoading(false);
     }
-    // One-shot v0.62 migration — copy sessions/* to days/* with planName denorm.
-    if (profile && isFirebaseEnabled() && !profile.migratedSessionsToDays) {
-      profile = await migrateSessionsToDaysForUser(profile);
-    }
-    // One-shot — default existing plans to fixed exercises (mock + Firebase).
-    if (profile && !profile.migratedFixedExercises) {
-      profile = await migrateFixedExercises(profile);
-    }
-    // One-shot — repair week statuses / weekIndex broken by the unsorted-
-    // microcycle advance bug (mock + Firebase).
-    if (profile && !profile.migratedWeekStatusRepair) {
-      profile = await migrateWeekStatusRepair(profile);
-    }
-    // One-shot — merge duplicate exercise names to a single canonical exercise.
-    if (profile && !profile.migratedDedupeExercisesV2) {
-      profile = await migrateDedupeExerciseNames(profile);
-    }
-    setUser(profile);
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -115,7 +130,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <UserContext.Provider value={{ user, loading, firebaseUser, setActiveUserId, refresh, signOut }}>
+    <UserContext.Provider value={{ user, loading, loadError, firebaseUser, setActiveUserId, refresh, signOut }}>
       {children}
     </UserContext.Provider>
   );

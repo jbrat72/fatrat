@@ -8,6 +8,7 @@
  *   liftingDaysThisWeek:    distinct dates with >=1 completed lifting session this week.
  */
 import type { WorkoutSession, UserProfile } from '@/types';
+import { isPerformedSet } from '@/lib/session/performedSets';
 
 export interface StreakStats {
   consecutiveWeeks: number;
@@ -34,7 +35,7 @@ export function isoWeekStamp(d: Date): string {
 function isActive(s: WorkoutSession): boolean {
   if (s.completed) return true;
   if (s.cardio && s.cardio.length > 0) return true;
-  if (s.exercises && s.exercises.some((e) => e.sets.some((set) => set.completed))) return true;
+  if (s.exercises && s.exercises.some((e) => e.sets.some(isPerformedSet))) return true;
   return false;
 }
 
@@ -115,7 +116,7 @@ export function streakStats(
   const liftingDates = new Set<string>();
   for (const s of thisWeekSessions) {
     for (const c of s.cardio ?? []) cardioMinutesThisWeek += c.durationMin || 0;
-    const hasLifting = (s.exercises ?? []).some((e) => e.sets.some((set) => set.completed));
+    const hasLifting = (s.exercises ?? []).some((e) => e.sets.some(isPerformedSet));
     if (hasLifting) liftingDates.add(s.date);
   }
   const liftingDaysThisWeek = liftingDates.size;

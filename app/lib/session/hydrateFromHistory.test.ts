@@ -61,6 +61,26 @@ describe('hydrateFromHistory', () => {
     expect(out.exercises[0]!.sets[0]!.reps).toBe(5);
   });
 
+  it('replaces generator-default reps (== prescribedRepsLow) with last time\'s reps', () => {
+    const prior = mkSession('p1', '2026-05-01', [{ weight: 100, reps: 6, completed: true }]);
+    const today = mkSession('t1', '2026-05-08', [{ reps: 8 }]); // generator prefill at range low
+    today.exercises[0]!.prescribedRepsLow = 8;
+    const out = hydrateFromHistory(today, [prior]);
+    expect(out.exercises[0]!.sets[0]!.reps).toBe(6);
+    expect(out.exercises[0]!.sets[0]!.weightKg).toBe(100);
+  });
+
+  it('ignores skipped prior sets as a hydration source', () => {
+    const skipped = mkSession('p2', '2026-05-05', [{ weight: 110, reps: 8, completed: true }]);
+    skipped.exercises[0]!.sets = skipped.exercises[0]!.sets.map((s) => ({ ...s, setType: 'skip' as const }));
+    const real = mkSession('p1', '2026-05-01', [{ weight: 100, reps: 8, completed: true }]);
+    const today = mkSession('t1', '2026-05-08', [{}]);
+    const out = hydrateFromHistory(today, [skipped, real]);
+    // The more recent (skipped) session must be passed over for the last one
+    // actually performed.
+    expect(out.exercises[0]!.sets[0]!.weightKg).toBe(100);
+  });
+
   it('handles no history gracefully', () => {
     const today = mkSession('t1', '2026-05-08', [{}, {}, {}]);
     const out = hydrateFromHistory(today, []);

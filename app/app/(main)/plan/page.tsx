@@ -64,6 +64,9 @@ export default function PlanPage() {
 
   useEffect(() => {
     if (!user) return;
+    // Cancellation: the empty-retry loop below can outlive a navigation or a
+    // refreshTick bump; a stale pass must not commit state over a newer one.
+    let cancelled = false;
     const load = async () => {
       const repo = getRepository();
       try {
@@ -71,20 +74,24 @@ export default function PlanPage() {
         // app-update reload) coming back empty would otherwise blank a plan that
         // is actually there.
         const active = await withRetry(() => repo.getActivePlan(user.userId));
+        if (cancelled) return;
         if (!active) { setMeso(null); setMicros([]); setSessions([]); return; }
         // An active plan ALWAYS has microcycles — an empty read is a transient
         // race, so retry a few times (withRetry only retries throws, not empties)
         // before trusting it.
         let ms = await withRetry(() => repo.listMicrocycles(active.id));
-        for (let i = 0; i < 4 && ms.length === 0; i++) {
+        for (let i = 0; i < 4 && ms.length === 0 && !cancelled; i++) {
           await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+          if (cancelled) return;
           ms = await withRetry(() => repo.listMicrocycles(active.id));
         }
+        if (cancelled) return;
         // Still empty after retries — keep the last-good view instead of showing
         // the plan header with empty weeks.
         if (ms.length === 0) return;
         ms.sort((a, b) => a.weekNumber - b.weekNumber);
         const ssArr = await Promise.all(ms.map((mi) => withRetry(() => repo.listSessionsInMicrocycle(mi.id))));
+        if (cancelled) return;
         // Commit everything together so the header never renders ahead of weeks.
         setMeso(active);
         setMicros(ms);
@@ -101,6 +108,7 @@ export default function PlanPage() {
       }
     };
     load();
+    return () => { cancelled = true; };
   }, [user, refreshTick]);
 
   // Reschedule a missed session onto a different (usually empty) date —

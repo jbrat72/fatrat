@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Button } from '@/components/ui';
+import { todayIso } from '@/lib/ui/date';
 import type { WorkoutSession } from '@/types';
 
 function longDate(iso: string): string {
@@ -81,7 +82,10 @@ export function StartWorkoutModal({ open, onClose, hasScheduled, scheduledLabel,
                     className="w-full text-left rounded-xl border border-ink-line bg-bg-elev px-4 py-3 hover:border-accent/50 transition">
                     <div className="font-medium">{musclesLabel(s) || s.name || planName || 'Workout'}</div>
                     <div className="text-xs text-ink-dim mt-0.5">
-                      {longDate(s.date)}{s.date < new Date().toISOString().slice(0, 10) ? ' · missed' : ' · upcoming'} · {s.exercises.length} exercises
+                      {/* Local date, NOT toISOString(): in UTC-negative timezones the
+                          UTC date flips to tomorrow in the evening, mislabeling
+                          today's workout as missed. */}
+                      {longDate(s.date)}{s.date < todayIso() ? ' · missed' : ' · upcoming'} · {s.exercises.length} exercises
                     </div>
                   </button>
                 ))}

@@ -89,7 +89,11 @@ export default function HistoryPage() {
   // Every session for the user — the progression chart spans all of them.
   useEffect(() => {
     if (!user) return;
-    getRepository().listSessions(user.userId, { limit: 1000 }).then(setAllSessions);
+    let cancelled = false;
+    getRepository().listSessions(user.userId, { limit: 1000 })
+      .then((ss) => { if (!cancelled) setAllSessions(ss); })
+      .catch((e) => console.warn('history sessions load failed', e));
+    return () => { cancelled = true; };
   }, [user, refreshTick]);
 
   // Maps weekNumber → source block name when in 'all' mode. The calendar
@@ -105,6 +109,10 @@ export default function HistoryPage() {
   // renumbered weeks (sorted by each micro's earliest session date).
   useEffect(() => {
     if (!user) return;
+    // Cancellation: switching blocks fires this per selection; without the
+    // guard a slow fetch for block A could land after block B's and render
+    // the wrong block's rows under the new header.
+    let cancelled = false;
     const load = async () => {
       const repo = getRepository();
       if (selectedMesoId !== 'all') {
@@ -112,9 +120,11 @@ export default function HistoryPage() {
           setMicros([]); setSessions([]); setBlockNameByWeek(undefined); setCalendarWeeks(undefined); return;
         }
         const ms = await repo.listMicrocycles(selectedMesoId);
+        if (cancelled) return;
         ms.sort((a, b) => a.weekNumber - b.weekNumber);
-        setMicros(ms);
         const ssArr = await Promise.all(ms.map((m) => repo.listSessionsInMicrocycle(m.id)));
+        if (cancelled) return;
+        setMicros(ms);
         setSessions(ssArr.flat());
         setBlockNameByWeek(undefined);
         setCalendarWeeks(undefined);
@@ -128,6 +138,7 @@ export default function HistoryPage() {
       const mesos = await repo.listMesocycles(user.userId);
       const mesoNameById = new Map(mesos.map((m) => [m.id, m.name] as const));
       const all = await repo.listSessions(user.userId, { limit: 1000 });
+      if (cancelled) return;
       const weekStart = user.weekStartsOn ?? 1;
       const startOfWeekIso = (iso: string): string => {
         const d = new Date(iso + 'T00:00:00');
@@ -174,7 +185,8 @@ export default function HistoryPage() {
       setBlockNameByWeek(nameByWeek);
       setCalendarWeeks(calWeeks);
     };
-    load();
+    load().catch((e) => console.warn('history calendar load failed', e));
+    return () => { cancelled = true; };
   }, [selectedMesoId, refreshTick, user]);
 
   // Sessions feeding the progression chart, narrowed to the chosen date range.
@@ -353,8 +365,14 @@ export default function HistoryPage() {
           const start = viewWeek.startDate!;
           const wkStart = new Date(start + 'T00:00:00');
           const weekEnd = (() => {
+            // Local components, NOT toISOString(): converting local midnight to
+            // UTC lands a day early in UTC+ timezones, dropping the week's
+            // final day from the list below.
             const d = new Date(wkStart); d.setDate(d.getDate() + 6);
-            return d.toISOString().slice(0, 10);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${dd}`;
           })();
           const weekSessions = (selectedMesoId === 'all' ? sessions : allSessions)
             .filter((s) => s.date >= start && s.date <= weekEnd)

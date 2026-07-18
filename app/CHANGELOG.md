@@ -9,6 +9,57 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.104.0 — 2026-07-18
+
+Correctness batch (Phase 1 of the codebase audit). Full audit in
+CODEBASE_AUDIT (chat); no feature changes.
+
+- **Skipped sets no longer count as lifts anywhere.** New canonical predicate
+  `lib/session/performedSets.ts` (`isPerformedSet` / `isWorkingSet`), applied to
+  personal bests (no more fake PRs from skipped prescribed sets), calibration
+  seeding (skipped calibration sets no longer seed later weeks' weights), all
+  four progression schemes (a skipped session can't trigger a weight increase),
+  weekly hard-set volume (skips + warmups excluded from MRV math), meso recap
+  tonnage/e1RM gains, hydration source selection, streaks/lifting days, and
+  exercise summaries. Set-count prescriptions still use the planned set count
+  on purpose (skipping sets shouldn't shrink next week's plan).
+- **Hydration preserves manual edits again** (fixes the failing unit test from
+  the v0.103 set-defaults change): last time's values still beat the
+  generator's prefills — reps hydrate when empty or still at the range-low
+  default, weight hydrates when empty — but a hand-entered weight or
+  off-default rep count is kept. Worth confirming on a real workout that
+  weight and reps still populate from last time.
+- **Finish can no longer be silently un-finished**: finishing a workout now
+  cancels the pending debounced set-save, which could fire ~350ms later and
+  re-upsert the pre-final session over the completed one (leaving the week
+  advanced but the day "in progress"). Debounced saves also log failures.
+- **Hold-to-repeat on number fields works again**: the +/− long-press repeat
+  was frozen by a stale closure (bumped once, then re-bumped the same value);
+  it now compounds each tick, and the repeat timer is cleaned up on unmount.
+- **Timezone fixes (UTC → local)**: "Swap with another day" no longer labels
+  today's workout "missed" in the evening (UTC date rollover); History's WEEK
+  SESSIONS no longer drops the week's last day (UTC+ timezones); the weekly
+  body-weight dismissal stamp uses the local-timezone week.
+- **Sign-in can't hang or mis-onboard**: a failed profile load now shows a
+  "Try again" screen instead of an infinite blank app — and no longer
+  redirects an existing account to onboarding (which could have re-onboarded
+  over real data).
+- **Async hardening**: the workout, Plan, and History loaders are cancelled on
+  navigation (an orphaned workout load could stamp startedAt on a workout you
+  never opened; switching History blocks could render the wrong block's rows);
+  Cardio log no longer overwrites what you've typed when the history prefill
+  arrives late; Save buttons in Cardio/Ad-Hoc/Body-weight/Workout-template
+  modals recover from a failed write instead of sticking on "Saving…" (the
+  single-workout wizard keeps your entries open on failure).
+- In-workout exercise cards are keyed by exercise identity, so removing an
+  exercise or skip-adjusting volume no longer moves an open ⋮ menu (or a row
+  error) onto a different exercise.
+- Plan-wizard engine no longer mutates its shared split definitions (running
+  the wizard with a core block permanently added Core to every Push/Pull/etc.
+  day list for the rest of the browser session).
+- Tests: 87 passing (was 78 + 1 failing); +8 new tests covering the skip
+  predicate and hydration contract. `npx tsc --noEmit` clean.
+
 ## v0.103.0 — 2026-06-21
 
 - Ad-hoc workouts now respect your equipment: the picker hides workouts you

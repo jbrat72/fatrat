@@ -3,6 +3,7 @@
  */
 import type { WorkoutSession } from '@/types';
 import { estimate1RM, isReliableE1RM } from '@/lib/periodization/e1rm';
+import { isPerformedSet } from '@/lib/session/performedSets';
 
 export interface MesoLiftStat {
   exerciseId: string;
@@ -47,7 +48,9 @@ export function recapMesocycle(sessions: WorkoutSession[], targetRIRs: number[])
     if (!s.completed) continue;
     for (const ex of s.exercises) {
       for (const set of ex.sets) {
-        if (!set.completed || set.weightKg == null || set.reps == null) continue;
+        // Skipped sets keep their prefilled weight/reps — they must not add
+        // tonnage or feed the e1RM gain stats.
+        if (!isPerformedSet(set) || set.weightKg == null || set.reps == null) continue;
         totalSets += 1;
         totalReps += set.reps;
         totalVolumeKg += set.weightKg * set.reps;

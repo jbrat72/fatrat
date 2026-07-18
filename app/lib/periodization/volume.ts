@@ -3,6 +3,7 @@
  * Used by both the engine and the volume dashboard (INTERMEDIATE/ADVANCED).
  */
 import type { MuscleGroup, WorkoutSession, EffortRPE } from '@/types';
+import { isWorkingSet } from '@/lib/session/performedSets';
 
 /** A "hard set" is conventionally one taken to RPE >= 5 (>=5 RIR away from failure
  *  doesn't count). When effort is missing we still count completed sets. */
@@ -13,7 +14,9 @@ export function countHardSets(sessions: WorkoutSession[]): Record<MuscleGroup, n
   for (const s of sessions) {
     for (const ex of s.exercises) {
       for (const set of ex.sets) {
-        if (!set.completed) continue;
+        // Working sets only: skips (completed:true + setType:'skip', no RPE)
+        // and warmups must not count toward weekly hard-set volume.
+        if (!isWorkingSet(set)) continue;
         if (set.rpe != null && set.rpe < HARD_SET_RPE_THRESHOLD) continue;
         out[ex.muscle] = (out[ex.muscle] ?? 0) + 1;
       }

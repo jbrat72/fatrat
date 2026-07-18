@@ -24,7 +24,7 @@ import type { ReactNode } from 'react';
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { firebaseUser, user, loading, signOut } = useUser();
+  const { firebaseUser, user, loading, loadError, refresh, signOut } = useUser();
   const firebase = isFirebaseEnabled();
 
   useEffect(() => {
@@ -34,10 +34,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       router.replace('/login');
       return;
     }
-    if (!user && pathname !== '/onboarding') {
+    // A failed profile LOAD is not a missing profile — never bounce an
+    // existing account to /onboarding (re-onboarding would overwrite it).
+    if (!user && !loadError && pathname !== '/onboarding') {
       router.replace('/onboarding');
     }
-  }, [firebase, loading, firebaseUser, user, pathname, router]);
+  }, [firebase, loading, firebaseUser, user, loadError, pathname, router]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -46,6 +48,26 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   if (firebase && (loading || !firebaseUser)) {
     return <div className="min-h-screen bg-bg" />;
+  }
+
+  // Profile load failed (transient read error, offline) — show a retry screen
+  // instead of a blank app or a wrong redirect.
+  if (loadError && !user) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center p-6">
+        <div className="text-center space-y-3 max-w-xs">
+          <div className="font-semibold">Couldn&apos;t load your profile</div>
+          <p className="text-ink-dim text-sm">Check your connection, then try again.</p>
+          <button
+            type="button"
+            onClick={() => refresh()}
+            className="h-10 px-4 rounded-lg bg-accent text-white text-sm font-semibold active:scale-95"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

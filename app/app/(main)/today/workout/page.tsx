@@ -66,22 +66,30 @@ export default function WorkoutPage() {
 
   useEffect(() => {
     if (!user) return;
+    // Cancellation guard: the retry loop below can outlive this screen (user
+    // backs out mid-load). Without it the orphaned load kept running — setting
+    // state on an unmounted page and even stamping startedAt on a workout the
+    // user never started.
+    let cancelled = false;
     const load = async () => {
       const repo = getRepository();
       // Retry briefly to beat the read-after-write race: right after an ad-hoc
       // session is created (Start Workout) the server read can lag the write,
       // which would otherwise strand the user on a dead-end "nothing here".
       let res = await resolveToday(repo, user.userId, todayIso());
-      for (let i = 0; i < 3 && !res.session; i++) {
+      for (let i = 0; i < 3 && !res.session && !cancelled; i++) {
         await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+        if (cancelled) return;
         res = await resolveToday(repo, user.userId, todayIso());
       }
+      if (cancelled) return;
       let s = res.session;
       // No session to work on -- don't trap the user on the nav-less workout
       // screen; bounce back to the full Today shell.
       if (!s) { setLoaded(true); router.replace('/today'); return; }
       if (s) {
         const prior = await repo.listSessions(user.userId, { limit: 100 });
+        if (cancelled) return;
         const hydrated = hydrateFromHistory(s, prior);
         if (hydrated !== s) { await repo.upsertSession(hydrated); s = hydrated; }
         // Muscles trained in any earlier session — they get a soreness check-in.
@@ -111,6 +119,7 @@ export default function WorkoutPage() {
         setLastPerf(perf);
         setLastPerfByName(perfByName);
       }
+      if (cancelled) return;
       setSession(s);
       setMeso(res.mesocycle);
       setMicro(res.microcycle);
@@ -118,6 +127,7 @@ export default function WorkoutPage() {
         repo.listGlobalExercises(),
         repo.listUserExercises(user.userId).catch(() => [] as ExerciseDefinition[]),
       ]);
+      if (cancelled) return;
       const byId: Record<string, ExerciseDefinition> = {};
       // Bundled library first so every id resolves even if the backend list is
       // missing newer entries; repo globals + custom exercises overlay it.
@@ -140,7 +150,8 @@ export default function WorkoutPage() {
     };
     // Never hang on "Loading…": if the load rejects (transient read error), mark
     // loaded and fall back to the no-session screen instead of an infinite spinner.
-    load().catch((e) => { console.warn('workout load failed', e); setLoaded(true); });
+    load().catch((e) => { console.warn('workout load failed', e); if (!cancelled) setLoaded(true); });
+    return () => { cancelled = true; };
   }, [user]);
 
   // Soreness check-in: when the active exercise is the first one for a muscle
@@ -175,7 +186,9 @@ export default function WorkoutPage() {
 
   const queueSave = (next: WorkoutSession) => {
     if (saveDebounce.current) clearTimeout(saveDebounce.current);
-    saveDebounce.current = setTimeout(() => { getRepository().upsertSession(next); }, 350);
+    saveDebounce.current = setTimeout(() => {
+      getRepository().upsertSession(next).catch((e) => console.warn('session save failed', e));
+    }, 350);
   };
 
   const pauseWorkout = () => {
@@ -552,12 +565,17 @@ export default function WorkoutPage() {
 
   const finalizeWorkout = async (feedback: SessionFeedback | null = null) => {
     if (!session) return;
+    // Kill any pending debounced save — otherwise a save queued by the last
+    // set's effort rating fires ~350ms from now and re-upserts the PRE-final
+    // (completed:false) session over the finalized one.
+    if (saveDebounce.current) { clearTimeout(saveDebounce.current); saveDebounce.current = null; }
     const repo = getRepository();
     // Sweep every set that was never logged into a skip (completed:true +
     // setType:'skip'), so finishing leaves no pending sets and history shows
     // programmed-but-skipped work. Exercises with zero completed sets stay on
-    // the session (all skipped). Stats filter setType==='skip' out of logged
-    // counts, so this is consistent end-to-end.
+    // the session (all skipped). Stats go through isPerformedSet
+    // (lib/session/performedSets) which filters skips, so this is consistent
+    // end-to-end.
     const sweptExercises = session.exercises.map((ex) => ({
       ...ex,
       sets: ex.sets.map((s) => (s.completed ? s : { ...s, completed: true, setType: 'skip' as const })),
@@ -634,9 +652,13 @@ export default function WorkoutPage() {
 
   const renderCard = (i: number) => {
     const ex = session.exercises[i]!;
+    // Stable identity key: remove/soreness-skip/superset-reorder all shift
+    // indices, and an index key made per-card state (open ⋮ menu, row errors)
+    // jump to a different exercise. Occurrence suffix disambiguates duplicates.
+    const occ = session.exercises.slice(0, i).filter((e) => e.exerciseId === ex.exerciseId).length;
     return (
       <ExerciseCard
-        key={i}
+        key={`${ex.exerciseId}#${occ}`}
         exercise={ex}
         exerciseIndex={i}
         mode={terminologyMode(user)}

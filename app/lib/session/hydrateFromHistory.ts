@@ -8,6 +8,11 @@
  * the user deliberately set on the Today card every time a workout was opened.
  */
 import type { WorkoutSession, SetEntry } from '@/types';
+import { isPerformedSet } from './performedSets';
+
+/** A prior set only counts as history if it was actually performed — a fully
+ *  skipped session keeps its prefilled weight/reps and must not be a source. */
+const usable = (s: SetEntry) => isPerformedSet(s) && s.weightKg != null && s.reps != null;
 
 export function hydrateFromHistory(
   session: WorkoutSession,
@@ -23,7 +28,7 @@ export function hydrateFromHistory(
     for (const prior of sorted) {
       if (prior.id === session.id) continue;
       const candidate = prior.exercises.find((e) => e.exerciseId === ex.exerciseId);
-      if (candidate && candidate.sets.some((s) => s.completed && s.weightKg != null && s.reps != null)) {
+      if (candidate && candidate.sets.some(usable)) {
         priorEx = candidate;
         break;
       }
@@ -31,23 +36,25 @@ export function hydrateFromHistory(
     if (!priorEx) return ex;
 
     const priorByIndex = new Map<number, SetEntry>();
-    const lastCompletedPrior = [...priorEx.sets].reverse().find((s) => s.completed && s.weightKg != null && s.reps != null);
+    const lastCompletedPrior = [...priorEx.sets].reverse().find(usable);
     for (const s of priorEx.sets) {
-      if (s.completed && s.weightKg != null && s.reps != null) priorByIndex.set(s.setIndex, s);
+      if (usable(s)) priorByIndex.set(s.setIndex, s);
     }
 
     const sets = ex.sets.map((s, i) => {
       if (s.completed) return s;
       const prior = priorByIndex.get(i) ?? lastCompletedPrior;
       if (!prior) return s;
-      // Prefer last time's values over the prescribed defaults — the generator
-      // pre-fills reps at the range's low end, so `s.reps ?? prior.reps` would
-      // never pick up last time's reps. This only runs on a fresh session (no
-      // sets logged yet), so overwriting the prescription is safe.
+      // Last time's values beat the GENERATOR's defaults, but never a manual
+      // edit. The generator pre-fills reps at the range's low end (so a value
+      // equal to prescribedRepsLow is treated as untouched) and leaves weight
+      // empty except where deliberately seeded — a non-null weight or an
+      // off-default rep count is user intent and is preserved.
+      const repsUntouched = s.reps == null || s.reps === ex.prescribedRepsLow;
       return {
         ...s,
-        weightKg: prior.weightKg ?? s.weightKg,
-        reps:     prior.reps     ?? s.reps,
+        weightKg: s.weightKg == null ? prior.weightKg : s.weightKg,
+        reps:     repsUntouched ? (prior.reps ?? s.reps) : s.reps,
       };
     });
     return { ...ex, sets };

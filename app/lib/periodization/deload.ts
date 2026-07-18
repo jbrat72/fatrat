@@ -8,6 +8,7 @@
  */
 import type { WorkoutSession, UserMode } from '@/types';
 import { estimate1RM } from './e1rm';
+import { isPerformedSet } from '@/lib/session/performedSets';
 
 export type DeloadReason =
   | 'scheduled-meso-end'
@@ -79,7 +80,7 @@ function mainLiftE1RMSeries(
     for (const ex of s.exercises) {
       if (!mainLiftIds.includes(ex.exerciseId)) continue;
       for (const set of ex.sets) {
-        if (!set.completed || set.weightKg == null || set.reps == null) continue;
+        if (!isPerformedSet(set) || set.weightKg == null || set.reps == null) continue;
         best = Math.max(
           best,
           estimate1RM({ weight: set.weightKg, reps: set.reps, rpe: set.rpe }),
