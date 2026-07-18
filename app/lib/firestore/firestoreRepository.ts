@@ -17,12 +17,13 @@
  * Firebase Auth's currentUser.uid. Throws if no user is signed in.
  */
 import {
-  getFirestore, collection, doc, getDoc, getDocs,
-  setDoc, query, where, orderBy, limit as limitFn, type Firestore,
+  getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  collection, doc, getDoc, getDocs,
+  setDoc, query, where, orderBy, limit as limitFn, writeBatch, type Firestore,
 } from 'firebase/firestore';
 import { getApps } from 'firebase/app';
 import { getFirebaseAuth } from '@/lib/firebase/client';
-import type { DataRepository } from './repository';
+import type { DataRepository, PlanBatch } from './repository';
 import type {
   UserProfile, BodyWeightEntry, Mesocycle, Microcycle,
   WorkoutSession, ExerciseDefinition, UserExercisePrefs, ProgramTemplate,
@@ -36,7 +37,19 @@ function db(): Firestore {
   if (apps.length === 0) {
     throw new Error('Firebase app not initialized. Import @/lib/firebase/client first.');
   }
-  _db = getFirestore(apps[0]!);
+  try {
+    // IndexedDB-backed local cache (multi-tab safe). This makes reads
+    // local-first with a server fallback, makes writes durable while offline
+    // (they sync on reconnect), and gives read-your-own-write consistency —
+    // the root cause of the app's historical "no data / no plan" transients.
+    _db = initializeFirestore(apps[0]!, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    // Firestore was already initialized for this app (e.g. hot reload) —
+    // reuse the existing instance rather than fighting over settings.
+    _db = getFirestore(apps[0]!);
+  }
   return _db;
 }
 
@@ -148,6 +161,16 @@ export function firestoreRepository(): DataRepository {
       out.sort((a, b) => a.date.localeCompare(b.date));
       return out;
     },
+    async listSessionsForMeso(mesoId) {
+      const uid = currentUid();
+      // Equality-only filter (no orderBy) avoids a composite-index requirement;
+      // sort client-side. Replaces the per-microcycle N+1 read pattern.
+      const q = query(subCol(uid, 'days'), where('mesocycleId', '==', mesoId));
+      const snap = await getDocs(q);
+      const out = snap.docs.map((d) => d.data() as WorkoutSession);
+      out.sort((a, b) => a.date.localeCompare(b.date));
+      return out;
+    },
     async getSession(sessionId) {
       const uid = currentUid();
       const snap = await getDoc(subDoc(uid, 'days', sessionId));
@@ -248,6 +271,37 @@ export function firestoreRepository(): DataRepository {
       const uid = currentUid();
       const { deleteDoc } = await import('firebase/firestore');
       await deleteDoc(subDoc(uid, 'templates', id));
+    },
+
+    /* ---- Batched writes ---- */
+    async commitPlanBatch(userId, planBatch: PlanBatch) {
+      // Firestore caps a WriteBatch at 500 ops; chunk at 450 for headroom.
+      // A typical plan (1 meso + 8 micros + ~32 sessions + 1 template) fits in
+      // one chunk, so activation is genuinely atomic; larger sets degrade to
+      // atomic-per-chunk, which still beats one write per await.
+      const OPS_PER_BATCH = 450;
+      type Op = (b: ReturnType<typeof writeBatch>) => void;
+      const ops: Op[] = [];
+      for (const m of planBatch.mesocycles ?? []) {
+        ops.push((b) => b.set(subDoc(userId, 'mesocycles', m.id), stripUndefined(m)));
+      }
+      for (const mi of planBatch.microcycles ?? []) {
+        ops.push((b) => b.set(subDoc(userId, 'microcycles', mi.id), stripUndefined(mi)));
+      }
+      for (const s of planBatch.sessions ?? []) {
+        ops.push((b) => b.set(subDoc(userId, 'days', s.id), stripUndefined(s)));
+      }
+      for (const t of planBatch.templates ?? []) {
+        ops.push((b) => b.set(subDoc(userId, 'templates', t.id), stripUndefined(t)));
+      }
+      for (const id of planBatch.deleteSessionIds ?? []) {
+        ops.push((b) => b.delete(subDoc(userId, 'days', id)));
+      }
+      for (let i = 0; i < ops.length; i += OPS_PER_BATCH) {
+        const b = writeBatch(db());
+        for (const op of ops.slice(i, i + OPS_PER_BATCH)) op(b);
+        await b.commit();
+      }
     },
   };
 }

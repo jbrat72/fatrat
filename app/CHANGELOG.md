@@ -9,6 +9,48 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.105.0 — 2026-07-18
+
+Data-layer hardening (Phase 2 of the codebase audit). No feature changes.
+
+- **Firestore offline persistence enabled** (IndexedDB local cache, multi-tab
+  safe). Reads are local-first with server sync, writes are durable while
+  offline and sync on reconnect, and the app now reads its own writes
+  immediately — the root cause of the recurring "no data / no plan"
+  transients. The read-after-write sleep/retry loops on the workout screen
+  and session detail modal are gone (the Plan page's empty-result retry is
+  deliberately kept as a belt-and-suspenders guard).
+- **Multi-document writes are atomic batches** (new `commitPlanBatch` on the
+  repository). Plan activation — previously ~40-60 sequential writes that
+  could fail midway with the old plan already archived — now commits
+  archive + mesocycle + weeks + sessions + template in one batch. Finishing
+  a workout commits the final session AND the week/plan status flips
+  together (a mid-sequence failure can no longer advance the week while the
+  session doc still says "in progress" — the bug class repairWeekStatus was
+  built to clean up). Calibration seeding, the fixedExercises /
+  repairWeekStatus / dedupe migrations, and the archived-plan sweep all
+  batch their writes too.
+- **~8-12× fewer reads on plan-shaped screens**: new `listSessionsForMeso`
+  fetches a whole plan's sessions in one query; Plan, Plan detail (was
+  sequential per-week), History block view, block recap, calibration
+  seeding, and two migrations now use it instead of one query per week.
+- **Set-logging saves are observed**: the debounced save retries transient
+  failures and a rejected save shows a "couldn't save" banner on the workout
+  header instead of silently dropping the set. Pause/Finish wait briefly for
+  server ack and surface hard rejections (staying on the page) — while
+  merely offline they proceed, since the write is already durable locally.
+- **Migrations fail loudly and safely**: errors now surface on the sign-in
+  retry screen instead of silently proceeding un-migrated (which could show
+  an empty history while data sat in the legacy collection). The v0.62
+  sessions→days copy is copy-forward-safe — a re-run skips any day doc that
+  already exists, so it can never overwrite a workout logged since with its
+  stale legacy copy — and copies in batches.
+- **History no longer deletes data on mount**: the archived-plan pending-
+  session sweep moved to a once-per-sign-in background task in UserProvider
+  (it ran a 1000-doc scan + deletes on every History visit, ahead of first
+  paint).
+- Tests: 87/87 passing; `npx tsc --noEmit` clean.
+
 ## v0.104.0 — 2026-07-18
 
 Correctness batch (Phase 1 of the codebase audit). Full audit in

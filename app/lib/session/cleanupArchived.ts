@@ -24,8 +24,9 @@ export async function cleanupArchivedPendingSessions(
     if (archivedIds.size === 0) return 0;
     const all = await repo.listSessions(userId, { limit: 1000 });
     const orphans = all.filter((s) => !s.completed && s.mesocycleId != null && archivedIds.has(s.mesocycleId));
-    for (const s of orphans) {
-      try { await repo.deleteSession(s.id); } catch { /* keep going */ }
+    if (orphans.length > 0) {
+      // One batched delete instead of a per-doc loop.
+      await repo.commitPlanBatch(userId, { deleteSessionIds: orphans.map((s) => s.id) });
     }
     return orphans.length;
   } catch {

@@ -90,12 +90,13 @@ export default function PlanPage() {
         // the plan header with empty weeks.
         if (ms.length === 0) return;
         ms.sort((a, b) => a.weekNumber - b.weekNumber);
-        const ssArr = await Promise.all(ms.map((mi) => withRetry(() => repo.listSessionsInMicrocycle(mi.id))));
+        // One query for the whole plan instead of one per week (N+1).
+        const ss = await withRetry(() => repo.listSessionsForMeso(active.id));
         if (cancelled) return;
         // Commit everything together so the header never renders ahead of weeks.
         setMeso(active);
         setMicros(ms);
-        setSessions(ssArr.flat());
+        setSessions(ss);
         // Auto-expand the CALENDAR-current week, not whichever micro is flagged
         // 'active' (that flag can lag behind, opening a past week).
         const curWk = active.startDate

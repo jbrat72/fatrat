@@ -22,7 +22,9 @@ export async function seedWeightsFromCalibration(
   meso: Mesocycle,
   calMicro: Microcycle,
 ): Promise<void> {
-  const calSessions = await repo.listSessionsInMicrocycle(calMicro.id);
+  // One query for the whole plan (instead of one per week), split client-side.
+  const allSessions = await repo.listSessionsForMeso(meso.id);
+  const calSessions = allSessions.filter((s) => s.microcycleId === calMicro.id);
   // Best reliable e1RM per exercise, from the calibration week's logged sets.
   const e1: Record<string, number> = {};
   for (const s of calSessions) {
@@ -40,27 +42,31 @@ export async function seedWeightsFromCalibration(
   if (Object.keys(e1).length === 0) return;
 
   const micros = await repo.listMicrocycles(meso.id);
-  const later = micros.filter((m) => m.weekNumber > calMicro.weekNumber);
-  for (const m of later) {
-    const sessions = await repo.listSessionsInMicrocycle(m.id);
-    for (const s of sessions) {
-      let changed = false;
-      const exercises = s.exercises.map((ex) => {
-        const est = e1[ex.exerciseId];
-        if (est == null) return ex;
-        // Only seed weighted lifts — added-load on bodyweight doesn't transfer.
-        if (ex.metric && ex.metric !== 'weight-reps' && ex.metric !== 'weight-time') return ex;
-        let exChanged = false;
-        const sets = ex.sets.map((set) => {
-          if (set.weightKg != null) return set;
-          const reps = set.reps ?? ex.prescribedRepsLow;
-          if (reps == null) return set;
-          exChanged = true; changed = true;
-          return { ...set, weightKg: workingWeight(est, reps) };
-        });
-        return exChanged ? { ...ex, sets } : ex;
+  const laterIds = new Set(
+    micros.filter((m) => m.weekNumber > calMicro.weekNumber).map((m) => m.id),
+  );
+  const seeded: typeof allSessions = [];
+  for (const s of allSessions) {
+    if (!s.microcycleId || !laterIds.has(s.microcycleId)) continue;
+    let changed = false;
+    const exercises = s.exercises.map((ex) => {
+      const est = e1[ex.exerciseId];
+      if (est == null) return ex;
+      // Only seed weighted lifts — added-load on bodyweight doesn't transfer.
+      if (ex.metric && ex.metric !== 'weight-reps' && ex.metric !== 'weight-time') return ex;
+      let exChanged = false;
+      const sets = ex.sets.map((set) => {
+        if (set.weightKg != null) return set;
+        const reps = set.reps ?? ex.prescribedRepsLow;
+        if (reps == null) return set;
+        exChanged = true; changed = true;
+        return { ...set, weightKg: workingWeight(est, reps) };
       });
-      if (changed) await repo.upsertSession({ ...s, exercises });
-    }
+      return exChanged ? { ...ex, sets } : ex;
+    });
+    if (changed) seeded.push({ ...s, exercises });
   }
+  // One batched commit — the old per-session upsert loop could fail midway,
+  // seeding some weeks and not others.
+  if (seeded.length > 0) await repo.commitPlanBatch(meso.userId, { sessions: seeded });
 }

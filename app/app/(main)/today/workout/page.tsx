@@ -15,7 +15,20 @@ import { defaultRestSec, terminologyMode, isPeriodizedSession } from '@/lib/peri
 import { removeExerciseAt, pairSuperset, unlinkGroup } from '@/lib/workout/structure';
 import type { WorkoutSession, SetEntry, ExerciseEntry, SessionFeedback, Mesocycle, Microcycle, ExerciseDefinition, MovementPattern, MuscleGroup, SorenessRating, MuscleSoreness } from '@/types';
 import { todayIso } from '@/lib/ui/date';
+import { withRetry } from '@/lib/util/retry';
 import { resolveExerciseDef } from '@/lib/exercise/resolveDef';
+
+/** With the Firestore offline cache, a write is durable locally the moment it
+ *  is issued — the promise only resolves on SERVER ack, so awaiting it raw
+ *  would hang navigation while offline. Wait briefly so real rejections
+ *  (rules, invalid data) can surface, then proceed: 'pending' just means
+ *  offline/slow and the write will sync on reconnect. */
+async function settleWrite(p: Promise<unknown>, ms = 1200): Promise<'ok' | 'err' | 'pending'> {
+  return Promise.race([
+    p.then(() => 'ok' as const, () => 'err' as const),
+    new Promise<'pending'>((r) => setTimeout(() => r('pending'), ms)),
+  ]);
+}
 
 
 // todayIso() now imported from @/lib/ui/date — keeps the stamp in the user's local timezone.
@@ -63,25 +76,23 @@ export default function WorkoutPage() {
   const [feedbackMuscle, setFeedbackMuscle] = useState<MuscleGroup | null>(null);
   const [feedbackAsked, setFeedbackAsked] = useState<Set<MuscleGroup>>(new Set());
   const saveDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** True when a background session save was REJECTED (not merely offline). */
+  const [saveError, setSaveError] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    // Cancellation guard: the retry loop below can outlive this screen (user
-    // backs out mid-load). Without it the orphaned load kept running — setting
-    // state on an unmounted page and even stamping startedAt on a workout the
-    // user never started.
+    // Cancellation guard: this load can outlive the screen (user backs out
+    // mid-load). Without it the orphaned load kept running — setting state on
+    // an unmounted page and even stamping startedAt on a workout the user
+    // never started.
     let cancelled = false;
     const load = async () => {
       const repo = getRepository();
-      // Retry briefly to beat the read-after-write race: right after an ad-hoc
-      // session is created (Start Workout) the server read can lag the write,
-      // which would otherwise strand the user on a dead-end "nothing here".
-      let res = await resolveToday(repo, user.userId, todayIso());
-      for (let i = 0; i < 3 && !res.session && !cancelled; i++) {
-        await new Promise((r) => setTimeout(r, 400 * (i + 1)));
-        if (cancelled) return;
-        res = await resolveToday(repo, user.userId, todayIso());
-      }
+      // (The old sleep/retry loop that beat the ad-hoc read-after-write race
+      // is gone: the Firestore offline cache gives read-your-own-write
+      // consistency, so the session created by Start Workout is always
+      // visible to this read.)
+      const res = await resolveToday(repo, user.userId, todayIso());
       if (cancelled) return;
       let s = res.session;
       // No session to work on -- don't trap the user on the nav-less workout
@@ -187,13 +198,24 @@ export default function WorkoutPage() {
   const queueSave = (next: WorkoutSession) => {
     if (saveDebounce.current) clearTimeout(saveDebounce.current);
     saveDebounce.current = setTimeout(() => {
-      getRepository().upsertSession(next).catch((e) => console.warn('session save failed', e));
+      // Observed save: retry transient rejections, surface hard failures in
+      // the banner instead of silently dropping the logged set. (While
+      // offline the promise simply stays pending — the write is already
+      // durable in the local cache and syncs later; that is NOT an error.)
+      withRetry(() => getRepository().upsertSession(next))
+        .then(() => setSaveError(false))
+        .catch((e) => { console.warn('session save failed', e); setSaveError(true); });
     }, 350);
   };
 
-  const pauseWorkout = () => {
+  const pauseWorkout = async () => {
     if (saveDebounce.current) clearTimeout(saveDebounce.current);
-    if (session) getRepository().upsertSession(session);
+    if (session) {
+      const res = await settleWrite(getRepository().upsertSession(session));
+      // A REJECTED save means the pause would lose edits — stay on the page
+      // and show the banner. 'pending' (offline) is durable locally; proceed.
+      if (res === 'err') { setSaveError(true); return; }
+    }
     router.push('/today');
   };
 
@@ -587,7 +609,6 @@ export default function WorkoutPage() {
       completedAt: new Date().toISOString(),
       feedback: feedback ?? session.feedback,
     };
-    await repo.upsertSession(final);
 
     // Plan-advance only runs if we have a meso + micro context. If the session
     // is standalone, just persist + route to the summary.
@@ -596,14 +617,28 @@ export default function WorkoutPage() {
       try {
         const microSessions = await repo.listSessionsInMicrocycle(micro.id);
         const micros = await repo.listMicrocycles(meso.id);
+        // planAdvance substitutes `final` for its stored copy itself, so the
+        // reads above don't need to see the final write — which lets the
+        // finished session and every structural status flip commit in ONE
+        // atomic batch. The old sequential writes could fail midway and leave
+        // the week advanced while the session doc still said "in progress".
         const patch = planAdvance({ completedSession: final, microSessions, microcycle: micro, micros, mesocycle: meso });
-        if (patch.microcycleCompleted) await repo.upsertMicrocycle(patch.microcycleCompleted);
-        if (patch.microcycleActivated) await repo.upsertMicrocycle(patch.microcycleActivated);
+        const microWrites: Microcycle[] = [];
+        if (patch.microcycleCompleted) microWrites.push(patch.microcycleCompleted);
+        if (patch.microcycleActivated) microWrites.push(patch.microcycleActivated);
+        const mesoWrites: Mesocycle[] = [];
         if (patch.mesocycleCompleted) {
-          await repo.upsertMesocycle(patch.mesocycleCompleted);
+          mesoWrites.push(patch.mesocycleCompleted);
           mesoCompletedId = patch.mesocycleCompleted.id;
+        } else if (patch.mesocycleWeekIndex != null) {
+          mesoWrites.push({ ...meso, weekIndex: patch.mesocycleWeekIndex });
         }
-        if (patch.mesocycleWeekIndex != null) await repo.upsertMesocycle({ ...meso, weekIndex: patch.mesocycleWeekIndex });
+        const cRes = await settleWrite(repo.commitPlanBatch(final.userId, {
+          sessions: [final],
+          microcycles: microWrites,
+          mesocycles: mesoWrites,
+        }), 1500);
+        if (cRes === 'err') throw new Error('plan batch commit rejected');
         // When the calibration week finishes, estimate e1RM from the logged top
         // sets and seed working weights into the remaining weeks.
         const calIdx = meso.weekKinds?.indexOf('cal') ?? -1;
@@ -612,9 +647,15 @@ export default function WorkoutPage() {
           catch (e) { console.warn('calibration seed failed', e); }
         }
       } catch (err) {
-        // Don't block the user from completing — log and continue.
+        // Advance failed — still persist the finished workout so it's never lost.
         console.warn('plan advance failed', err);
+        mesoCompletedId = null;
+        const r = await settleWrite(repo.upsertSession(final));
+        if (r === 'err') { setSaveError(true); return; } // stay here — nothing was saved
       }
+    } else {
+      const r = await settleWrite(repo.upsertSession(final));
+      if (r === 'err') { setSaveError(true); return; }
     }
 
     setSession(final);
@@ -708,6 +749,11 @@ export default function WorkoutPage() {
           <div className="h-1 bg-accent rounded transition-all" style={{ width: completion.total ? `${(completion.done / completion.total) * 100}%` : '0%' }} />
         </div>
         {isResting && <div className="mt-2 text-xs text-warn font-medium">⏱ Resting — inputs locked until the timer finishes or you skip.</div>}
+        {saveError && (
+          <div className="mt-2 text-xs text-danger font-medium">
+            ⚠ Some changes couldn&apos;t be saved — check your connection. Logging another set retries automatically.
+          </div>
+        )}
       </div>
 
       {canToggleStyles && (

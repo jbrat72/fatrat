@@ -141,10 +141,6 @@ export async function activateWizardProgram(
   if (days.length === 0) throw new Error('No program to save — generate exercises first.');
   const input = buildWizardInput(state, days, user, library);
 
-  // Archive any active plan so only the new block is current.
-  const mesos = await repo.listMesocycles(user.userId);
-  for (const mz of mesos) if (mz.status === 'active') await repo.upsertMesocycle({ ...mz, status: 'archived' });
-
   const prog = generateCustomProgram(input);
   // Reuse the draft/template id so the finished plan stays a single instance,
   // and link the active block back to it so the gallery can flag it Active.
@@ -155,12 +151,24 @@ export async function activateWizardProgram(
   if (st.includes('pyramid') || st.includes('revpyr')) allowedSetTypes.push('pyramid');
   if (st.includes('drop') || st.includes('mads')) allowedSetTypes.push('drop');
   const meso = { ...prog.mesocycle, equipmentProfileId: state.equipment.profileId, templateId: finalTplId, weekKinds: input.weekKinds, allowedSetTypes, fixedExercises: input.fixedExercises ?? true };
-  await repo.upsertMesocycle(meso);
-  for (const mi of prog.microcycles) await repo.upsertMicrocycle(mi);
-  for (const s of prog.sessions) await repo.upsertSession(s);
-  // Keep the originating wizard state on the template so "Edit plan" can
-  // reopen the wizard fully prepopulated.
-  await repo.upsertTemplate({ ...tpl, id: finalTplId, isDraft: false, draftState: JSON.stringify({ state, program }) });
+
+  // Archive any currently-active plan IN THE SAME BATCH as the new program.
+  // The old sequential path (~40-60 awaited setDocs, archives first) could
+  // fail mid-loop and leave the old plan archived with the new one half-
+  // written; a batch commits all-or-nothing.
+  const mesos = await repo.listMesocycles(user.userId);
+  const archived = mesos
+    .filter((mz) => mz.status === 'active')
+    .map((mz): Mesocycle => ({ ...mz, status: 'archived' }));
+
+  await repo.commitPlanBatch(user.userId, {
+    mesocycles: [...archived, meso],
+    microcycles: prog.microcycles,
+    sessions: prog.sessions,
+    // Keep the originating wizard state on the template so "Edit plan" can
+    // reopen the wizard fully prepopulated.
+    templates: [{ ...tpl, id: finalTplId, isDraft: false, draftState: JSON.stringify({ state, program }) }],
+  });
   return meso;
 }
 

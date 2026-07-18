@@ -11,6 +11,11 @@ import { migrateSessionsToDaysForUser } from '@/lib/firestore/migrations/relabel
 import { migrateFixedExercises } from '@/lib/firestore/migrations/fixedExercises';
 import { migrateWeekStatusRepair } from '@/lib/firestore/migrations/repairWeekStatus';
 import { migrateDedupeExerciseNames } from '@/lib/firestore/migrations/dedupeExerciseNames';
+import { cleanupArchivedPendingSessions } from '@/lib/session/cleanupArchived';
+
+// Janitorial sweep runs at most once per app load (it used to run on every
+// History mount — a destructive delete as a side effect of a read-only page).
+let _cleanupRanFor: string | null = null;
 
 const ACTIVE_USER_KEY = 'fatrat:activeUser:v1';
 
@@ -76,6 +81,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
       setUser(profile);
       setLoadError(null);
+      // Post-sign-in, fire-and-forget: sweep orphan pending sessions of
+      // archived plans. Non-blocking — sign-in never waits on janitor work.
+      if (profile && _cleanupRanFor !== profile.userId) {
+        _cleanupRanFor = profile.userId;
+        void cleanupArchivedPendingSessions(repo, profile.userId);
+      }
     } catch (e) {
       // Without this path a transient read error left loading=true forever
       // (AppShell blanks the app) — and a null user would have bounced an

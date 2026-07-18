@@ -67,12 +67,13 @@ function stripUndefined<T>(value: T): T {
 
 /**
  * Run the macrocycle-retirement migration for a single user. No-op if the
- * profile already has `migratedMacroDrop`. Errors are swallowed (logged to
- * console) so a migration hiccup never blocks the user from signing in.
+ * profile already has `migratedMacroDrop`. Errors propagate to UserProvider's
+ * error path (visible retry screen) — silently proceeding un-migrated hid
+ * real data problems behind a working-looking app.
  */
 export async function migrateMacrocyclesForUser(profile: UserProfile): Promise<UserProfile> {
   if (profile.migratedMacroDrop) return profile;
-  try {
+  {
     const uid = profile.userId;
     const macroSnap = await getDocs(collection(db(), 'users', uid, 'macrocycles'));
     const macros: LegacyMacrocycle[] = macroSnap.docs.map((d) => d.data() as LegacyMacrocycle);
@@ -115,10 +116,5 @@ export async function migrateMacrocyclesForUser(profile: UserProfile): Promise<U
     };
     await setDoc(doc(db(), 'users', uid), stripUndefined(migrated));
     return migrated;
-  } catch (err) {
-    if (typeof console !== 'undefined') {
-      console.warn('[migrateMacrocyclesForUser] failed — leaving user un-migrated', err);
-    }
-    return profile;
   }
 }

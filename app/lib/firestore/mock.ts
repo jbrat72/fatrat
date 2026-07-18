@@ -182,6 +182,12 @@ export function mockRepository(): DataRepository {
         .sort((a, b) => (a.startedAt ?? '').localeCompare(b.startedAt ?? ''))
         .map(clone);
     },
+    async listSessionsForMeso(mesoId) {
+      return Object.values(store().sessions)
+        .filter((s) => s.mesocycleId === mesoId)
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map(clone);
+    },
     async getSession(sessionId) {
       return clone(store().sessions[sessionId] ?? null);
     },
@@ -247,6 +253,17 @@ export function mockRepository(): DataRepository {
     },
     async deleteTemplate(id) {
       delete store().customTemplates[id]; persist();
+    },
+
+    /* ----- Batched writes ----- */
+    async commitPlanBatch(_userId, planBatch) {
+      const s = store();
+      for (const m of planBatch.mesocycles ?? []) s.mesocycles[m.id] = clone(m);
+      for (const mi of planBatch.microcycles ?? []) s.microcycles[mi.id] = clone(mi);
+      for (const ss of planBatch.sessions ?? []) s.sessions[ss.id] = clone(ss);
+      for (const t of planBatch.templates ?? []) s.customTemplates[t.id] = clone(t);
+      for (const id of planBatch.deleteSessionIds ?? []) delete s.sessions[id];
+      persist(); // single flush — the whole batch lands together
     },
   };
 }

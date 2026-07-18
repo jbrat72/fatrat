@@ -9,4 +9,4 @@
  *   - MINOR (0.x.0) — a new feature or screen
  *   - MAJOR (x.0.0) — a major overhaul / finished release
  */
-export const APP_VERSION = '0.104.0';
+export const APP_VERSION = '0.105.0';

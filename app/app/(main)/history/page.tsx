@@ -11,7 +11,6 @@ import { getRepository } from '@/lib/firestore';
 import { cardioStats } from '@/lib/ui/cardio';
 import { formatSetValue } from '@/lib/ui/sets';
 import { topSetSeries, e1rmSeries, byExerciseName } from '@/lib/progress';
-import { cleanupArchivedPendingSessions } from '@/lib/session/cleanupArchived';
 import { terminologyMode, usesAdvancedTerminology } from '@/lib/periodization';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
 import { cn } from '@/lib/ui/cn';
@@ -68,9 +67,8 @@ export default function HistoryPage() {
     if (!user) return;
     const load = async () => {
       const repo = getRepository();
-      // Sweep orphan pending sessions tied to archived (cancelled) plans
-      // so the History calendar doesn't show their stale schedule.
-      await cleanupArchivedPendingSessions(repo, user.userId);
+      // (The archived-plan session sweep moved to UserProvider — it now runs
+      // once post-sign-in instead of deleting docs on every History mount.)
       const flat = await repo.listMesocycles(user.userId);
       setAllMesos([...flat].sort((a, b) => (b.weekIndex - a.weekIndex)));
 
@@ -122,10 +120,11 @@ export default function HistoryPage() {
         const ms = await repo.listMicrocycles(selectedMesoId);
         if (cancelled) return;
         ms.sort((a, b) => a.weekNumber - b.weekNumber);
-        const ssArr = await Promise.all(ms.map((m) => repo.listSessionsInMicrocycle(m.id)));
+        // One query for the whole block (was one query per week).
+        const ss = await repo.listSessionsForMeso(selectedMesoId);
         if (cancelled) return;
         setMicros(ms);
-        setSessions(ssArr.flat());
+        setSessions(ss);
         setBlockNameByWeek(undefined);
         setCalendarWeeks(undefined);
         return;

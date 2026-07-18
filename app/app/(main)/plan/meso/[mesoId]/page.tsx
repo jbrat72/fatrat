@@ -40,9 +40,12 @@ export default function MesoDetailPage() {
       if (!m) return;
       const ms = await repo.listMicrocycles(m.id);
       setMicros(ms.sort((a, b) => a.weekNumber - b.weekNumber));
+      // One query for the whole plan (was one sequential query per week).
+      const all = await repo.listSessionsForMeso(m.id);
       const byMicro: Record<string, WorkoutSession[]> = {};
-      for (const mc of ms) {
-        byMicro[mc.id] = await repo.listSessionsInMicrocycle(mc.id);
+      for (const s of all) {
+        if (!s.microcycleId) continue;
+        (byMicro[s.microcycleId] ??= []).push(s);
       }
       setSessionsByMicro(byMicro);
     };

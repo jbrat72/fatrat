@@ -54,14 +54,10 @@ export function SessionDetailModal({ sessionId, onClose, onChanged, onAddToDay }
     let cancelled = false;
     (async () => {
       const repo = getRepository();
-      // Beat the read-after-write race: a session opened right after it's saved
-      // (e.g. straight from finishing a workout) may not be readable yet.
-      let s = await repo.getSession(sessionId);
-      for (let i = 0; i < 3 && !s; i++) {
-        await new Promise((r) => setTimeout(r, 400 * (i + 1)));
-        if (cancelled) return;
-        s = await repo.getSession(sessionId);
-      }
+      // (Read-after-write retry loop removed: the Firestore offline cache
+      // gives read-your-own-write consistency, so a session opened straight
+      // after saving is always readable.)
+      const s = await repo.getSession(sessionId);
       if (cancelled) return;
       setSession(s);
       setEditIdx(null);

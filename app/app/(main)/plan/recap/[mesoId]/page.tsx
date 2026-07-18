@@ -24,8 +24,8 @@ export default function MesoRecapPage() {
       setMeso(m);
       if (!m) return;
       const micros: Microcycle[] = await repo.listMicrocycles(m.id);
-      const sessionsArr: WorkoutSession[][] = await Promise.all(micros.map((mc) => repo.listSessionsInMicrocycle(mc.id)));
-      const sessions = sessionsArr.flat();
+      // One query for the whole block (was one per week).
+      const sessions: WorkoutSession[] = await repo.listSessionsForMeso(m.id);
       const targetRIRs = micros.map((mc) => mc.targetRIR ?? 2);
       setRecap(recapMesocycle(sessions, targetRIRs));
     };

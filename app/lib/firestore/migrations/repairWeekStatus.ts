@@ -13,56 +13,68 @@
  * writes docs whose status / weekIndex actually changed.
  */
 import { getRepository } from '@/lib/firestore';
-import type { UserProfile, CycleStatus } from '@/types';
+import type { Microcycle, Mesocycle, UserProfile, CycleStatus } from '@/types';
 
 export async function migrateWeekStatusRepair(profile: UserProfile): Promise<UserProfile> {
   if (profile.migratedWeekStatusRepair) return profile;
   const repo = getRepository();
-  try {
-    const mesos = await repo.listMesocycles(profile.userId);
-    for (const meso of mesos) {
-      if (meso.status !== 'active') continue;
-      const micros = (await repo.listMicrocycles(meso.id)).sort((a, b) => a.weekNumber - b.weekNumber);
-      if (micros.length === 0) continue;
+  // No internal try/catch: a failure must propagate to UserProvider's error
+  // path (visible retry screen) instead of silently proceeding un-migrated.
+  const mesos = await repo.listMesocycles(profile.userId);
+  for (const meso of mesos) {
+    if (meso.status !== 'active') continue;
+    const micros = (await repo.listMicrocycles(meso.id)).sort((a, b) => a.weekNumber - b.weekNumber);
+    if (micros.length === 0) continue;
 
-      // A week is "done" when it has sessions and all of them are completed
-      // (matches how planAdvance flips a microcycle to 'completed').
-      const done: boolean[] = [];
-      for (const m of micros) {
-        const sessions = await repo.listSessionsInMicrocycle(m.id);
-        done.push(sessions.length > 0 && sessions.every((s) => s.completed));
-      }
+    // One query for the whole plan; group per week client-side.
+    const all = await repo.listSessionsForMeso(meso.id);
+    const byMicro = new Map<string, typeof all>();
+    for (const s of all) {
+      if (!s.microcycleId) continue;
+      const arr = byMicro.get(s.microcycleId) ?? [];
+      arr.push(s);
+      byMicro.set(s.microcycleId, arr);
+    }
+    // A week is "done" when it has sessions and all of them are completed
+    // (matches how planAdvance flips a microcycle to 'completed').
+    const done = micros.map((m) => {
+      const sessions = byMicro.get(m.id) ?? [];
+      return sessions.length > 0 && sessions.every((s) => s.completed);
+    });
 
-      let activeIdx = done.findIndex((d) => !d);
-      const allDone = activeIdx === -1;
+    const activeIdx = done.findIndex((d) => !d);
+    const allDone = activeIdx === -1;
 
-      for (let i = 0; i < micros.length; i++) {
-        const m = micros[i]!;
-        let status: CycleStatus;
-        if (allDone) status = 'completed';
-        else if (i < activeIdx) status = 'completed';
-        else if (i === activeIdx) status = 'active';
-        else status = 'draft';
-        if (m.status !== status) await repo.upsertMicrocycle({ ...m, status });
-      }
+    const microWrites: Microcycle[] = [];
+    for (let i = 0; i < micros.length; i++) {
+      const m = micros[i]!;
+      let status: CycleStatus;
+      if (allDone) status = 'completed';
+      else if (i < activeIdx) status = 'completed';
+      else if (i === activeIdx) status = 'active';
+      else status = 'draft';
+      if (m.status !== status) microWrites.push({ ...m, status });
+    }
 
-      if (allDone) {
-        // Every week logged — the meso itself is finished (it was still
-        // 'active' here, per the guard above, so this always changes it).
-        const lastWeekIndex = micros[micros.length - 1]!.weekNumber - 1;
-        await repo.upsertMesocycle({ ...meso, weekIndex: lastWeekIndex, status: 'completed' });
-      } else {
-        const correctIndex = micros[activeIdx]!.weekNumber - 1;
-        if (meso.weekIndex !== correctIndex) {
-          await repo.upsertMesocycle({ ...meso, weekIndex: correctIndex });
-        }
+    const mesoWrites: Mesocycle[] = [];
+    if (allDone) {
+      // Every week logged — the meso itself is finished (it was still
+      // 'active' here, per the guard above, so this always changes it).
+      const lastWeekIndex = micros[micros.length - 1]!.weekNumber - 1;
+      mesoWrites.push({ ...meso, weekIndex: lastWeekIndex, status: 'completed' });
+    } else {
+      const correctIndex = micros[activeIdx]!.weekNumber - 1;
+      if (meso.weekIndex !== correctIndex) {
+        mesoWrites.push({ ...meso, weekIndex: correctIndex });
       }
     }
-    const migrated: UserProfile = { ...profile, migratedWeekStatusRepair: true, updatedAt: new Date().toISOString() };
-    await repo.upsertProfile(migrated);
-    return migrated;
-  } catch (err) {
-    if (typeof console !== 'undefined') console.warn('[migrateWeekStatusRepair] failed', err);
-    return profile;
+    // One atomic commit per meso — a mid-loop failure can no longer leave a
+    // plan with half its week statuses repaired.
+    if (microWrites.length || mesoWrites.length) {
+      await repo.commitPlanBatch(profile.userId, { microcycles: microWrites, mesocycles: mesoWrites });
+    }
   }
+  const migrated: UserProfile = { ...profile, migratedWeekStatusRepair: true, updatedAt: new Date().toISOString() };
+  await repo.upsertProfile(migrated);
+  return migrated;
 }

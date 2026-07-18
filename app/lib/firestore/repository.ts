@@ -18,6 +18,23 @@ import type {
   ProgramTemplate,
 } from '@/types';
 
+/**
+ * A set of plan-related documents persisted together. The Firestore impl
+ * commits these in write batches (atomic per chunk of ≤450 ops); the mock
+ * applies them in memory with a single localStorage flush. Used for plan
+ * activation, plan-advance on finish, calibration seeding, and cleanup —
+ * the multi-document writes where a mid-loop failure used to leave the plan
+ * half-written.
+ */
+export interface PlanBatch {
+  mesocycles?: Mesocycle[];
+  microcycles?: Microcycle[];
+  sessions?: WorkoutSession[];
+  templates?: ProgramTemplate[];
+  /** Session ids to hard-delete in the same commit. */
+  deleteSessionIds?: string[];
+}
+
 export interface DataRepository {
   /* ---------- Profile ---------- */
   getProfile(userId: string): Promise<UserProfile | null>;
@@ -45,6 +62,9 @@ export interface DataRepository {
   /** Every session whose `date` matches `isoDate` for the given user. */
   listSessionsOnDate(userId: string, isoDate: string): Promise<WorkoutSession[]>;
   listSessionsInMicrocycle(microId: string): Promise<WorkoutSession[]>;
+  /** Every session belonging to a mesocycle, sorted by date — one query for
+   *  a whole plan instead of one listSessionsInMicrocycle per week. */
+  listSessionsForMeso(mesoId: string): Promise<WorkoutSession[]>;
   getSession(sessionId: string): Promise<WorkoutSession | null>;
   upsertSession(s: WorkoutSession): Promise<WorkoutSession>;
   /** Hard-delete a session (used when cancelling a plan to clear pending sessions). */
@@ -68,4 +88,8 @@ export interface DataRepository {
   /** Save a custom template (created by the Template Wizard). */
   upsertTemplate(t: ProgramTemplate): Promise<ProgramTemplate>;
   deleteTemplate(id: string): Promise<void>;
+
+  /* ---------- Batched writes ---------- */
+  /** Persist a set of plan documents together (see PlanBatch). */
+  commitPlanBatch(userId: string, batch: PlanBatch): Promise<void>;
 }

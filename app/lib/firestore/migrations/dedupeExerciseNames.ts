@@ -19,7 +19,9 @@ const isCustomId = (id: string) => id.startsWith('custom-');
 export async function migrateDedupeExerciseNames(profile: UserProfile): Promise<UserProfile> {
   if (profile.migratedDedupeExercisesV2) return profile;
   const repo = getRepository();
-  try {
+  // No outer try/catch: a failure must propagate to UserProvider's error path
+  // (visible retry screen) instead of silently proceeding un-migrated.
+  {
     const globals = await repo.listGlobalExercises().catch(() => [] as ExerciseDefinition[]);
     const customs = await repo.listUserExercises(profile.userId).catch(() => [] as ExerciseDefinition[]);
 
@@ -46,8 +48,10 @@ export async function migrateDedupeExerciseNames(profile: UserProfile): Promise<
     }
 
     // Re-point every session's exercises by name to the canonical id. Catches
-    // old/drifted ids that aren't even in the current library.
-    const sessions = await repo.listSessions(profile.userId, { limit: 1000 }).catch(() => [] as WorkoutSession[]);
+    // old/drifted ids that aren't even in the current library. All re-pointed
+    // sessions commit in one batch instead of a fail-midway write loop.
+    const sessions = await repo.listSessions(profile.userId, { limit: 1000 });
+    const sessionWrites: WorkoutSession[] = [];
     for (const s of sessions) {
       let changed = false;
       const exercises = s.exercises.map((ex) => {
@@ -62,14 +66,12 @@ export async function migrateDedupeExerciseNames(profile: UserProfile): Promise<
           metric: canon.metric ?? 'weight-reps',
         };
       });
-      if (changed) { try { await repo.upsertSession({ ...s, exercises }); } catch { /* keep going */ } }
+      if (changed) sessionWrites.push({ ...s, exercises });
     }
+    if (sessionWrites.length) await repo.commitPlanBatch(profile.userId, { sessions: sessionWrites });
 
     const migrated: UserProfile = { ...profile, migratedDedupeExercises: true, migratedDedupeExercisesV2: true, updatedAt: new Date().toISOString() };
     await repo.upsertProfile(migrated);
     return migrated;
-  } catch (err) {
-    if (typeof console !== 'undefined') console.warn('[migrateDedupeExerciseNames] failed', err);
-    return profile;
   }
 }

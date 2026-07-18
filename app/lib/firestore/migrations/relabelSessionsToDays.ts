@@ -14,7 +14,7 @@
  * structural change to force a clean re-seed.
  */
 import {
-  getFirestore, collection, doc, getDocs, setDoc, type Firestore,
+  getFirestore, collection, doc, getDocs, setDoc, writeBatch, type Firestore,
 } from 'firebase/firestore';
 import { getApps } from 'firebase/app';
 import type { UserProfile } from '@/types';
@@ -53,46 +53,54 @@ function stripUndefined<T>(value: T): T {
 
 /**
  * Copy every session doc to the `days` collection, filling in planName from
- * the parent mesocycle when the field is missing. Idempotent. Safe to call
- * on every sign-in until it succeeds — re-runs after a partial failure
- * simply re-copy.
+ * the parent mesocycle when the field is missing. Idempotent AND
+ * copy-forward-safe: any id already present in `days` is skipped, so a
+ * re-run after a partial failure can never overwrite a workout the user
+ * has since logged/edited in `days` with its stale legacy copy.
+ *
+ * Errors propagate to UserProvider's error path (visible retry screen) —
+ * silently proceeding un-migrated used to leave reads pointed at `days`
+ * while the data sat in `sessions` (an empty-looking history).
  */
 export async function migrateSessionsToDaysForUser(profile: UserProfile): Promise<UserProfile> {
   if (profile.migratedSessionsToDays) return profile;
-  try {
-    const uid = profile.userId;
+  const uid = profile.userId;
 
-    // Build a lookup of mesocycle.name keyed by id so we can fill planName.
-    const mesoSnap = await getDocs(collection(db(), 'users', uid, 'mesocycles'));
-    const mesoNameById = new Map<string, string>();
-    for (const d of mesoSnap.docs) {
-      const meso = d.data() as LegacyMeso;
-      if (meso.name) mesoNameById.set(meso.id, meso.name);
-    }
+  // Build a lookup of mesocycle.name keyed by id so we can fill planName.
+  const mesoSnap = await getDocs(collection(db(), 'users', uid, 'mesocycles'));
+  const mesoNameById = new Map<string, string>();
+  for (const d of mesoSnap.docs) {
+    const meso = d.data() as LegacyMeso;
+    if (meso.name) mesoNameById.set(meso.id, meso.name);
+  }
 
-    // Copy each session doc to the new `days` collection. Same doc id for
-    // round-trip safety — anything that still references the old id keeps
-    // working until the next read.
-    const sessionSnap = await getDocs(collection(db(), 'users', uid, 'sessions'));
-    for (const d of sessionSnap.docs) {
-      const session = d.data() as LegacySession;
+  // Ids already in `days` — never overwrite them (see docblock).
+  const daysSnap = await getDocs(collection(db(), 'users', uid, 'days'));
+  const existingDayIds = new Set(daysSnap.docs.map((d) => d.id));
+
+  // Copy each session doc to the new `days` collection in write batches.
+  // Same doc id for round-trip safety.
+  const sessionSnap = await getDocs(collection(db(), 'users', uid, 'sessions'));
+  const toCopy = sessionSnap.docs
+    .map((d) => d.data() as LegacySession)
+    .filter((s) => !existingDayIds.has(s.id));
+  const OPS = 450;
+  for (let i = 0; i < toCopy.length; i += OPS) {
+    const batch = writeBatch(db());
+    for (const session of toCopy.slice(i, i + OPS)) {
       const planName = session.planName
         ?? (session.mesocycleId ? mesoNameById.get(session.mesocycleId) : undefined);
       const next: LegacySession = { ...session, planName };
-      await setDoc(doc(db(), 'users', uid, 'days', session.id), stripUndefined(next));
+      batch.set(doc(db(), 'users', uid, 'days', session.id), stripUndefined(next));
     }
-
-    const migrated: UserProfile = {
-      ...profile,
-      migratedSessionsToDays: true,
-      updatedAt: new Date().toISOString(),
-    };
-    await setDoc(doc(db(), 'users', uid), stripUndefined(migrated));
-    return migrated;
-  } catch (err) {
-    if (typeof console !== 'undefined') {
-      console.warn('[migrateSessionsToDaysForUser] failed — leaving user un-migrated', err);
-    }
-    return profile;
+    await batch.commit();
   }
+
+  const migrated: UserProfile = {
+    ...profile,
+    migratedSessionsToDays: true,
+    updatedAt: new Date().toISOString(),
+  };
+  await setDoc(doc(db(), 'users', uid), stripUndefined(migrated));
+  return migrated;
 }
