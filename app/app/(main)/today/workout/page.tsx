@@ -403,11 +403,23 @@ export default function WorkoutPage() {
 
   const swapExercise = async (exIdx: number, newDef: { id: string; name: string; primaryMuscle: any; metric?: ExerciseDefinition['metric'] }) => {
     if (!session) return;
-    const exercises = session.exercises.map((ex, i) =>
+    // Prefill the swapped-in exercise from the user's last performance of IT —
+    // otherwise the sets keep the previous exercise's numbers (and the range's
+    // low-end reps), which is never what you did on this movement.
+    const prior = lastPerf[newDef.id] ?? lastPerfByName[newDef.name.trim().toLowerCase()];
+    const lastPrior = prior && prior.length ? prior[prior.length - 1] : undefined;
+    const exercises = session.exercises.map((ex, i) => {
+      if (i !== exIdx) return ex;
+      const sets = ex.sets.map((s, j) => {
+        if (s.completed) return s;
+        const p = prior?.[j] ?? lastPrior;
+        if (!p) return { ...s, weightKg: undefined };
+        return { ...s, weightKg: p.weightKg ?? s.weightKg, reps: p.reps ?? s.reps, timeSec: p.timeSec ?? s.timeSec };
+      });
       // Carry the new exercise's metric so a bodyweight→loaded swap (or vice
       // versa) shows the right inputs instead of inheriting the old metric.
-      i === exIdx ? { ...ex, exerciseId: newDef.id, name: newDef.name, muscle: newDef.primaryMuscle, metric: newDef.metric ?? 'weight-reps', swappedFromExerciseId: ex.exerciseId } : ex,
-    );
+      return { ...ex, exerciseId: newDef.id, name: newDef.name, muscle: newDef.primaryMuscle, metric: newDef.metric ?? 'weight-reps', swappedFromExerciseId: ex.exerciseId, sets };
+    });
     const next = { ...session, exercises };
     setSession(next); queueSave(next); setSwapFor(null);
   };

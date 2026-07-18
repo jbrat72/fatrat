@@ -9,6 +9,16 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.103.0 — 2026-06-21
+
+- Ad-hoc workouts now respect your equipment: the picker hides workouts you
+  can't do at your gym and drops any exercise your gear doesn't support.
+- "Swap with another day" now shows what each day trains (e.g. Chest, Triceps,
+  Core), sorts chronologically, and is limited to your few most recent skips plus
+  the next two scheduled days.
+- Swapping an exercise mid-workout now prefills weight and reps from your last
+  performance of THAT exercise, instead of keeping the old exercise's numbers.
+
 ## v0.102.9 — 2026-06-21
 
 - Plan page now auto-expands the calendar-current week instead of a stale

@@ -71,8 +71,11 @@ export default function TodayPage() {
         ? all.some((s) => s.completed && s.date > missedCandidate.date)
         : false;
       setMissed(trainedSince ? null : missedCandidate);
-      // Any other pending day (not today) — newest-missed first, then upcoming.
-      setOtherDays([...past.slice().reverse(), ...future]);
+      // Swap candidates: only the few most recent skips plus the next couple of
+      // scheduled days — the whole rest of the plan is noise. Chronological.
+      const recentMissed = past.slice(-3);
+      const nextUp = future.slice(0, 2);
+      setOtherDays([...recentMissed, ...nextUp].sort((a, b) => a.date.localeCompare(b.date)));
     })();
   }, [user, refreshTick, today?.mesocycle?.id]);
 

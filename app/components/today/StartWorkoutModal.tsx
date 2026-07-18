@@ -7,6 +7,19 @@ function longDate(iso: string): string {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+/** "Chest · Triceps · Core" — what the day actually trains, so the rows aren't
+ *  all just the plan name. */
+function musclesLabel(s: WorkoutSession): string {
+  const seen: string[] = [];
+  for (const ex of s.exercises) {
+    if (ex.muscle && !seen.includes(ex.muscle)) seen.push(ex.muscle);
+  }
+  if (seen.length === 0) return '';
+  const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+  const shown = seen.slice(0, 3).map(cap).join(' · ');
+  return seen.length > 3 ? `${shown} +${seen.length - 3}` : shown;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -66,7 +79,7 @@ export function StartWorkoutModal({ open, onClose, hasScheduled, scheduledLabel,
                 {otherDays.map((s) => (
                   <button key={s.id} type="button" onClick={() => { close(); onPullDay(s); }}
                     className="w-full text-left rounded-xl border border-ink-line bg-bg-elev px-4 py-3 hover:border-accent/50 transition">
-                    <div className="font-medium">{s.name || planName || 'Workout'}</div>
+                    <div className="font-medium">{musclesLabel(s) || s.name || planName || 'Workout'}</div>
                     <div className="text-xs text-ink-dim mt-0.5">
                       {longDate(s.date)}{s.date < new Date().toISOString().slice(0, 10) ? ' · missed' : ' · upcoming'} · {s.exercises.length} exercises
                     </div>

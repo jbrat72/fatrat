@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button, MuscleBadge } from '@/components/ui';
 import { useUser } from '@/components/app';
 import { getRepository } from '@/lib/firestore';
+import { canUseExercise, itemsForProfile } from '@/lib/exercise/equipment';
 import type { ProgramTemplate, WorkoutCategory, ExerciseDefinition, ExerciseEntry, SetEntry } from '@/types';
 
 interface Props {
@@ -59,23 +60,46 @@ export function WorkoutPicker({ open, onClose, onPick, onCreateCustom }: Props) 
     return () => { cancelled = true; };
   }, [open, user]);
 
+  // The user's equipment — ad-hoc workouts must only offer movements they can
+  // actually do, not whatever the stock template happened to include.
+  const equipItems = useMemo(() => (user ? itemsForProfile(user) : []), [user]);
+
+  /** A template's exercise slots the user's gear supports. Slots whose def
+   *  hasn't loaded are kept (we can't judge them yet). */
+  const usableSlots = useMemo(() => {
+    const cache = new Map<string, ProgramTemplate['weeks'][number]['days'][number]['exercises']>();
+    return (tpl: ProgramTemplate) => {
+      const hit = cache.get(tpl.id);
+      if (hit) return hit;
+      const day = tpl.weeks[0]?.days[0];
+      const slots = (day?.exercises ?? []).filter((slot) => {
+        const def = defs[slot.exerciseId];
+        return def ? canUseExercise(def, equipItems) : true;
+      });
+      cache.set(tpl.id, slots);
+      return slots;
+    };
+  }, [defs, equipItems]);
+
   const grouped = useMemo(() => {
     const out = new Map<WorkoutCategory, ProgramTemplate[]>();
     for (const w of workouts) {
+      // Hide workouts with nothing you can do at your gym.
+      if (usableSlots(w).length === 0) continue;
       const cat = w.category ?? 'custom';
       const list = out.get(cat) ?? [];
       list.push(w);
       out.set(cat, list);
     }
     return out;
-  }, [workouts]);
+  }, [workouts, usableSlots]);
 
   if (!open) return null;
 
   const choose = (tpl: ProgramTemplate) => {
     const day = tpl.weeks[0]?.days[0];
     if (!day) return;
-    const entries: ExerciseEntry[] = day.exercises.map((slot) => {
+    const entries: ExerciseEntry[] = usableSlots(tpl).map((slot) => {
       const def = defs[slot.exerciseId];
       const muscle = def?.primaryMuscle ?? 'core';
       const metric = def?.metric ?? 'weight-reps';
@@ -153,10 +177,11 @@ export function WorkoutPicker({ open, onClose, onPick, onCreateCustom }: Props) 
                 <div className="section-head mb-2">{CATEGORY_LABEL[cat]}</div>
                 <div className="space-y-1.5">
                   {list.map((tpl) => {
-                    const day = tpl.weeks[0]?.days[0];
-                    const exCount = day?.exercises.length ?? 0;
+                    // Count/describe only what the user can actually perform.
+                    const slots = usableSlots(tpl);
+                    const exCount = slots.length;
                     const muscles = new Set<string>();
-                    for (const slot of day?.exercises ?? []) {
+                    for (const slot of slots) {
                       const m = defs[slot.exerciseId]?.primaryMuscle;
                       if (m) muscles.add(m);
                     }
