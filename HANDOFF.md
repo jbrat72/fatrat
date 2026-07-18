@@ -1,6 +1,6 @@
 # FATRAT — Project Handoff
 
-_Last updated: 2026-07-18 (app v0.103.0)_
+_Last updated: 2026-07-18 (app v0.107.0)_
 
 Paste this file (or point the new chat at it) to bring a fresh session up to speed.
 
@@ -8,17 +8,17 @@ Paste this file (or point the new chat at it) to bring a fresh session up to spe
 
 ## 0. NEXT TASK — none assigned
 
-The task that sat here at v0.97.1 (Finish → mark incomplete sets as skipped)
-shipped in v0.98. Nothing is queued — ask Brian for direction.
+The four-phase codebase audit (v0.104–v0.107, see §9) is complete. Nothing is
+queued — ask Brian for direction.
 
 Open threads worth raising first:
-- **v0.103.0 shipped without a full typecheck.** The mount degraded mid-session
-  (see §2) and `tsc` stalled. The four changed files were syntax-verified with
-  the TypeScript parser, but no type pass ran. Re-run `npx tsc --noEmit` from
-  PowerShell early next session; fix anything it surfaces.
-- **Set defaults changed** in v0.102.6 / v0.103.0 (reps now carry to the next
-  set; swapping an exercise prefills from that exercise's own history). Worth
-  confirming on a real workout that weight AND reps populate.
+- **Hydration contract changed in v0.104** (last time's values beat generator
+  defaults; manual pre-edits win; reps equal to the range low count as
+  "untouched"). Worth confirming on a real workout that weight AND reps still
+  populate from last time.
+- **Offline persistence + read cache are new** (v0.105/v0.106). Watch for any
+  staleness oddities after cross-device edits (cache TTL is 30s) and sanity-
+  check an airplane-mode workout sometime.
 - Performance analytics (§10) is still the main un-started feature.
 
 ---
@@ -124,6 +124,16 @@ What to do:
 - **A fresh session gets a fresh mount** — the actual fix. Tell Brian to start a
   new chat, not reboot; his files and repo are never at risk.
 
+### Cloud-session workflow (used for v0.104–v0.107 — the reliable path)
+
+Cowork cloud sessions avoid the FUSE bridge entirely: stage the source into
+the cloud container, edit + verify there (`npm install`, `npx tsc --noEmit`,
+`npx vitest run`, **and `npm run build`** — build lint catches rules-of-hooks
+and prerender errors that tsc/vitest miss; this bit v0.106.0), then write
+whole files back over the device bridge. Zero corruption across four releases.
+The bridge can't DELETE files — removals go to `_to_delete/` (gitignored) for
+Brian to empty from Windows. Git still happens only in PowerShell (§7).
+
 ---
 
 ## 3. Tech stack
@@ -139,7 +149,17 @@ What to do:
 
 `lib/firestore/repository.ts` defines `DataRepository`. Two implementations:
 - `firestoreRepository.ts` — when `NEXT_PUBLIC_FIREBASE_*` env vars present.
+  Initializes Firestore with **offline persistence** (persistentLocalCache,
+  multi-tab) — reads are local-first, writes durable offline (v0.105).
 - `mock.ts` — in-memory + localStorage (key `fatrat:mock:v5`). Offline tinkering.
+
+Both are wrapped in `cachedRepository.ts` (v0.106): in-flight dedup + 30s read
+TTL (10 min for the exercise library) + write-through invalidation. Multi-doc
+plan writes go through `commitPlanBatch` (atomic Firestore write batches);
+whole-plan session reads through `listSessionsForMeso` (one query, not one per
+week). `settleWrite` (workout page) exists because persisted-offline write
+promises only resolve on server ack — never raw-await a write before
+navigation.
 
 `lib/firebase/client.ts` → `isFirebaseEnabled()`, `getFirebaseAuth()`.
 
@@ -160,28 +180,40 @@ app/
     history/  exercises/  profile/  settings/
   login/  onboarding/
 components/
-  app/        AppShell, BottomNav, ThemeProvider, UserProvider (runs migrations)
+  app/        AppShell, BottomNav, ThemeProvider, UserProvider (runs migrations
+              + the once-per-sign-in archived-session sweep)
   plan/       PlanWizardV2 (the program wizard), SingleWorkoutWizard,
-              ChangePlanSheet, TemplateWizard (legacy single-workout/edit paths)
+              ChangePlanSheet, AddToDaySheet (shared Plan/History sheet)
   today/      StreakCard, BodyWeightCheckIn, WorkoutPicker, CardioLogModal,
-              TodayWorkoutCard, StartWorkoutModal
-  workout/    ExerciseCard (table + ⋮ menu), SetLoggerRow (table row),
-              EffortPicker, RestTimer, ExerciseTimer, StructureSheet/Editor,
-              SwapExerciseModal, SessionFeedbackModal, SorenessCheckIn, ...
-  ui/         InlineNumber, Button, Card, MuscleBadge, ... (cn, units)
+              TodayWorkoutCard, StartWorkoutModal, WeeklyRings
+  workout/    ExerciseCard (memoized table + ⋮ menu), SetLoggerRow,
+              EffortPicker, RestTimer + ExerciseTimer (share useCountdown),
+              StructureSheet/Editor, SwapExerciseModal, SessionFeedbackModal,
+              SorenessCheckIn, SessionDetailModal, ...
+  ui/         InlineNumber, Button, Card, PageTitle, MuscleBadge,
+              ConfirmDialog + Sheet (shared modal primitives), ...
 lib/
-  firestore/  repo interface + mock + Firestore impl + seed
-              migrations/ dropMacrocycle, relabelSessionsToDays, fixedExercises
-  periodization/ e1rm, volume, rpe (incl. effortFeelLabel), deload, mode,
-              terminology, adjustFromSoreness/Feedback, rest
-  program/    generate, templateProgram (generateCustomProgram / materializeWeeks
-              / assignExercises), startingWeights, recommendTemplate
-  session/    resolveToday, advance, hydrateFromHistory, nextSetNudge, cleanup
+  firestore/  repo interface (+ PlanBatch/commitPlanBatch/listSessionsForMeso)
+              + mock + Firestore impl + cachedRepository (read cache) + seed
+              migrations/ dropMacrocycle, relabelSessionsToDays, fixedExercises,
+              repairWeekStatus, dedupeExerciseNames (all 5 wired in UserProvider)
+  periodization/ e1rm, volume, rpe, deload, mode, terminology (effortShort is
+              THE effort-label source; effortFeelLabel aliases it),
+              adjustFromSoreness/Feedback, rest, calibration
+  program/    templateProgram (generateCustomProgram / materializeWeeks /
+              assignExercises), templateLayout, startingWeights
+  session/    resolveToday, advance, hydrateFromHistory, nextSetNudge,
+              cleanupArchived, performedSets (isPerformedSet — the canonical
+              "did this set actually happen" predicate; skips are
+              completed:true + setType:'skip' and must be filtered by it)
   wizard/     types (WizardState), engine, persist (activate/gallery/draft),
               editFromMeso (reconstruct state for editing old plans)
-  workout/    structure.ts (day-of set-structure pure helpers — see §6B)
-  ui/         cn, beep, date, units (mm:ss + imperial), sets (formatSetValue,
-              formatPrev), cardio
+  workout/    structure.ts (day-of set-structure helpers — see §6B),
+              sessionOps.ts (straighten, soreness adjust, skip sweep,
+              superset focus order — extracted from the workout page, tested)
+  ui/         cn, beep, date (todayIso + formatDayDate — NEVER
+              toISOString().slice for local dates), units (LB_PER_KG lives
+              here), sets, time, cardio, feedback
   version.ts  APP_VERSION (sync with package.json + CHANGELOG)
 types/        exercise, periodization, profile, session, template
 firestore.rules
@@ -285,7 +317,7 @@ set types, fixed flag, days, week-1 exercises; goal/experience/style reset).
 Bump three files in sync on every change: `lib/version.ts` (`APP_VERSION`),
 `package.json` `"version"`, and `app/CHANGELOG.md` (newest on top). Semver.
 
-**Current version: 0.103.0.**
+**Current version: 0.107.0.**
 
 PowerShell deploy (Brian copies this verbatim; note the `;` separators and the
 index.lock guard):
@@ -319,9 +351,42 @@ One-shot migrations run on sign-in (gated by profile flags, idempotent):
 
 ---
 
-## 9. Recent work (v0.67 → v0.103.0, condensed — full detail in app/CHANGELOG.md)
+## 9. Recent work (v0.67 → v0.107.0, condensed — full detail in app/CHANGELOG.md)
 
-### v0.98 → v0.103.0 (most recent session)
+### v0.104 → v0.107 (codebase audit, most recent session)
+
+A full audit (architecture map + findings report) followed by four fix phases:
+
+- **v0.104 — correctness.** `isPerformedSet` applied everywhere (skipped sets
+  no longer mint PRs, drive progression, seed calibration, or count as
+  volume/streaks); hydration keeps manual edits while preferring last time's
+  numbers over generator defaults; Finish cancels the stale debounced save;
+  InlineNumber hold-to-repeat fixed; UTC→local date fixes (evening "missed"
+  mislabel); failed profile loads show a retry screen instead of a blank app
+  or a wrongful bounce to onboarding; loader cancellation on navigation.
+- **v0.105 — data layer.** Firestore offline persistence; `commitPlanBatch`
+  (plan activation + workout-finish/advance are atomic batches);
+  `listSessionsForMeso` kills the per-week N+1 at 6 sites; set-logging saves
+  observed (retry + "couldn't save" banner); migrations fail loudly and the
+  sessions→days copy is copy-forward-safe; History no longer deletes docs on
+  mount (sweep moved to sign-in).
+- **v0.106/.1 — structure & perf.** Transparent repository read cache;
+  memoized ExerciseCard + stable handler bundles (keystrokes re-render one
+  card, not ~150 components); in-workout domain logic extracted to
+  lib/workout/sessionOps with tests; wizard name field commits on blur;
+  ConfirmDialog/Sheet/AddToDaySheet/useCountdown/formatDayDate/LB_PER_KG
+  consolidations. (.1: hooks must sit above early returns — `next build`
+  fails on rules-of-hooks; builds are now part of pre-ship verification.)
+- **v0.107 — hygiene.** ~950 lines of dead code deleted (lib/program/generate
+  + structuredLayout + mesoToTemplate + recommendTemplate + inferTiers,
+  NumberStepper, IntensityRamp, DaySessionSheet stub, /wizard-v2 preview
+  route, one-shot migrate-exercises script); SectionHeader.tsx renamed to
+  PageTitle.tsx (dead SectionHeader component dropped, live PageTitle kept);
+  root-level stray package.json/lockfile/node_modules (firebase v12 conflict
+  with the app's v11) and FUSE corpses moved to `_to_delete/`; this handoff
+  brought up to date.
+
+### v0.98 → v0.103.0
 
 - **Finish sweeps incomplete sets to skipped** (v0.98) — the old §0 task.
   `workedMuscles` excludes skips so feedback prompts are unchanged.

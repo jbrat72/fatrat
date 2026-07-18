@@ -39,3 +39,7 @@ Thumbs.db
 # FUSE mount artifacts
 .fuse_hidden*
 **/.fuse_hidden*
+
+# Staging area for files awaiting manual deletion (the device bridge can move
+# but not delete; empty this folder from Windows whenever)
+_to_delete/

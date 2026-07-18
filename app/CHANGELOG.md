@@ -9,6 +9,35 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.107.0 — 2026-07-18
+
+Hygiene (Phase 4 of the codebase audit — final phase). No behavior changes.
+
+- **Dead code deleted (~950 lines, all verified zero references):**
+  `lib/program/generate.ts` (+ its tests — the pre-wizard generator,
+  superseded by templateProgram and carrying a latent timezone bug),
+  `structuredLayout.ts`, `mesoToTemplate.ts`, `recommendTemplate.ts`,
+  `inferTiers.ts`, `components/ui/NumberStepper.tsx` (carried the broken
+  hold-repeat + double-fire bugs), `components/plan/IntensityRamp.tsx`,
+  `components/history/DaySessionSheet.tsx` (an empty stub),
+  `lib/exercise/index.ts` (barrel nobody imported), the unreachable
+  `/wizard-v2` dev-preview route, and the already-run one-shot
+  `scripts/migrate-exercises.ts`. Barrels pruned to match.
+- `SectionHeader.tsx` → `PageTitle.tsx`: the file's SectionHeader component
+  was dead but it also housed the heavily-used PageTitle — renamed for its
+  real export, dead component dropped. (`getTodaySession` stayed: it IS used
+  by CardioLogModal, contrary to the audit's initial read.)
+- **Repo junk moved to `_to_delete/`** (the device bridge can't delete; empty
+  that folder from Windows whenever): stray ROOT `package.json` +
+  `package-lock.json` + `node_modules` (pinned firebase v12 against the
+  app's v11), eight `.fuse_hidden*` corpses, `tsconfig*.tsbuildinfo`,
+  `wizard-mockup.html`. `_to_delete/` is gitignored.
+- **HANDOFF.md brought up to date**: v0.104–v0.107 summarized; §4 structure
+  matches reality (TemplateWizard and the deleted modules are gone,
+  performedSets/sessionOps/cachedRepository/commitPlanBatch documented); the
+  cloud-session workflow that shipped these four releases is written down,
+  including the npm-run-build verification rule.
+
 ## v0.106.1 — 2026-07-18
 
 - Fixed the v0.106.0 deployment failure: the workout page's new stable-handler
