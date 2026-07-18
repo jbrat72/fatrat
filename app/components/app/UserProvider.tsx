@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUser } from 'firebase/auth';
 import { getRepository } from '@/lib/firestore';
@@ -117,31 +117,39 @@ export function UserProvider({ children }: { children: ReactNode }) {
     load(activeId);
   }, [activeId]);
 
-  const setActiveUserId = async (id: string) => {
+  const setActiveUserId = useCallback(async (id: string) => {
     if (isFirebaseEnabled()) return; // DemoUserPicker is hidden in Firebase mode
     if (typeof window !== 'undefined') window.localStorage.setItem(ACTIVE_USER_KEY, id);
     setActiveIdState(id);
-  };
+  }, []);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (isFirebaseEnabled()) {
       if (firebaseUser) await load(firebaseUser.uid, { silent: true });
     } else {
       await load(activeId, { silent: true });
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firebaseUser, activeId]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     if (isFirebaseEnabled()) {
       const auth = getFirebaseAuth();
       if (auth) await firebaseSignOut(auth);
     } else {
       setUser(null);
     }
-  };
+  }, []);
+
+  // Memoized: a fresh object every render re-rendered every useUser() consumer
+  // (nearly every page and modal) on any provider render.
+  const value = useMemo(
+    () => ({ user, loading, loadError, firebaseUser, setActiveUserId, refresh, signOut }),
+    [user, loading, loadError, firebaseUser, setActiveUserId, refresh, signOut],
+  );
 
   return (
-    <UserContext.Provider value={{ user, loading, loadError, firebaseUser, setActiveUserId, refresh, signOut }}>
+    <UserContext.Provider value={value}>
       {children}
     </UserContext.Provider>
   );

@@ -26,6 +26,7 @@ import {
   DEMO_SESSIONS,
   DEMO_BODYWEIGHT,
 } from './seed';
+import { invalidateAllRepositoryCaches } from './cachedRepository';
 
 // Bump this when the demo seed changes so existing stores re-seed. v5 ships
 // the post-Macrocycle data model — mesos now own goal/startDate/targetDate
@@ -98,6 +99,8 @@ function persist() { if (_store) saveStore(_store); }
 export function resetMockRepository() {
   _store = seedStore();
   persist();
+  // The read-cache layer would otherwise keep serving pre-reset data for a TTL.
+  invalidateAllRepositoryCaches();
 }
 
 export function mockRepository(): DataRepository {

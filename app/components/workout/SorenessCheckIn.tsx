@@ -5,8 +5,11 @@ import { Button, MuscleBadge } from '@/components/ui';
 import { adjustFromSoreness } from '@/lib/periodization';
 import type { MuscleGroup, SorenessRating, MuscleTier } from '@/types';
 
-/** What the user chose to do about the soreness reading. */
-export type SorenessAction = 'add' | 'reduce' | 'skip' | 'none';
+/** What the user chose to do about the soreness reading.
+ *  Canonical definition lives with the transform in lib/workout/sessionOps;
+ *  re-exported here for existing importers. */
+import type { SorenessAction } from '@/lib/workout/sessionOps';
+export type { SorenessAction };
 
 interface Props {
   open: boolean;

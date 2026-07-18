@@ -10,7 +10,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui';
+import { Button, ConfirmDialog } from '@/components/ui';
 import { FinishPlanModal } from './FinishPlanModal';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
 import { getRepository } from '@/lib/firestore';
@@ -33,6 +33,25 @@ const DOW_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DOW_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_OFFSETS: Record<number, number[]> = { 1: [0], 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 4], 5: [0, 1, 2, 4, 5], 6: [0, 1, 2, 3, 4, 5], 7: [0, 1, 2, 3, 4, 5, 6] };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * Locally-buffered name input, committed on blur. Routing every keystroke
+ * through `update` structuredClone'd the ENTIRE WizardState and re-rendered
+ * all 900+ lines of the wizard per character typed.
+ */
+function NameField({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { setDraft(value); }, [value]);
+  return (
+    <input
+      className="w-full rounded-lg border border-ink-line bg-bg-input px-3 py-2.5 text-[15px]"
+      placeholder="e.g. Summer Cut 2026"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => { if (draft !== value) onCommit(draft); }}
+    />
+  );
+}
 
 function defaultRestDays(startDow: number, d: number): number[] {
   const work = new Set(DAY_OFFSETS[d] || []); const rest: number[] = [];
@@ -415,7 +434,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
       return (<>
         <Eyebrow n={1} title="Let's build your program" sub="Name it for your library, then pick your main goal — every later page adapts to it." />
         <div className="wz-field mb-4"><label className="block text-[13px] font-semibold mb-1.5">Program name</label>
-          <input className="w-full rounded-lg border border-ink-line bg-bg-input px-3 py-2.5 text-[15px]" placeholder="e.g. Summer Cut 2026" value={state.name} onChange={(e) => update((s) => { s.name = e.target.value; })} /></div>
+          <NameField value={state.name} onCommit={(v) => update((s) => { s.name = v; })} /></div>
         <SecHead>Primary goal</SecHead>
         <div className="grid gap-2.5">{GOALS.map((g) => cardChoice(sel === g.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.goal.primary = g.id; s.goal.secondary = null; }), g.label, g.desc))}</div>
         {sel && <><SecHead>I also want to… (optional)</SecHead><div className="flex flex-wrap gap-2">{secOpts.map((o) => chip(state.goal.secondary === o.id, o.label, () => update((s) => { s.goal.secondary = s.goal.secondary === o.id ? null : o.id; }), o.id))}</div></>}
@@ -777,18 +796,15 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
           </div>
         </div>
       </div>
-      {confirmExit && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setConfirmExit(false)}>
-          <div className="w-full max-w-sm bg-bg-card rounded-2xl border border-ink-line p-5" onClick={(e) => e.stopPropagation()}>
-            <div className="text-base font-semibold">Discard changes?</div>
-            <p className="text-sm text-ink-dim mt-1.5">Your edits to this plan won't be saved. You can save a draft instead to finish later.</p>
-            <div className="mt-4 flex gap-2 justify-end">
-              <Button variant="ghost" onClick={() => setConfirmExit(false)}>Keep editing</Button>
-              <Button onClick={() => { setConfirmExit(false); onClose?.(); }} className="bg-danger border-danger text-white">Discard</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={confirmExit}
+        title="Discard changes?"
+        body="Your edits to this plan won't be saved. You can save a draft instead to finish later."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        onConfirm={() => { setConfirmExit(false); onClose?.(); }}
+        onCancel={() => setConfirmExit(false)}
+      />
       {finishOpen && (
         <FinishPlanModal
           workDayCount={(program[0]?.length ?? 0)}

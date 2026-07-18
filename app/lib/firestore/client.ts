@@ -8,12 +8,15 @@
 import type { DataRepository } from './repository';
 import { mockRepository } from './mock';
 import { firestoreRepository } from './firestoreRepository';
+import { cachedRepository } from './cachedRepository';
 import { isFirebaseEnabled } from '@/lib/firebase/client';
 
 let _repo: DataRepository | null = null;
 
 export function getRepository(): DataRepository {
   if (_repo) return _repo;
-  _repo = isFirebaseEnabled() ? firestoreRepository() : mockRepository();
+  // Wrapped in the read-cache decorator: in-flight dedup + 30s TTL + write-
+  // through invalidation. See cachedRepository.ts for the rationale.
+  _repo = cachedRepository(isFirebaseEnabled() ? firestoreRepository() : mockRepository());
   return _repo;
 }

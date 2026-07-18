@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { cn } from '@/lib/ui/cn';
 import { Card, MuscleBadge, Button } from '@/components/ui';
 import { SetLoggerRow, type SetRowState } from './SetLoggerRow';
@@ -51,7 +51,12 @@ interface Props {
   onStartTimer?: (setIdx: number) => void;
 }
 
-export function ExerciseCard({
+/**
+ * Memoized: the workout page passes stable per-index handler bundles, so a
+ * keystroke inside one exercise re-renders only that exercise's card instead
+ * of every card × every row on the screen.
+ */
+export const ExerciseCard = memo(function ExerciseCard({
   exercise, exerciseIndex, mode, units, liveMetric, lastSets, activeSetIndex, awaitingEffortSetIdx, disabled,
   onActivateSet, onUpdateSet, onLogSet, onUnlockSet, onEffort, onAddSet, onRemoveSet, canRemoveSet,
   onSwap, onSkip, onSkipSet, onRemove, canRemove,
@@ -221,7 +226,7 @@ export function ExerciseCard({
       </div>
     </Card>
   );
-}
+});
 
 function MenuItem({ children, onClick, danger, disabled }: { children: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }) {
   return (

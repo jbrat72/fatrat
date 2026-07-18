@@ -1,18 +1,10 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { todayIso, formatDayDate } from '@/lib/ui/date';
 
 const DOW_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const dowAt = (pos: number) => (1 + pos) % 7; // pos 0 = Monday
 
-function todayISO(): string {
-  const d = new Date();
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 10);
-}
-function prettyDate(iso: string): string {
-  const d = new Date(iso + 'T00:00:00');
-  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-}
 
 interface Props {
   /** Number of training days in the typical week (split length). */
@@ -32,7 +24,7 @@ interface Props {
  */
 export function FinishPlanModal({ workDayCount, restDays, onCancel, onSaveToGallery, onActivate }: Props) {
   const [step, setStep] = useState<'choose' | 'schedule'>('choose');
-  const [date, setDate] = useState<string>(todayISO());
+  const [date, setDate] = useState<string>(todayIso());
 
   const startDow = useMemo(() => new Date(date + 'T00:00:00').getDay(), [date]);
   const startPos = (startDow - 1 + 7) % 7; // 0 = Monday
@@ -112,8 +104,8 @@ export function FinishPlanModal({ workDayCount, restDays, onCancel, onSaveToGall
           <div className="p-4 space-y-4">
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-wide text-ink-mute mb-1">Start date</label>
-              <input type="date" min={todayISO()} value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-bg-input border border-ink-line rounded-lg px-3 py-2 text-sm" />
-              <p className="text-[12px] text-ink-mute mt-1">Starts {prettyDate(date)}.</p>
+              <input type="date" min={todayIso()} value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-bg-input border border-ink-line rounded-lg px-3 py-2 text-sm" />
+              <p className="text-[12px] text-ink-mute mt-1">Starts {formatDayDate(date, 'medium')}.</p>
             </div>
 
             {midWeek ? (

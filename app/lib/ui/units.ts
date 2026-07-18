@@ -4,7 +4,9 @@
  */
 import type { Units } from '@/types';
 
-const LB_PER_KG = 2.20462;
+/** Canonical lb↔kg factor — exported so nothing re-declares its own copy
+ *  (nextSetNudge and wizard/persist had drifted to different precisions). */
+export const LB_PER_KG = 2.20462;
 const MI_PER_KM = 0.621371;
 
 /* ---------- weight ---------- */

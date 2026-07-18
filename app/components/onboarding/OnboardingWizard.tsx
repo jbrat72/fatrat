@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, ChoiceCard, ChoicePill, TextField, PageTitle } from '@/components/ui';
 import { coarseFromItems } from '@/lib/exercise/equipment';
+import { kgToDisplay, displayToKg } from '@/lib/ui/units';
 import type {
   UserMode, UserProfile, ExperienceTier, PeriodizationFamiliarity, PrimaryGoal, Units, Sex,
 } from '@/types';
@@ -132,11 +133,11 @@ export function OnboardingWizard() {
                 <TextField
                   label={d.units === 'imperial' ? 'Weight (lb)' : 'Weight (kg)'}
                   inputMode="decimal"
-                  value={d.weightKg == null ? '' : String(d.units === 'imperial' ? +(d.weightKg * 2.20462).toFixed(1) : d.weightKg)}
+                  value={d.weightKg == null ? '' : String(kgToDisplay(d.weightKg, d.units) ?? '')}
                   onChange={(e) => {
                     const n = Number(e.target.value);
                     if (!Number.isFinite(n)) return update('weightKg', undefined);
-                    update('weightKg', d.units === 'imperial' ? n / 2.20462 : n);
+                    update('weightKg', displayToKg(n, d.units));
                   }}
                 />
               </div>

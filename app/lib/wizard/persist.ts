@@ -10,6 +10,7 @@
  */
 import { getRepository } from '@/lib/firestore';
 import { todayIso } from '@/lib/ui/date';
+import { LB_PER_KG } from '@/lib/ui/units';
 import {
   generateCustomProgram, buildCustomTemplate, addDaysIso,
   type CustomProgramInput, type AssignedWeek, type WeekKind,
@@ -74,7 +75,7 @@ export function buildWizardInput(
   // exercise id — the anchors shown on Page 14, which match the program anchors).
   const RR: Record<string, [number, number]> = { strength: [5, 6], hypertrophy: [8, 12], endurance: [12, 15], mixed: [6, 10] };
   const [repsLow, repsHigh] = RR[state.setsAndReps.repRange || ''] || [8, 12];
-  const toKg = (v: number) => (user.units === 'metric' ? v : v / 2.2046226);
+  const toKg = (v: number) => (user.units === 'metric' ? v : v / LB_PER_KG);
   const round = (v: number) => Math.round(v * 2) / 2;
   const startingWeights: NonNullable<CustomProgramInput['startingWeights']> = {};
   if (!state.baselines.calibrationWeek) {

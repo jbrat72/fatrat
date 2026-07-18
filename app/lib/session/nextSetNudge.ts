@@ -17,8 +17,7 @@
  * failures cascade properly down a multi-set chain.
  */
 import type { SetEntry, Units } from '@/types';
-
-const LB_PER_KG = 2.20462;
+import { LB_PER_KG } from '@/lib/ui/units';
 
 function plateKgFor(units: Units, weightKg: number): { small: number; big: number } {
   if (units === 'imperial') {

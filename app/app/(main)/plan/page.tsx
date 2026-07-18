@@ -17,6 +17,7 @@ import { AdHocWorkoutModal } from '@/components/workout';
 import { useRouter } from 'next/navigation';
 import { getRepository } from '@/lib/firestore';
 import { withRetry } from '@/lib/util/retry';
+import { AddToDaySheet, type AddDayInfo } from '@/components/plan/AddToDaySheet';
 import { todayIso } from '@/lib/ui/date';
 import { cn } from '@/lib/ui/cn';
 import { terminologyMode } from '@/lib/periodization';
@@ -26,18 +27,20 @@ import type {
 
 const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
+/** Calendar-derived current week of a plan (1-based, clamped to its length).
+ *  Was duplicated verbatim in the load effect and the render body. */
+function calendarWeek(startDate: string | undefined, fallbackWeek: number, totalWeeks: number): number {
+  return startDate
+    ? Math.min(Math.max(Math.floor((Date.parse(todayIso()) - Date.parse(startDate)) / (7 * 86400000)) + 1, 1), totalWeeks)
+    : fallbackWeek;
+}
+
 function intensityFromRIR(rir: number | undefined): string | null {
   if (rir == null) return null;
   if (rir >= 3) return 'Easy';
   if (rir === 2) return 'Moderate';
   if (rir === 1) return 'Hard';
   return 'Peak';
-}
-
-interface AddDayInfo {
-  date: string;
-  weekNumber: number;
-  dayOfWeek: 0|1|2|3|4|5|6;
 }
 
 export default function PlanPage() {
@@ -56,6 +59,10 @@ export default function PlanPage() {
   const [editName, setEditName] = useState<string | null>(null);
   const [editState, setEditState] = useState<WizardState | null>(null);
   const [editProgram, setEditProgram] = useState<Record<number, GeneratedDay[]> | undefined>(undefined);
+  const closeWizard = () => {
+    setWizardOpen(false); setEditName(null); setEditState(null);
+    setEditProgram(undefined); setEditDraftId(undefined);
+  };
   const [editDraftId, setEditDraftId] = useState<string | undefined>(undefined);
   const [changeSheet, setChangeSheet] = useState(false);
   const [moveSheet, setMoveSheet] = useState(false);
@@ -99,9 +106,7 @@ export default function PlanPage() {
         setSessions(ss);
         // Auto-expand the CALENDAR-current week, not whichever micro is flagged
         // 'active' (that flag can lag behind, opening a past week).
-        const curWk = active.startDate
-          ? Math.min(Math.max(Math.floor((Date.parse(todayIso()) - Date.parse(active.startDate)) / (7 * 86400000)) + 1, 1), active.weeks)
-          : active.weekIndex + 1;
+        const curWk = calendarWeek(active.startDate, active.weekIndex + 1, active.weeks);
         const cur = ms.find((mi) => mi.weekNumber === curWk) ?? ms.find((mi) => mi.status === 'active') ?? ms[0];
         if (cur) setExpandedWeek(cur.id);
       } catch (e) {
@@ -144,23 +149,13 @@ export default function PlanPage() {
           </Card>
           {user.showCardioGoal !== false && <CardioGoalCard />}
         </div>
-{wizardOpen && user && (
-          <div className="fixed inset-0 z-50 bg-bg overflow-y-auto">
-            <PlanWizardV2
-              user={user}
-              initialName={editName ?? undefined}
-              onSaveDraft={async (st, pr, id) => (await saveWizardDraft(st, user, pr, id)).id}
-              onClose={() => { setWizardOpen(false); setEditName(null); }}
-              onSaveToGallery={async (st, pr) => {
-                try { await saveWizardToGallery(st, user, pr); setWizardOpen(false); setEditName(null); setRefreshTick((n) => n + 1); }
-                catch (e) { alert('Could not save to gallery: ' + ((e as Error)?.message ?? 'unknown error')); }
-              }}
-              onComplete={async (st, pr) => {
-                try { await activateWizardProgram(st, pr, user); setWizardOpen(false); setEditName(null); setRefreshTick((n) => n + 1); }
-                catch (e) { alert('Could not save your program: ' + ((e as Error)?.message ?? 'unknown error')); }
-              }}
-            />
-          </div>
+        {wizardOpen && user && (
+          <WizardOverlay
+            user={user}
+            initialName={editName ?? undefined}
+            onExit={closeWizard}
+            onChanged={() => setRefreshTick((n) => n + 1)}
+          />
         )}
       </div>
     );
@@ -172,9 +167,7 @@ export default function PlanPage() {
 
   // Current week tracks the CALENDAR, not completion — finishing a week early
   // must not jump the plan ahead before the next week's dates arrive.
-  const currentWk = meso.startDate
-    ? Math.min(Math.max(Math.floor((Date.parse(todayStr) - Date.parse(meso.startDate)) / (7 * 86400000)) + 1, 1), totalWk)
-    : meso.weekIndex + 1;
+  const currentWk = calendarWeek(meso.startDate, meso.weekIndex + 1, totalWk);
 
   // Day position within the calendar-current week.
   const displayMicro = micros.find((m) => m.weekNumber === currentWk)
@@ -363,41 +356,23 @@ export default function PlanPage() {
 
 
       {addDay && !cardioOpen && !adHocOpen && !moveSheet && (
-        <div className="fixed inset-0 z-40 bg-black/60 flex items-end" onClick={() => setAddDay(null)}>
-          <div className="mx-auto max-w-md w-full bg-bg-card rounded-t-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="px-4 py-3 border-b border-ink-line flex items-center justify-between">
-              <div>
-                <div className="section-head">ADD TO THIS DAY</div>
-                <div className="text-xs text-ink-dim mt-0.5">
-                  {DOW_NAMES[addDay.dayOfWeek]} {'·'} {addDay.date} {'·'} Week {addDay.weekNumber}
-                </div>
-              </div>
-              <button type="button" onClick={() => setAddDay(null)} className="w-9 h-9 rounded-md border border-ink-line text-ink-dim hover:text-ink" aria-label="Close">{'✕'}</button>
-            </div>
-            <div className="px-4 py-4 space-y-2 pb-8">
-              <Button block size="lg" onClick={() => setAdHocOpen(true)}>
-                Log a workout
+        <AddToDaySheet
+          day={addDay}
+          onClose={() => setAddDay(null)}
+          onLogWorkout={() => setAdHocOpen(true)}
+          onLogCardio={() => setCardioOpen(true)}
+          extra={(() => {
+            const missed = sessions
+              .filter((sn) => !sn.completed && sn.date < todayStr)
+              .sort((a, b) => a.date.localeCompare(b.date));
+            if (missed.length === 0) return null;
+            return (
+              <Button block variant="ghost" size="lg" onClick={() => setMoveSheet(true)}>
+                Move a missed workout here ({missed.length})
               </Button>
-              <Button block variant="ghost" size="lg" onClick={() => setCardioOpen(true)}>
-                Log cardio
-              </Button>
-              {(() => {
-                const missed = sessions
-                  .filter((sn) => !sn.completed && sn.date < todayStr)
-                  .sort((a, b) => a.date.localeCompare(b.date));
-                if (missed.length === 0) return null;
-                return (
-                  <Button block variant="ghost" size="lg" onClick={() => setMoveSheet(true)}>
-                    Move a missed workout here ({missed.length})
-                  </Button>
-                );
-              })()}
-              <p className="text-xs text-ink-mute text-center pt-2">
-                Adding extra sessions does not change your program — they show up as logged history.
-              </p>
-            </div>
-          </div>
-        </div>
+            );
+          })()}
+        />
       )}
 
       {moveSheet && addDay && (
@@ -467,27 +442,54 @@ export default function PlanPage() {
         />
       )}
 
-{wizardOpen && user && (
-          <div className="fixed inset-0 z-50 bg-bg overflow-y-auto">
-            <PlanWizardV2
-              user={user}
-              initialName={editName ?? undefined}
-              initialState={editState ?? undefined}
-              initialProgram={editProgram}
-              initialDraftId={editDraftId}
-              onSaveDraft={async (st, pr, id) => (await saveWizardDraft(st, user, pr, id)).id}
-              onClose={() => { setWizardOpen(false); setEditName(null); setEditState(null); setEditProgram(undefined); setEditDraftId(undefined); }}
-              onSaveToGallery={async (st, pr) => {
-                try { await saveWizardToGallery(st, user, pr); setWizardOpen(false); setEditName(null); setEditState(null); setRefreshTick((n) => n + 1); }
-                catch (e) { alert('Could not save to gallery: ' + ((e as Error)?.message ?? 'unknown error')); }
-              }}
-              onComplete={async (st, pr) => {
-                try { await activateWizardProgram(st, pr, user); setWizardOpen(false); setEditName(null); setEditState(null); setRefreshTick((n) => n + 1); }
-                catch (e) { alert('Could not save your program: ' + ((e as Error)?.message ?? 'unknown error')); }
-              }}
-            />
-          </div>
-        )}
+      {wizardOpen && user && (
+        <WizardOverlay
+          user={user}
+          initialName={editName ?? undefined}
+          initialState={editState ?? undefined}
+          initialProgram={editProgram}
+          initialDraftId={editDraftId}
+          onExit={closeWizard}
+          onChanged={() => setRefreshTick((n) => n + 1)}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Full-screen PlanWizardV2 mount with the save/activate/close handlers —
+ * previously copy-pasted (alert strings and all) in both the no-plan and
+ * has-plan branches of this page.
+ */
+function WizardOverlay({ user, initialName, initialState, initialProgram, initialDraftId, onExit, onChanged }: {
+  user: NonNullable<ReturnType<typeof useUser>['user']>;
+  initialName?: string;
+  initialState?: WizardState;
+  initialProgram?: Record<number, GeneratedDay[]>;
+  initialDraftId?: string;
+  onExit: () => void;
+  onChanged: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-bg overflow-y-auto">
+      <PlanWizardV2
+        user={user}
+        initialName={initialName}
+        initialState={initialState}
+        initialProgram={initialProgram}
+        initialDraftId={initialDraftId}
+        onSaveDraft={async (st, pr, id) => (await saveWizardDraft(st, user, pr, id)).id}
+        onClose={onExit}
+        onSaveToGallery={async (st, pr) => {
+          try { await saveWizardToGallery(st, user, pr); onExit(); onChanged(); }
+          catch (e) { alert('Could not save to gallery: ' + ((e as Error)?.message ?? 'unknown error')); }
+        }}
+        onComplete={async (st, pr) => {
+          try { await activateWizardProgram(st, pr, user); onExit(); onChanged(); }
+          catch (e) { alert('Could not save your program: ' + ((e as Error)?.message ?? 'unknown error')); }
+        }}
+      />
     </div>
   );
 }

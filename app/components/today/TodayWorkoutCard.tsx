@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Button, MuscleBadge } from '@/components/ui';
+import { Card, Button, MuscleBadge, ConfirmDialog } from '@/components/ui';
 import { SwapExerciseModal } from '@/components/workout';
 import { cn } from '@/lib/ui/cn';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
@@ -198,18 +198,15 @@ export function TodayWorkoutCard({ session, meso, micro, dayOrdinal, units, allo
         onClose={() => setSwapFor(null)}
         onPick={(def) => { if (swapFor != null) onSwap(swapFor, def); }}
       />
-    {confirmDel && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setConfirmDel(false)}>
-          <div className="w-full max-w-sm bg-bg-card rounded-2xl border border-ink-line p-5" onClick={(e) => e.stopPropagation()}>
-            <div className="text-base font-semibold">Delete this workout?</div>
-            <p className="text-sm text-ink-dim mt-1.5">This ad-hoc workout will be removed from today. This can't be undone.</p>
-            <div className="mt-4 flex gap-2 justify-end">
-              <Button variant="ghost" onClick={() => setConfirmDel(false)}>Keep it</Button>
-              <Button onClick={() => { setConfirmDel(false); onDelete?.(session.id); }} className="bg-danger border-danger text-white">Delete</Button>
-            </div>
-          </div>
-        </div>
-      )}
+    <ConfirmDialog
+        open={confirmDel}
+        title="Delete this workout?"
+        body="This ad-hoc workout will be removed from today. This can't be undone."
+        confirmLabel="Delete"
+        cancelLabel="Keep it"
+        onConfirm={() => { setConfirmDel(false); onDelete?.(session.id); }}
+        onCancel={() => setConfirmDel(false)}
+      />
     </Card>
   );
 }

@@ -16,12 +16,7 @@ import { kgToDisplay, weightLabel } from '@/lib/ui/units';
 import { cn } from '@/lib/ui/cn';
 import type { Mesocycle, Microcycle, WorkoutSession, ExerciseMetric } from '@/types';
 import { todayIso } from '@/lib/ui/date';
-
-interface AddDayInfo {
-  date: string;
-  weekNumber: number;
-  dayOfWeek: 0|1|2|3|4|5|6;
-}
+import { AddToDaySheet, type AddDayInfo } from '@/components/plan/AddToDaySheet';
 
 type ChartMetric = 'weight' | 'reps' | 'time';
 type ChartRange = '30d' | '60d' | '90d' | '1y' | 'all';
@@ -573,30 +568,13 @@ export default function HistoryPage() {
       />
 
       {addDay && !cardioOpen && !adHocOpen && (
-        <div className="fixed inset-0 z-40 bg-black/60 flex items-end" onClick={() => setAddDay(null)}>
-          <div className="mx-auto max-w-md w-full bg-bg-card rounded-t-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="px-4 py-3 border-b border-ink-line flex items-center justify-between">
-              <div>
-                <div className="section-head">ADD TO THIS DAY</div>
-                <div className="text-xs text-ink-dim mt-0.5">
-                  {DOW_NAMES[addDay.dayOfWeek]} · {addDay.date} · Week {addDay.weekNumber}
-                </div>
-              </div>
-              <button type="button" onClick={() => setAddDay(null)} className="w-9 h-9 rounded-md border border-ink-line text-ink-dim hover:text-ink" aria-label="Close">✕</button>
-            </div>
-            <div className="px-4 py-4 space-y-2 pb-8">
-              <Button block size="lg" onClick={() => setAdHocOpen(true)}>
-                Log a workout
-              </Button>
-              <Button block variant="ghost" size="lg" onClick={() => setCardioOpen(true)}>
-                Log cardio
-              </Button>
-              <p className="text-xs text-ink-mute text-center pt-2">
-                Adding extra sessions does not change your program — they show up here as logged history.
-              </p>
-            </div>
-          </div>
-        </div>
+        <AddToDaySheet
+          day={addDay}
+          onClose={() => setAddDay(null)}
+          onLogWorkout={() => setAdHocOpen(true)}
+          onLogCardio={() => setCardioOpen(true)}
+          footer="Adding extra sessions does not change your program — they show up here as logged history."
+        />
       )}
 
       {addDay && (

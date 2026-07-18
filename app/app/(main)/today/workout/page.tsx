@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
-import { Button } from '@/components/ui';
+import { Button, ConfirmDialog } from '@/components/ui';
 import { ExerciseCard, RestTimer, ExerciseTimer, ExerciseHistorySheet, SwapExerciseModal, SessionFeedbackModal, SorenessCheckIn, StructureSheet } from '@/components/workout';
 import { getRepository } from '@/lib/firestore';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
@@ -13,6 +13,10 @@ import { planAdvance } from '@/lib/session/advance';
 import { seedWeightsFromCalibration } from '@/lib/periodization/calibration';
 import { defaultRestSec, terminologyMode, isPeriodizedSession } from '@/lib/periodization';
 import { removeExerciseAt, pairSuperset, unlinkGroup } from '@/lib/workout/structure';
+import {
+  adjustExercises, straighten, sweepPendingToSkips, muscleFinished,
+  musclesMissingFeedback, findNextPending, nextFocusAfter, type SorenessAction,
+} from '@/lib/workout/sessionOps';
 import type { WorkoutSession, SetEntry, ExerciseEntry, SessionFeedback, Mesocycle, Microcycle, ExerciseDefinition, MovementPattern, MuscleGroup, SorenessRating, MuscleSoreness } from '@/types';
 import { todayIso } from '@/lib/ui/date';
 import { withRetry } from '@/lib/util/retry';
@@ -33,12 +37,14 @@ async function settleWrite(p: Promise<unknown>, ms = 1200): Promise<'ok' | 'err'
 
 // todayIso() now imported from @/lib/ui/date — keeps the stamp in the user's local timezone.
 
-type SorenessAction = 'add' | 'reduce' | 'skip' | 'none';
 
 export default function WorkoutPage() {
   const router = useRouter();
   const { user } = useUser();
   const [session, setSession] = useState<WorkoutSession | null>(null);
+  /** Latest session for stable handlers that must not close over stale state. */
+  const sessionRef = useRef<WorkoutSession | null>(null);
+  sessionRef.current = session;
   // False until the first load resolves -- lets us show "Loading..." instead of a
   // dead-end before we know whether there's a session to work on.
   const [loaded, setLoaded] = useState(false);
@@ -592,19 +598,9 @@ export default function WorkoutPage() {
     // (completed:false) session over the finalized one.
     if (saveDebounce.current) { clearTimeout(saveDebounce.current); saveDebounce.current = null; }
     const repo = getRepository();
-    // Sweep every set that was never logged into a skip (completed:true +
-    // setType:'skip'), so finishing leaves no pending sets and history shows
-    // programmed-but-skipped work. Exercises with zero completed sets stay on
-    // the session (all skipped). Stats go through isPerformedSet
-    // (lib/session/performedSets) which filters skips, so this is consistent
-    // end-to-end.
-    const sweptExercises = session.exercises.map((ex) => ({
-      ...ex,
-      sets: ex.sets.map((s) => (s.completed ? s : { ...s, completed: true, setType: 'skip' as const })),
-    }));
     const final: WorkoutSession = {
       ...session,
-      exercises: sweptExercises,
+      exercises: sweepPendingToSkips(session.exercises),
       completed: true,
       completedAt: new Date().toISOString(),
       feedback: feedback ?? session.feedback,
@@ -691,6 +687,54 @@ export default function WorkoutPage() {
     ?? (ex.swappedFromExerciseId ? lastPerf[ex.swappedFromExerciseId] : undefined)
     ?? lastPerfByName[ex.name.trim().toLowerCase()];
 
+  // ---- Stable per-card handlers -------------------------------------------
+  // ExerciseCard is memoized; inline closures re-created per render would
+  // defeat that (every keystroke re-rendered every card × every row). The
+  // ref always holds the freshest handler implementations, and the per-index
+  // bundles below keep their identity until the exercise COUNT changes — so
+  // an edit inside exercise 3 re-renders only exercise 3's card.
+  const handlersRef = useRef({
+    activateSet, updateSet, logSet, setEffort, unlockSet, addSet, removeSet,
+    skipRemaining, removeExercise, startSuperset, completeSuperset, unlinkSuperset, skipSet,
+    showHistoryAt: (i: number) => {
+      const ex = sessionRef.current?.exercises[i];
+      if (ex) setHistoryFor(ex.exerciseId);
+    },
+    swapFor: (i: number) => setSwapFor(i),
+    cancelSuperset: () => setSupersetFrom(null),
+    startTimer: (i: number, setIdx: number) => {
+      const ex = sessionRef.current?.exercises[i];
+      if (!ex) return;
+      setExerciseTimerLabel(ex.name);
+      setExerciseTimerSec(ex.sets[setIdx]?.timeSec ?? ex.prescribedTimeLow ?? 30);
+      setTimerTarget({ exIdx: i, setIdx });
+    },
+  });
+  handlersRef.current = { ...handlersRef.current, activateSet, updateSet, logSet, setEffort, unlockSet, addSet, removeSet, skipRemaining, removeExercise, startSuperset, completeSuperset, unlinkSuperset, skipSet };
+
+  const exCount = session?.exercises.length ?? 0;
+  const cardHandlers = useMemo(() =>
+    Array.from({ length: exCount }, (_, i) => ({
+      onActivateSet: (s: number) => handlersRef.current.activateSet(i, s),
+      onUpdateSet: (s: number, next: SetEntry) => handlersRef.current.updateSet(i, s, next),
+      onLogSet: (s: number) => handlersRef.current.logSet(i, s),
+      onEffort: (s: number, rpe: SetEntry['rpe']) => handlersRef.current.setEffort(i, s, rpe),
+      onUnlockSet: (s: number) => handlersRef.current.unlockSet(i, s),
+      onAddSet: () => handlersRef.current.addSet(i),
+      onRemoveSet: () => handlersRef.current.removeSet(i),
+      onShowHistory: () => handlersRef.current.showHistoryAt(i),
+      onSwap: () => handlersRef.current.swapFor(i),
+      onSkip: () => handlersRef.current.skipRemaining(i),
+      onRemove: () => handlersRef.current.removeExercise(i),
+      onSuperset: () => handlersRef.current.startSuperset(i),
+      onPairHere: () => handlersRef.current.completeSuperset(i),
+      onCancelSuperset: () => handlersRef.current.cancelSuperset(),
+      onUnlinkSuperset: () => handlersRef.current.unlinkSuperset(i),
+      onSkipSet: (s: number) => handlersRef.current.skipSet(i, s),
+      onStartTimer: (s: number) => handlersRef.current.startTimer(i, s),
+    })),
+  [exCount]);
+
   const renderCard = (i: number) => {
     const ex = session.exercises[i]!;
     // Stable identity key: remove/soreness-skip/superset-reorder all shift
@@ -709,32 +753,11 @@ export default function WorkoutPage() {
         activeSetIndex={activeExerciseIdx === i ? activeSetIdx : null}
         awaitingEffortSetIdx={pendingEffort?.exIdx === i ? pendingEffort.setIdx : null}
         disabled={isResting}
-        onActivateSet={(s) => activateSet(i, s)}
-        onUpdateSet={(s, next) => updateSet(i, s, next)}
-        onLogSet={(s) => logSet(i, s)}
-        onEffort={(s, rpe) => setEffort(i, s, rpe)}
-        onUnlockSet={(s) => unlockSet(i, s)}
-        onAddSet={() => addSet(i)}
-        onRemoveSet={() => removeSet(i)}
         canRemoveSet={ex.sets.length > 1 && ex.sets.some((s) => !s.completed)}
-        onShowHistory={() => setHistoryFor(ex.exerciseId)}
-        onSwap={() => setSwapFor(i)}
-        onSkip={() => skipRemaining(i)}
-        onRemove={() => removeExercise(i)}
         canRemove={session.exercises.length > 1}
         supersetMode={supersetFrom == null ? 'idle' : supersetFrom === i ? 'armed' : 'candidate'}
         supersetPartnerName={supersetFrom != null ? session.exercises[supersetFrom]?.name : undefined}
-        onSuperset={() => startSuperset(i)}
-        onPairHere={() => completeSuperset(i)}
-        onCancelSuperset={() => setSupersetFrom(null)}
-        onUnlinkSuperset={ex.supersetGroup != null ? () => unlinkSuperset(i) : undefined}
-        onSkipSet={(s) => skipSet(i, s)}
-        onStartTimer={(setIdx) => {
-          const target = ex.sets[setIdx]?.timeSec ?? ex.prescribedTimeLow ?? 30;
-          setExerciseTimerLabel(ex.name);
-          setExerciseTimerSec(target);
-          setTimerTarget({ exIdx: i, setIdx });
-        }}
+        {...cardHandlers[i]!}
       />
     );
   };
@@ -874,18 +897,15 @@ export default function WorkoutPage() {
         />
       )}
 
-      {confirmDiscard && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setConfirmDiscard(false)}>
-          <div className="w-full max-w-sm bg-bg-card rounded-2xl border border-ink-line p-5" onClick={(e) => e.stopPropagation()}>
-            <div className="text-base font-semibold">Discard this workout?</div>
-            <p className="text-sm text-ink-dim mt-1.5">It will be removed and won't be saved to your history.</p>
-            <div className="mt-4 flex gap-2 justify-end">
-              <Button variant="ghost" onClick={() => setConfirmDiscard(false)}>Keep going</Button>
-              <Button onClick={discardWorkout} className="bg-danger border-danger text-white">Discard</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={confirmDiscard}
+        title="Discard this workout?"
+        body="It will be removed and won't be saved to your history."
+        confirmLabel="Discard"
+        cancelLabel="Keep going"
+        onConfirm={discardWorkout}
+        onCancel={() => setConfirmDiscard(false)}
+      />
 
       <div className="fixed bottom-0 inset-x-0 bg-bg/95 backdrop-blur border-t border-ink-line z-20">
         <div className="mx-auto max-w-md p-3 flex items-center gap-2">
@@ -904,150 +924,3 @@ export default function WorkoutPage() {
   );
 }
 
-/**
- * Apply a soreness-driven volume change to a session's exercise list.
- * `count` is the number of sets to add / remove per matching exercise — it
- * carries the tier-aware magnitude (emphasized muscles add two, etc.).
- */
-function adjustExercises(
-  exercises: ExerciseEntry[],
-  muscle: MuscleGroup,
-  action: SorenessAction,
-  count: number,
-): ExerciseEntry[] {
-  if (action === 'none') return exercises;
-  if (action === 'skip') {
-    // Drop the muscle's exercises that have not been started yet.
-    return exercises.filter((ex) => ex.muscle !== muscle || ex.sets.some((s) => s.completed));
-  }
-  return exercises.map((ex) => {
-    if (ex.muscle !== muscle) return ex;
-    if (action === 'add') {
-      const sets: SetEntry[] = [...ex.sets];
-      for (let k = 0; k < count; k++) {
-        const last = sets[sets.length - 1];
-        sets.push({ setIndex: sets.length, weightKg: last?.weightKg, reps: last?.reps, completed: false });
-      }
-      return { ...ex, sets, prescribedSets: sets.length };
-    }
-    // reduce — drop up to `count` not-yet-completed sets, never below one set.
-    let sets: SetEntry[] = [...ex.sets];
-    for (let k = 0; k < count; k++) {
-      if (sets.length <= 1) break;
-      let removeIdx = -1;
-      for (let i = sets.length - 1; i >= 0; i--) {
-        if (!sets[i]!.completed) { removeIdx = i; break; }
-      }
-      if (removeIdx === -1) break;
-      sets = sets.filter((_, i) => i !== removeIdx);
-    }
-    sets = sets.map((s, i) => ({ ...s, setIndex: i }));
-    return { ...ex, sets, prescribedSets: sets.length };
-  });
-}
-
-/** True when every exercise for `muscle` has all its sets completed. */
-function muscleFinished(session: WorkoutSession, muscle: MuscleGroup): boolean {
-  const exs = session.exercises.filter((e) => e.muscle === muscle);
-  if (exs.length === 0) return false;
-  let anyCompleted = false;
-  for (const ex of exs) {
-    for (const s of ex.sets) {
-      if (s.completed) anyCompleted = true;
-      else return false;
-    }
-  }
-  return anyCompleted;
-}
-
-/** Muscles with at least one completed set this session.
- *  Core is intentionally excluded — feedback prompts skip it. */
-function workedMuscles(session: WorkoutSession): MuscleGroup[] {
-  const seen = new Set<MuscleGroup>();
-  for (const ex of session.exercises) {
-    if (ex.muscle === 'core') continue;
-    // A muscle counts as worked only with a genuinely logged set — a skipped
-    // set is completed:true but setType:'skip', so it must not count.
-    if (ex.sets.some((s) => s.completed && s.setType !== 'skip')) seen.add(ex.muscle);
-  }
-  return [...seen];
-}
-
-/** Worked muscles that do not yet have feedback recorded. */
-function musclesMissingFeedback(session: WorkoutSession): MuscleGroup[] {
-  const have = new Set((session.feedback?.perMuscle ?? []).map((p) => p.muscle));
-  return workedMuscles(session).filter((m) => !have.has(m));
-}
-
-function findNextPending(
-  session: WorkoutSession,
-  start: { fromExercise: number; fromSet: number } = { fromExercise: 0, fromSet: 0 },
-): { exIdx: number; setIdx: number } | null {
-  for (let i = start.fromExercise; i < session.exercises.length; i++) {
-    const ex = session.exercises[i]!;
-    const startSet = i === start.fromExercise ? start.fromSet : 0;
-    for (let j = startSet; j < ex.sets.length; j++) {
-      if (!ex.sets[j]!.completed) return { exIdx: i, setIdx: j };
-    }
-  }
-  for (let i = 0; i < session.exercises.length; i++) {
-    const ex = session.exercises[i]!;
-    for (let j = 0; j < ex.sets.length; j++) {
-      if (!ex.sets[j]!.completed) return { exIdx: i, setIdx: j };
-    }
-  }
-  return null;
-}
-
-/**
- * The next set to focus after logging (exIdx, setIdx). For a superset, focus
- * alternates between the paired exercises (A1, B1, A2, B2 …); otherwise it is
- * the plain next pending set.
- */
-function nextFocusAfter(
-  session: WorkoutSession,
-  exIdx: number,
-  setIdx: number,
-): { exIdx: number; setIdx: number } | null {
-  const group = session.exercises[exIdx]?.supersetGroup;
-  if (group != null) {
-    const gIdxs = session.exercises
-      .map((e, i) => (e.supersetGroup === group ? i : -1))
-      .filter((i) => i >= 0);
-    const pos = gIdxs.indexOf(exIdx);
-    const maxSets = Math.max(...gIdxs.map((i) => session.exercises[i]!.sets.length));
-    let s = setIdx;
-    let p = pos + 1;
-    while (s < maxSets) {
-      while (p < gIdxs.length) {
-        const ei = gIdxs[p]!;
-        const set = session.exercises[ei]!.sets[s];
-        if (set && !set.completed) return { exIdx: ei, setIdx: s };
-        p += 1;
-      }
-      p = 0;
-      s += 1;
-    }
-    const lastIdx = gIdxs[gIdxs.length - 1]!;
-    return findNextPending(session, { fromExercise: lastIdx + 1, fromSet: 0 });
-  }
-  return findNextPending(session, { fromExercise: exIdx, fromSet: setIdx + 1 });
-}
-
-/**
- * Converts an exercise list to plain straight sets — un-pairs supersets, drops
- * the drop-set rows, and flattens pyramid steps. Used by the day-start override.
- */
-function straighten(exercises: ExerciseEntry[]): ExerciseEntry[] {
-  return exercises.map((ex) => {
-    let sets = ex.sets;
-    if (ex.setStyle === 'drop') {
-      sets = sets.filter((set) => set.setType !== 'drop').map((set, i) => ({ ...set, setIndex: i }));
-    }
-    if (ex.setStyle === 'pyramid') {
-      const base = sets[0]?.weightKg;
-      sets = sets.map((set) => ({ ...set, weightKg: base, reps: ex.prescribedRepsLow ?? set.reps }));
-    }
-    return { ...ex, setStyle: 'straight' as const, supersetGroup: undefined, sets };
-  });
-}

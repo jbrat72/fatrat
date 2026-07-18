@@ -3,19 +3,15 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/app';
-import { Card, PageTitle, Button, MuscleBadge } from '@/components/ui';
+import { Card, PageTitle, Button, MuscleBadge, ConfirmDialog } from '@/components/ui';
 import { BodyWeightCheckIn, CardioLogModal, WeeklyRings, WorkoutPicker, TodayWorkoutCard, StartWorkoutModal } from '@/components/today';
 import { getRepository } from '@/lib/firestore';
 import { resolveToday, type ResolvedToday } from '@/lib/session/resolveToday';
-import { todayIso } from '@/lib/ui/date';
+import { todayIso, formatDayDate } from '@/lib/ui/date';
 import { withRetry } from '@/lib/util/retry';
 import { cardioStats } from '@/lib/ui/cardio';
 import type { WorkoutSession, Mesocycle, Microcycle, Units, ExerciseEntry } from '@/types';
 
-function formatLongDate(iso: string): string {
-  const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-}
 
 export default function TodayPage() {
   const router = useRouter();
@@ -228,7 +224,7 @@ export default function TodayPage() {
           <Card>
             <div className="section-head mb-1 text-warn">MISSED WORKOUT</div>
             <p className="text-sm text-ink-dim mb-2">
-              {meso?.name ? `${meso.name} · ` : ''}{formatLongDate(missed.date)}
+              {meso?.name ? `${meso.name} · ` : ''}{formatDayDate(missed.date)}
             </p>
             <p className="text-xs text-ink-dim mb-3">
               Skipped that day? Move it to today — it becomes today&apos;s
@@ -247,7 +243,7 @@ export default function TodayPage() {
           <Card>
             <div className="section-head mb-1">UP NEXT</div>
             <p className="text-sm text-ink-dim mb-2">
-              {meso?.name ? `${meso.name} · ` : ''}{formatLongDate(nextPending.date)}
+              {meso?.name ? `${meso.name} · ` : ''}{formatDayDate(nextPending.date)}
             </p>
             <p className="text-xs text-ink-dim mb-3">
               Can't train then? Pull it into today — its original day becomes
@@ -366,7 +362,7 @@ function SessionCard({
               {session.name && <div className="text-lg font-medium leading-tight mt-0.5">{session.name}</div>}
             </>
           )}
-          <div className="text-xs text-ink-dim mt-1">{formatLongDate(session.date)}</div>
+          <div className="text-xs text-ink-dim mt-1">{formatDayDate(session.date)}</div>
         </div>
         {session.completed && (
           <span className="shrink-0 inline-flex items-center gap-1.5 text-ok text-[11px] tracking-wider2 font-semibold uppercase">
@@ -420,18 +416,15 @@ function SessionCard({
         </Link>
       </div>
     </Card>
-    {confirmDel && (
-      <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setConfirmDel(false)}>
-        <div className="w-full max-w-sm bg-bg-card rounded-2xl border border-ink-line p-5" onClick={(e) => e.stopPropagation()}>
-          <div className="text-base font-semibold">Delete this workout?</div>
-          <p className="text-sm text-ink-dim mt-1.5">This ad-hoc workout will be removed from today. This can't be undone.</p>
-          <div className="mt-4 flex gap-2 justify-end">
-            <Button variant="ghost" onClick={() => setConfirmDel(false)}>Keep it</Button>
-            <Button onClick={() => { setConfirmDel(false); onDelete?.(session.id); }} className="bg-danger border-danger text-white">Delete</Button>
-          </div>
-        </div>
-      </div>
-    )}
+    <ConfirmDialog
+      open={confirmDel}
+      title="Delete this workout?"
+      body="This ad-hoc workout will be removed from today. This can't be undone."
+      confirmLabel="Delete"
+      cancelLabel="Keep it"
+      onConfirm={() => { setConfirmDel(false); onDelete?.(session.id); }}
+      onCancel={() => setConfirmDel(false)}
+    />
     </>
   );
 }

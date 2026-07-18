@@ -9,6 +9,45 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.106.0 — 2026-07-18
+
+Structure & performance (Phase 3 of the codebase audit). No feature changes.
+
+- **Repository read cache** (`lib/firestore/cachedRepository.ts`, wrapped
+  transparently in `getRepository`): concurrent identical reads share one
+  fetch (Today + WeeklyRings no longer download the session list twice at
+  once), repeat reads within 30s are served from memory (a Today → Plan →
+  History → Today loop stops re-paying hundreds of doc reads), and every
+  write invalidates its related keys immediately so pages never read their
+  own stale data. Exercise library cached 10 min. Results are cloned per
+  hit; profile reads stay uncached (migrations gate on fresh flags). Fully
+  unit-tested.
+- **Workout screen re-render fix**: ExerciseCard is memoized and the page
+  passes stable per-exercise handler bundles — a keystroke in one set now
+  re-renders one card instead of every card × every row (~150 components per
+  keystroke on a 6-exercise day before).
+- **In-workout domain logic extracted to `lib/workout/sessionOps.ts`**
+  (straighten, soreness volume adjust, finish skip-sweep, worked-muscles,
+  superset focus order) with 9 new unit tests — these rules lived untested
+  inside the 1000-line workout page component.
+- **Plan wizard typing lag fixed**: the program-name field no longer deep-
+  clones the entire wizard state and re-renders all 16 pages' worth of
+  component on every character — it commits on blur.
+- UserProvider context value memoized (any provider render used to re-render
+  every page/modal using `useUser()`).
+- **Duplicates consolidated**: shared `ConfirmDialog` (was copy-pasted 4×)
+  and `Sheet` primitives; shared `AddToDaySheet` (was pasted wholesale into
+  Plan + History); RestTimer/ExerciseTimer now share one wall-clock countdown
+  hook (`useCountdown` — background-tab fixes apply once); ONE effort-label
+  function (terminology.effortShort — the PREV column's "Just Right" and the
+  summaries' "Just right" casing drift is gone, picker labels included); one
+  `formatDayDate` helper replaces three hand-rolled date formatters (and
+  removes FinishPlanModal's UTC-offset hack); `LB_PER_KG` exported from
+  units.ts and used everywhere (wizard baseline conversion used a different
+  constant); plan page's duplicated wizard mount + calendar-week formula
+  each exist once now.
+- Tests: 104 passing (+17 new); `npx tsc --noEmit` clean.
+
 ## v0.105.0 — 2026-07-18
 
 Data-layer hardening (Phase 2 of the codebase audit). No feature changes.

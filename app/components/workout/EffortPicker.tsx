@@ -7,6 +7,7 @@ import {
   basicFeelFromRPE,
   intermediateFeelFromRPE,
   rirFromRPE,
+  effortShort,
 } from '@/lib/periodization';
 
 interface Props {
@@ -34,7 +35,9 @@ export function EffortPicker({ mode, value, onChange, className, compact }: Prop
         {(['easy', 'just-right', 'hard'] as const).map((feel) => {
           const rpe = rpeFromBasicFeel(feel);
           const active = value != null && basicFeelFromRPE(value) === feel;
-          const label = feel === 'easy' ? 'Easy' : feel === 'just-right' ? 'Just Right' : 'Hard';
+          // Labels come from the canonical bucket function so the picker,
+          // the PREV column and the summaries always agree.
+          const label = effortShort('BASIC', rpe);
           return (
             <EffortPill
               key={feel}
@@ -52,17 +55,12 @@ export function EffortPicker({ mode, value, onChange, className, compact }: Prop
   }
 
   if (mode === 'INTERMEDIATE') {
-    const feels = [
-      { key: 'smooth', label: 'Easy' },
-      { key: 'solid', label: 'Solid' },
-      { key: 'tough', label: 'Tough' },
-      { key: 'grinding', label: 'Hard' },
-      { key: 'failed', label: 'Failed' },
-    ] as const;
+    const feels = ['smooth', 'solid', 'tough', 'grinding', 'failed'] as const;
     return (
       <div className={cn('flex gap-1 flex-wrap', className)}>
-        {feels.map(({ key, label }) => {
+        {feels.map((key) => {
           const rpe = rpeFromIntermediateFeel(key);
+          const label = effortShort('INTERMEDIATE', rpe);
           const active = value != null && intermediateFeelFromRPE(value) === key;
           const danger = key === 'grinding' || key === 'failed';
           return (
