@@ -9,6 +9,15 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.107.1 — 2026-07-18
+
+Finish-workout confirmation. Tapping **Finish** on the workout screen now
+opens a confirm dialog instead of ending and saving the session immediately —
+guards against an accidental tap. When sets are still unlogged the dialog says
+how many will be marked skipped; "Keep going" dismisses it and returns you to
+the workout.
+
+
 ## v0.107.0 — 2026-07-18
 
 Hygiene (Phase 4 of the codebase audit — final phase). No behavior changes.

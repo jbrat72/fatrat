@@ -228,6 +228,9 @@ export default function WorkoutPage() {
   // Discard an ad-hoc workout the user decided not to do — deletes the session
   // entirely (only offered for ad-hoc sessions, never programmed plan days).
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  // Guards against an accidental Finish tap immediately ending + saving the
+  // workout — the button opens this confirm instead of finalizing directly.
+  const [confirmFinish, setConfirmFinish] = useState(false);
   const discardWorkout = async () => {
     if (saveDebounce.current) clearTimeout(saveDebounce.current);
     if (session) await getRepository().deleteSession(session.id);
@@ -908,6 +911,21 @@ export default function WorkoutPage() {
         onCancel={() => setConfirmDiscard(false)}
       />
 
+      <ConfirmDialog
+        open={confirmFinish}
+        title="Finish workout?"
+        body={
+          completion.done < completion.total
+            ? `${completion.total - completion.done} of ${completion.total} sets are still unlogged — they'll be marked as skipped. Finish and save this workout?`
+            : 'This will save your workout to history.'
+        }
+        confirmLabel="Finish"
+        cancelLabel="Keep going"
+        danger={false}
+        onConfirm={() => { setConfirmFinish(false); requestFinish(); }}
+        onCancel={() => setConfirmFinish(false)}
+      />
+
       <div className="fixed bottom-0 inset-x-0 bg-bg/95 backdrop-blur border-t border-ink-line z-20">
         <div className="mx-auto max-w-md p-3 flex items-center gap-2">
           <Button variant="ghost" onClick={pauseWorkout}>Pause Workout</Button>
@@ -915,7 +933,7 @@ export default function WorkoutPage() {
             <Button variant="ghost" onClick={() => setConfirmDiscard(true)} className="text-danger">Discard</Button>
           )}
           <div className="flex-1" />
-          <Button onClick={requestFinish} disabled={completion.done === 0} className={completion.done === completion.total ? 'animate-pulseRed shadow-glow' : ''}>
+          <Button onClick={() => setConfirmFinish(true)} disabled={completion.done === 0} className={completion.done === completion.total ? 'animate-pulseRed shadow-glow' : ''}>
             {completion.done === completion.total ? 'Finish workout' : `Finish (${completion.done}/${completion.total})`}
           </Button>
         </div>
