@@ -9,6 +9,24 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.107.2 — 2026-07-21
+
+Three workout-screen fixes.
+
+- **Faster start.** Opening a workout no longer sits on "Loading…" for 20–30s.
+  The load was raw-awaiting two Firestore writes (the hydration prefill and the
+  started-at stamp) that, with offline persistence, only resolve on SERVER ack —
+  so a slow connection stalled the whole screen on every open. Both writes now
+  run in the background (durable locally immediately), and the exercise library
+  loads after first paint instead of gating it.
+- **Previous reps now prefill.** `hydrateFromHistory` required BOTH weight and
+  reps on a prior set to count as history, so bodyweight lifts (reps only, no
+  weight) and time-based holds never hydrated — the reps stayed at the range
+  low. It now hydrates from any recorded value and carries prior hold time too.
+- **Time-based exercises show their time.** Plans generated before time
+  exercises stored a prescribed range showed "?–?s"; the Today card and the
+  workout card now fall back to any logged time, then the default 30–60s window.
+
 ## v0.107.1 — 2026-07-18
 
 Finish-workout confirmation. Tapping **Finish** on the workout screen now

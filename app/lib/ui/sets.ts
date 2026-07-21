@@ -3,9 +3,24 @@
  * "× 6", "45s", or "Skipped" text). Metric- and unit-aware. Used by every
  * read-only set renderer so they stay consistent.
  */
-import type { SetEntry, ExerciseMetric, Units } from '@/types';
+import type { SetEntry, ExerciseMetric, Units, ExerciseEntry } from '@/types';
 import { kgToDisplay, weightLabel } from './units';
 import { formatSeconds } from './time';
+
+/**
+ * The prescribed hold/carry window (seconds) for a time-based exercise, as a
+ * display string like "30–60s". Older plans were generated before time-based
+ * exercises stored a prescribed range, leaving `prescribedTimeLow/High`
+ * undefined — which rendered as "?–?s". Fall back to any time already on the
+ * sets, then to the app's default 30–60s window (what current generation
+ * seeds), so a time exercise always shows a real target.
+ */
+export function prescribedTimeLabel(ex: Pick<ExerciseEntry, 'prescribedTimeLow' | 'prescribedTimeHigh' | 'sets'>): string {
+  const fromSets = ex.sets?.find((s) => s.timeSec != null)?.timeSec;
+  const low = ex.prescribedTimeLow ?? fromSets ?? 30;
+  const high = ex.prescribedTimeHigh ?? Math.max(low, 60);
+  return `${low}–${high}s`;
+}
 
 export function formatSetValue(
   set: SetEntry,

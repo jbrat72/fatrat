@@ -4,6 +4,7 @@ import { cn } from '@/lib/ui/cn';
 import { Card, MuscleBadge, Button } from '@/components/ui';
 import { SetLoggerRow, type SetRowState } from './SetLoggerRow';
 import { weightLabel } from '@/lib/ui/units';
+import { prescribedTimeLabel } from '@/lib/ui/sets';
 import type { ExerciseEntry, SetEntry, EffortRPE, UserMode, Units } from '@/types';
 
 type SupersetMode = 'idle' | 'armed' | 'candidate';
@@ -121,7 +122,7 @@ export const ExerciseCard = memo(function ExerciseCard({
           <div className="mt-2 font-semibold text-base leading-tight text-ink">{exercise.name}</div>
           <div className="text-xs text-ink-dim mt-0.5">
             {totalCount} sets · {(() => {
-              if (showTime) return `${exercise.prescribedTimeLow ?? '?'}–${exercise.prescribedTimeHigh ?? '?'}s`;
+              if (showTime) return prescribedTimeLabel(exercise);
               return `${exercise.prescribedRepsLow ?? '?'}–${exercise.prescribedRepsHigh ?? '?'} reps`;
             })()}
             {mode === 'ADVANCED' && exercise.prescribedRIR != null && ` · ${exercise.prescribedRIR} RIR`}

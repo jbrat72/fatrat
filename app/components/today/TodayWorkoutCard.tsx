@@ -5,6 +5,7 @@ import { Card, Button, MuscleBadge, ConfirmDialog } from '@/components/ui';
 import { SwapExerciseModal } from '@/components/workout';
 import { cn } from '@/lib/ui/cn';
 import { kgToDisplay, weightLabel } from '@/lib/ui/units';
+import { prescribedTimeLabel } from '@/lib/ui/sets';
 import { applyStyleAt, pairSuperset, unlinkGroup, setSetCount, groupLetters, removeExerciseAt } from '@/lib/workout/structure';
 import type { ExerciseDefinition, ExerciseEntry, Mesocycle, Microcycle, SetStyle, Units, WorkoutSession, MuscleGroup } from '@/types';
 
@@ -15,8 +16,8 @@ function prescription(ex: ExerciseEntry, units: Units): string {
   const w = kgToDisplay(ex.sets[0]?.weightKg, units);
   const wl = weightLabel(units);
   const reps = `${ex.prescribedRepsLow ?? '?'}–${ex.prescribedRepsHigh ?? '?'} reps`;
-  if (m === 'time') return `${ex.prescribedTimeLow ?? '?'}–${ex.prescribedTimeHigh ?? '?'}s`;
-  if (m === 'weight-time') return `${w != null ? `${w} ${wl} × ` : ''}${ex.prescribedTimeLow ?? '?'}–${ex.prescribedTimeHigh ?? '?'}s`;
+  if (m === 'time') return prescribedTimeLabel(ex);
+  if (m === 'weight-time') return `${w != null ? `${w} ${wl} × ` : ''}${prescribedTimeLabel(ex)}`;
   if (m === 'reps') return `× ${reps}`;
   return `${w != null ? `${w} ${wl} × ` : '× '}${reps}`;
 }

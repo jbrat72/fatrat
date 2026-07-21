@@ -81,6 +81,24 @@ describe('hydrateFromHistory', () => {
     expect(out.exercises[0]!.sets[0]!.weightKg).toBe(100);
   });
 
+  it('hydrates reps from a bodyweight prior set (no weight recorded)', () => {
+    // Regression: `usable` used to require BOTH weight and reps, so bodyweight
+    // lifts (weight null) never hydrated and reps stayed at the range low.
+    const prior = mkSession('p1', '2026-05-01', [{ reps: 15, completed: true }]);
+    const today = mkSession('t1', '2026-05-08', [{}, {}]);
+    const out = hydrateFromHistory(today, [prior]);
+    expect(out.exercises[0]!.sets.map((s) => s.reps)).toEqual([15, 15]);
+  });
+
+  it('hydrates timeSec from a time-based prior set', () => {
+    const prior = mkSession('p1', '2026-05-01', [{ completed: true }]);
+    prior.exercises[0]!.sets[0] = { setIndex: 0, timeSec: 45, completed: true };
+    const today = mkSession('t1', '2026-05-08', [{}]);
+    today.exercises[0]!.sets[0] = { setIndex: 0, completed: false };
+    const out = hydrateFromHistory(today, [prior]);
+    expect(out.exercises[0]!.sets[0]!.timeSec).toBe(45);
+  });
+
   it('handles no history gracefully', () => {
     const today = mkSession('t1', '2026-05-08', [{}, {}, {}]);
     const out = hydrateFromHistory(today, []);

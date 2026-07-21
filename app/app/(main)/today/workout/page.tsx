@@ -108,7 +108,13 @@ export default function WorkoutPage() {
         const prior = await repo.listSessions(user.userId, { limit: 100 });
         if (cancelled) return;
         const hydrated = hydrateFromHistory(s, prior);
-        if (hydrated !== s) { await repo.upsertSession(hydrated); s = hydrated; }
+        // Persist the prefill in the BACKGROUND — never raw-await it. With
+        // Firestore offline persistence the write promise resolves only on
+        // SERVER ack, so awaiting here stalled the "Loading…" screen for tens
+        // of seconds on a slow/flaky connection (every workout open hit this,
+        // since hydration almost always changes something). The local cache
+        // reflects the write immediately, so `s` is safe to use right away.
+        if (hydrated !== s) { s = hydrated; void repo.upsertSession(hydrated).catch((e) => console.warn('hydrate persist failed', e)); }
         // Muscles trained in any earlier session — they get a soreness check-in.
         const trained = new Set<MuscleGroup>();
         for (const ps of prior) {
@@ -137,33 +143,46 @@ export default function WorkoutPage() {
         setLastPerfByName(perfByName);
       }
       if (cancelled) return;
-      setSession(s);
       setMeso(res.mesocycle);
       setMicro(res.microcycle);
-      const [globalDefs, userDefs] = await Promise.all([
-        repo.listGlobalExercises(),
-        repo.listUserExercises(user.userId).catch(() => [] as ExerciseDefinition[]),
-      ]);
-      if (cancelled) return;
-      const byId: Record<string, ExerciseDefinition> = {};
-      // Bundled library first so every id resolves even if the backend list is
-      // missing newer entries; repo globals + custom exercises overlay it.
-      for (const e of GLOBAL_EXERCISES) byId[e.id] = e;
-      for (const e of globalDefs) byId[e.id] = e;
-      for (const e of userDefs) byId[e.id] = e;
-      setExerciseDefs(byId);
+
+      // Mark the session started with a BACKGROUND write — same reasoning as
+      // the hydrate write above: raw-awaiting the server ack was a second
+      // source of the long "Loading…" stall.
       if (s && !s.startedAt) {
-        const started: WorkoutSession = { ...s, startedAt: new Date().toISOString() };
-        await repo.upsertSession(started);
-        s = started;
-        setSession(started);
+        s = { ...s, startedAt: new Date().toISOString() };
+        void repo.upsertSession(s).catch((e) => console.warn('startedAt persist failed', e));
       }
+      setSession(s);
+
+      // Seed exercise defs synchronously from the BUNDLED library so metrics
+      // (e.g. time-based Plank) resolve on first paint, then reveal the screen.
+      // The repo globals + user customs overlay in the background — waiting on
+      // those network reads (the /exercises collection read in particular)
+      // needlessly gated the whole screen before.
+      const seedDefs: Record<string, ExerciseDefinition> = {};
+      for (const e of GLOBAL_EXERCISES) seedDefs[e.id] = e;
+      setExerciseDefs(seedDefs);
       if (s) {
         const focus = findNextPending(s);
         if (focus) { setActiveExerciseIdx(focus.exIdx); setActiveSetIdx(focus.setIdx); }
         else { setActiveSetIdx(null); }
       }
       setLoaded(true);
+
+      // Background overlay: repo globals then user customs. The bundled seed
+      // stays as the base so every id still resolves if a list is missing.
+      void Promise.all([
+        repo.listGlobalExercises(),
+        repo.listUserExercises(user.userId).catch(() => [] as ExerciseDefinition[]),
+      ]).then(([globalDefs, userDefs]) => {
+        if (cancelled) return;
+        const byId: Record<string, ExerciseDefinition> = {};
+        for (const e of GLOBAL_EXERCISES) byId[e.id] = e;
+        for (const e of globalDefs) byId[e.id] = e;
+        for (const e of userDefs) byId[e.id] = e;
+        setExerciseDefs(byId);
+      }).catch((e) => console.warn('exercise defs load failed', e));
     };
     // Never hang on "Loading…": if the load rejects (transient read error), mark
     // loaded and fall back to the no-session screen instead of an infinite spinner.

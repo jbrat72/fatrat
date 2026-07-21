@@ -11,8 +11,12 @@ import type { WorkoutSession, SetEntry } from '@/types';
 import { isPerformedSet } from './performedSets';
 
 /** A prior set only counts as history if it was actually performed — a fully
- *  skipped session keeps its prefilled weight/reps and must not be a source. */
-const usable = (s: SetEntry) => isPerformedSet(s) && s.weightKg != null && s.reps != null;
+ *  skipped session keeps its prefilled weight/reps and must not be a source.
+ *  It counts as usable if it recorded ANY value: requiring BOTH weight and reps
+ *  meant bodyweight lifts (reps only, no weight) and time-based holds (time
+ *  only) never hydrated at all — the reps stayed at the generator's range-low. */
+const usable = (s: SetEntry) =>
+  isPerformedSet(s) && (s.weightKg != null || s.reps != null || s.timeSec != null);
 
 export function hydrateFromHistory(
   session: WorkoutSession,
@@ -51,10 +55,12 @@ export function hydrateFromHistory(
       // empty except where deliberately seeded — a non-null weight or an
       // off-default rep count is user intent and is preserved.
       const repsUntouched = s.reps == null || s.reps === ex.prescribedRepsLow;
+      const timeUntouched = s.timeSec == null || s.timeSec === ex.prescribedTimeLow;
       return {
         ...s,
         weightKg: s.weightKg == null ? prior.weightKg : s.weightKg,
         reps:     repsUntouched ? (prior.reps ?? s.reps) : s.reps,
+        timeSec:  timeUntouched ? (prior.timeSec ?? s.timeSec) : s.timeSec,
       };
     });
     return { ...ex, sets };
