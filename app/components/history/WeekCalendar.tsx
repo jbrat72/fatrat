@@ -441,13 +441,21 @@ export function WeekCalendar(props: Props) {
   const showNoPlan = !isCurrent && isFutureWeek;
 
   let rangeLabel = '';
+  let dateTitle = '';
   if (startOfWeek) {
     const a = new Date(startOfWeek + 'T00:00:00');
     const b = new Date(addDays(startOfWeek, 6) + 'T00:00:00');
     const left = `${MONTHS[a.getMonth()]} ${a.getDate()}`;
     const right = a.getMonth() === b.getMonth() ? `${b.getDate()}` : `${MONTHS[b.getMonth()]} ${b.getDate()}`;
     rangeLabel = `${left} – ${right}`;
+    dateTitle = `Week of ${left}`;
   }
+  // Date-organized ('All blocks by date') mode is a calendar browser over ALL
+  // history, so "Week N of M" borrows plan-progress wording for what's really a
+  // calendar position — an 8-week plan that didn't start on a week boundary
+  // spans 9 calendar weeks and read as "Week 9 of 9". Title those by date
+  // instead; block/plan mode keeps the "Week N of M" progress framing.
+  const headerTitle = calendarWeeks ? (dateTitle || 'History') : `Week ${week} of ${weekCount}`;
 
   const byDay = weekByDay(week);
 
@@ -458,7 +466,7 @@ export function WeekCalendar(props: Props) {
           <span className="text-base font-semibold leading-none">No Active Plan</span>
         ) : (
           <>
-            <span className="text-base font-semibold leading-none">Week {week} of {weekCount}</span>
+            <span className="text-base font-semibold leading-none">{headerTitle}</span>
             {blockNameByWeek?.get(week) ? (
               <span className="text-2xs uppercase tracking-wider2 text-ink-dim bg-bg-elev rounded px-1.5 py-0.5 truncate max-w-[60%]">
                 {blockNameByWeek.get(week)}

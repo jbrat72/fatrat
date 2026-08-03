@@ -9,6 +9,14 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.107.4 — 2026-08-03
+
+History's "All blocks (by date)" calendar no longer labels weeks as "Week N of
+M." That view is a browser over all logged history, so an 8-week plan that
+didn't start on a week boundary spans 9 calendar weeks and read as a confusing
+"Week 9 of 9." It now titles each week by date ("Week of Jul 27"); the plan/
+block view (a specific block selected) still shows "Week N of M" progress.
+
 ## v0.107.3 — 2026-08-03
 
 Finished plans no longer linger as "in progress." If a plan's calendar window
