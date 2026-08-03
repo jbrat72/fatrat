@@ -9,6 +9,18 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.107.3 — 2026-08-03
+
+Finished plans no longer linger as "in progress." If a plan's calendar window
+fully elapses while it's still flagged active — which happens when the last
+workouts are skipped (e.g. out sick), so plan-advance never marks it done — it
+was left dangling, and each surface then showed a different "current week" for
+the same finished block (Plan clamped to the last week, the Training Weeks
+calendar fell back to a stale active week, History counted elapsed calendar
+weeks). Such plans are now auto-completed: on the Plan tab immediately, and
+app-wide via the once-per-sign-in sweep. A completed block drops to History
+(marked "done"); start a new plan from the Plan tab.
+
 ## v0.107.2 — 2026-07-21
 
 Three workout-screen fixes.

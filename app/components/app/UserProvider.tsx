@@ -12,6 +12,7 @@ import { migrateFixedExercises } from '@/lib/firestore/migrations/fixedExercises
 import { migrateWeekStatusRepair } from '@/lib/firestore/migrations/repairWeekStatus';
 import { migrateDedupeExerciseNames } from '@/lib/firestore/migrations/dedupeExerciseNames';
 import { cleanupArchivedPendingSessions } from '@/lib/session/cleanupArchived';
+import { completeElapsedPlans } from '@/lib/session/completeElapsedPlans';
 
 // Janitorial sweep runs at most once per app load (it used to run on every
 // History mount — a destructive delete as a side effect of a read-only page).
@@ -86,6 +87,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
       if (profile && _cleanupRanFor !== profile.userId) {
         _cleanupRanFor = profile.userId;
         void cleanupArchivedPendingSessions(repo, profile.userId);
+        // Complete any plan whose calendar window has fully elapsed (last
+        // workouts skipped, so plan-advance never marked it done) — otherwise
+        // it lingers as 'active' and every surface shows a different "current
+        // week" for a plan that's actually finished.
+        void completeElapsedPlans(repo, profile.userId).catch((e) => console.warn('complete elapsed plans failed', e));
       }
     } catch (e) {
       // Without this path a transient read error left loading=true forever

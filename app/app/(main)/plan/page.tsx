@@ -17,6 +17,7 @@ import { AdHocWorkoutModal } from '@/components/workout';
 import { useRouter } from 'next/navigation';
 import { getRepository } from '@/lib/firestore';
 import { withRetry } from '@/lib/util/retry';
+import { isPlanElapsed } from '@/lib/session/completeElapsedPlans';
 import { AddToDaySheet, type AddDayInfo } from '@/components/plan/AddToDaySheet';
 import { todayIso } from '@/lib/ui/date';
 import { cn } from '@/lib/ui/cn';
@@ -97,6 +98,23 @@ export default function PlanPage() {
         // the plan header with empty weeks.
         if (ms.length === 0) return;
         ms.sort((a, b) => a.weekNumber - b.weekNumber);
+        // The plan's calendar window is fully over but it's still flagged
+        // 'active' — the last workouts were skipped, so plan-advance never
+        // completed it. Mark the plan (and any lingering active week) done and
+        // show the no-plan state, rather than a contradictory "Week N" header.
+        // (The sign-in sweep also does this app-wide; this keeps THIS view
+        // correct immediately even if that sweep hasn't run yet.)
+        if (isPlanElapsed(active)) {
+          const activeMicros = ms
+            .filter((mi) => mi.status === 'active')
+            .map((mi) => ({ ...mi, status: 'completed' as const }));
+          void repo.commitPlanBatch(user.userId, {
+            mesocycles: [{ ...active, status: 'completed' }],
+            microcycles: activeMicros,
+          }).catch((e) => console.warn('complete elapsed plan failed', e));
+          setMeso(null); setMicros([]); setSessions([]);
+          return;
+        }
         // One query for the whole plan instead of one per week (N+1).
         const ss = await withRetry(() => repo.listSessionsForMeso(active.id));
         if (cancelled) return;
