@@ -9,6 +9,16 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.107.7 — 2026-09-07
+
+The timer alarm no longer stops your music. On iPhone the page's audio was
+treated as "playback," so the rest/exercise alarm — and even the silent
+priming play on the first tap — took over the audio session and paused Music,
+Spotify, podcasts, etc. The page now declares itself a `transient` audio
+session (Audio Session API, Safari 17+): the alarm mixes with whatever is
+playing and may briefly duck it, but never interrupts it. Browsers without
+the API are unchanged.
+
 ## v0.107.6 — 2026-09-07
 
 Custom single workouts open with every exercise you put in them. The Start
