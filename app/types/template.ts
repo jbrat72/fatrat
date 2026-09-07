@@ -10,6 +10,7 @@ import type {
   MuscleTier,
 } from './periodization';
 import type { MuscleGroup } from './exercise';
+import type { SetStyle } from './session';
 
 export interface TemplateExerciseSlot {
   exerciseId: string;
@@ -31,6 +32,11 @@ export interface TemplateExerciseSlot {
   startingRIR?: number;
   /** Optional acceptable swap muscle group when user lacks equipment. */
   fallbackMuscle?: MuscleGroup;
+  /** Set structure the plan was built with (e.g. the wizard's core-superset
+   *  pairing). Exercises in one day sharing `supersetGroup` are performed
+   *  back-to-back. Absent = straight sets. */
+  setStyle?: SetStyle;
+  supersetGroup?: number;
 }
 
 export interface TemplateDay {

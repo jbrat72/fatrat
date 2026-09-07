@@ -38,7 +38,35 @@ export interface WizardProfile {
   stubbornAreas: string[];  // 'belly' | 'glutes' | 'lovehandles' | 'arms' | 'thighs' | 'chest' | 'calves'
 }
 
+/** Which wizard the user chose. Basic asks ~6 questions and defaults the rest
+ *  (lib/wizard/defaults.ts); Advanced is the full flow. Absent on states saved
+ *  before v0.108 — treat as 'advanced'. */
+export type WizardMode = 'basic' | 'advanced';
+
+/** Stable ids for the wizard's pages. The page ORDER differs per mode (see
+ *  wizardFlow), so the UI keys everything by id, never by index. */
+export type WizardPageId =
+  | 'goal' | 'experience' | 'profile' | 'schedule' | 'equipment' | 'style' | 'split'
+  | 'tiers' | 'setsReps' | 'rest' | 'core' | 'cardio' | 'progression' | 'baselines'
+  | 'exercises' | 'review' | 'program';
+
+export const ADVANCED_FLOW: WizardPageId[] = [
+  'goal', 'experience', 'profile', 'schedule', 'equipment', 'style', 'split', 'tiers',
+  'setsReps', 'rest', 'core', 'cardio', 'progression', 'baselines', 'exercises', 'review', 'program',
+];
+export const BASIC_FLOW: WizardPageId[] = [
+  'equipment', 'schedule', 'style', 'split', 'core', 'exercises', 'review', 'program',
+];
+export function wizardFlow(mode?: WizardMode | null): WizardPageId[] {
+  return mode === 'basic' ? BASIC_FLOW : ADVANCED_FLOW;
+}
+
+/** Per-muscle exercise allow-list chosen on the Exercises page. A muscle with
+ *  no entry (or an empty list) draws from every equipment-valid exercise. */
+export type ExercisePicks = Partial<Record<MuscleGroup, string[]>>;
+
 export interface WizardState {
+  mode?: WizardMode;
   name: string;
   goal: { primary: WizGoal | null; secondary: string | null };
   experience: { level: WizExperience | null; status: WizStatus | null };
@@ -75,6 +103,8 @@ export interface WizardState {
     deloadFrequency: number | null; deloadStyle: string | null;
   };
   baselines: { methods: Record<string, BaselineMethod>; values: Record<string, { oneRM?: number; weight?: number; reps?: number }>; calibrationWeek: boolean; allConservative: boolean };
+  /** Exercises the user wants the generator to use, per muscle (Exercises page). */
+  exercisePicks?: ExercisePicks;
 }
 
 /** One column in the program's week structure (calibration / load / deload). */

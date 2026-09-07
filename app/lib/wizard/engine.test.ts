@@ -5,7 +5,7 @@ import type { WizardState } from './types';
 import { WIZARD_MUSCLES } from './types';
 import {
   weekStructure, muscleSetsForWeek, generateWeek, availableEquipment,
-  representativeWeek, isVolumeRamped, poolFor,
+  representativeWeek, isVolumeRamped, poolFor, coreDayIndices,
 } from './engine';
 
 function defaultRest(startDow: number, d: number): number[] {
@@ -172,5 +172,80 @@ describe('wizard engine', () => {
     expect(days.length).toBe(2);
     expect(new Set(days[0].exercises.map((e) => e.muscle))).toEqual(new Set(['chest', 'back']));
     expect(new Set(days[1].exercises.map((e) => e.muscle))).toEqual(new Set(['quads', 'hamstrings']));
+  });
+
+  it('exercise picks narrow the pool and all of a muscle’s sets land on them', () => {
+    const s = baseState();
+    const all = poolFor('chest', GLOBAL_EXERCISES, ALL_EQUIPMENT);
+    const picked = all.slice(-2).map((e) => e.id); // two non-compound picks
+    s.exercisePicks = { chest: picked };
+    const { wk, loadCount } = representativeWeek(s);
+    const days = generateWeek(s, GLOBAL_EXERCISES, wk, loadCount);
+    const chest = days.flatMap((d) => d.exercises).filter((e) => e.muscle === 'chest');
+    expect(chest.length).toBeGreaterThan(0);
+    expect(chest.every((e) => picked.includes(e.exerciseId!))).toBe(true);
+    // Sets still reconcile with the volume card even with a 2-exercise pool.
+    expect(chest.reduce((a, e) => a + e.sets, 0)).toBe(muscleSetsForWeek(s, 'chest', wk, loadCount));
+  });
+
+  it('a single pick is never listed twice in a day — it absorbs the sets', () => {
+    const s = baseState();
+    const one = poolFor('chest', GLOBAL_EXERCISES, ALL_EQUIPMENT)[0]!.id;
+    s.exercisePicks = { chest: [one] };
+    const { wk, loadCount } = representativeWeek(s);
+    const chestDay = generateWeek(s, GLOBAL_EXERCISES, wk, loadCount).find((d) => d.type === 'Chest')!;
+    const chest = chestDay.exercises.filter((e) => e.muscle === 'chest');
+    expect(chest).toHaveLength(1);
+    expect(chest[0]!.sets).toBe(muscleSetsForWeek(s, 'chest', wk, loadCount));
+  });
+
+  it('picks that no longer resolve fall back to the full pool', () => {
+    const pool = poolFor('chest', GLOBAL_EXERCISES, ALL_EQUIPMENT, new Set(), ['nope-1', 'nope-2']);
+    expect(pool.length).toBe(poolFor('chest', GLOBAL_EXERCISES, ALL_EQUIPMENT).length);
+  });
+
+  it('core frequency limits which days get core work', () => {
+    const s = baseState(); // 5 days, core block 2x
+    const { wk, loadCount } = representativeWeek(s);
+    const days = generateWeek(s, GLOBAL_EXERCISES, wk, loadCount);
+    const withCore = days.filter((d) => d.exercises.some((e) => e.muscle === 'core'));
+    expect(withCore).toHaveLength(2);
+    expect(coreDayIndices(s, [1, 2, 3, 4, 5])).toEqual([0, 3]);
+    s.core.frequency = 'every';
+    expect(coreDayIndices(s, [1, 2, 3, 4, 5])).toEqual([0, 1, 2, 3, 4]);
+    s.core.frequency = 'everyother';
+    expect(coreDayIndices(s, [1, 2, 3, 4, 5])).toEqual([0, 2, 4]);
+  });
+
+  it('“superset between lifts” pairs each core exercise with a lift in a shared group', () => {
+    const s = baseState();
+    s.core = { method: 'superset', frequency: 'every', blockExercises: '1-2', days: [] };
+    const { wk, loadCount } = representativeWeek(s);
+    const days = generateWeek(s, GLOBAL_EXERCISES, wk, loadCount);
+    for (const d of days) {
+      const core = d.exercises.filter((e) => e.muscle === 'core');
+      expect(core).toHaveLength(2);
+      for (const c of core) {
+        expect(c.setStyle).toBe('superset');
+        expect(c.supersetGroup).toBeDefined();
+        const partners = d.exercises.filter((e) => e !== c && e.supersetGroup === c.supersetGroup);
+        expect(partners).toHaveLength(1);
+        expect(partners[0]!.muscle).not.toBe('core');
+        expect(partners[0]!.setStyle).toBe('superset');
+        // The core move sits directly after its partner lift.
+        expect(d.exercises.indexOf(c)).toBe(d.exercises.indexOf(partners[0]!) + 1);
+      }
+    }
+  });
+
+  it('“dedicated core block” still appends straight core sets at the end', () => {
+    const s = baseState();
+    s.core = { method: 'block', frequency: 'every', blockExercises: '2-3', days: [] };
+    const { wk, loadCount } = representativeWeek(s);
+    const d = generateWeek(s, GLOBAL_EXERCISES, wk, loadCount)[0]!;
+    const core = d.exercises.filter((e) => e.muscle === 'core');
+    expect(core).toHaveLength(3);
+    expect(core.every((e) => e.setStyle === 'straight' && e.supersetGroup == null)).toBe(true);
+    expect(d.exercises.slice(-3).every((e) => e.muscle === 'core')).toBe(true);
   });
 });

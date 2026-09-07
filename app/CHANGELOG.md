@@ -9,6 +9,41 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.108.0 — 2026-09-07
+
+Plan Wizard: Basic vs Advanced, pick your exercises before generating, working
+reorder, and core supersets that actually get built.
+
+- **Basic or Advanced.** A new plan now starts with a choice. **Basic** asks
+  eight screens — equipment, schedule (days/week, session length, duration),
+  training style, split & rest days, core strategy, exercise preferences, then
+  review and the generated program — and defaults everything else (goal Build
+  Muscle, intermediate/consistent, volume framework and periodization from the
+  style, straight sets, rest and progression from the style/goal, scheduled
+  deload every 4th week, no cardio, conservative baselines). **Advanced** is the
+  full flow, now 17 steps. Editing an existing plan reopens in the wizard it
+  was built with (pre-0.108 plans open as Advanced).
+- **Exercise preferences page** (both wizards, right before Review). For each
+  muscle group in your plan — and core, if programmed — tap the exercises you
+  want used. Untouched muscles draw from everything your equipment allows, as
+  before. Picks drive week 1 and every rotated "variety" week; a muscle with a
+  single pick gets all its sets there instead of the same movement listed
+  twice. The Review page summarizes your picks.
+- **Reorder works on the phone.** The generated-program page relied on HTML5
+  drag-and-drop, which iOS Safari never fires, so reordering was dead on the
+  device the app is used on. Each row now has ▲/▼ buttons (superset pairs move
+  together); drag is still there on desktop.
+- **"Superset between lifts" is real.** Choosing that core strategy used to
+  produce the same end-of-session core block as "Dedicated Core Block." It now
+  pairs each core exercise with a lift (the compounds lead the day), slotted
+  right after it and sharing a superset group — the same structure the day-of
+  Structure sheet and the in-workout ⋮ menu create, so the workout screen shows
+  them as A/B pairs. Saved templates now keep that pairing too (template
+  exercise slots carry set style + superset group), so a gallery template
+  reopened with "Use this template" doesn't flatten back to straight sets. Core **frequency** (every session / every other / 2×/3×
+  per week) is honored too; it was previously ignored and core landed on every
+  day.
+
 ## v0.107.7 — 2026-09-07
 
 The timer alarm no longer stops your music. On iPhone the page's audio was

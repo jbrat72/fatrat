@@ -119,6 +119,7 @@ export function buildWizardInput(
     workOffsets,
     splitType: splitTypeOf(state.split.type),
     fixedExercises: state.split.fixedExercises ?? true,
+    exercisePicks: state.exercisePicks,
     programStyle,
     restSeconds: REST_SEC[state.restAndTempo.restPreference || 'auto'],
   };

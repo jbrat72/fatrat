@@ -146,13 +146,43 @@ function countFor(state: WizardState, e: ExerciseDefinition, anchor: boolean): n
   return isTimeBased(e.metric) ? 30 : repsFor(state, anchor);
 }
 
-/** Equipment-valid exercises for a muscle, compounds first (anchors lead). */
+/** Equipment-valid exercises for a muscle, compounds first (anchors lead).
+ *  `picks` (the Exercises page) narrows the pool to those ids; an empty or
+ *  absent list means "any". Picks that no longer resolve (hidden, equipment
+ *  changed) fall back to the full pool rather than an empty program. */
 export function poolFor(
   m: MuscleGroup, library: ExerciseDefinition[], items: string[], hidden: Set<string> = new Set(),
+  picks?: string[],
 ): ExerciseDefinition[] {
   const ok = library.filter((e) => e.primaryMuscle === m && !hidden.has(e.id) && canUseExercise(e, items));
   const isCompound = (e: ExerciseDefinition) => e.patterns?.includes('compound');
-  return ok.sort((a, b) => Number(isCompound(b)) - Number(isCompound(a)));
+  const sorted = ok.sort((a, b) => Number(isCompound(b)) - Number(isCompound(a)));
+  if (picks && picks.length) {
+    const want = new Set(picks);
+    const narrowed = sorted.filter((e) => want.has(e.id));
+    if (narrowed.length) return narrowed;
+  }
+  return sorted;
+}
+
+/** Which training days (indices into the day list) get core work, per the core
+ *  method + frequency. `dows` is the weekday of each generated day, in order.
+ *  'day' targets the chosen weekdays (first day if none match); block/superset
+ *  spread `frequency` sessions across the week. */
+export function coreDayIndices(state: WizardState, dows: number[]): number[] {
+  const cm = state.core.method;
+  if (!cm || cm === 'none' || cm === 'compound') return [];
+  const all = dows.map((_, i) => i);
+  if (cm === 'day') {
+    const hit = all.filter((i) => state.core.days.includes(dows[i]!));
+    return hit.length ? hit : all.slice(0, 1);
+  }
+  const n = dows.length;
+  if (state.core.frequency === 'everyother') return all.filter((i) => i % 2 === 0);
+  const k = ({ every: n, '2x': 2, '3x': 3 } as Record<string, number>)[state.core.frequency || ''] ?? n;
+  if (k >= n) return all;
+  // k of n, evenly spread (e.g. 2 of 5 → days 0 and 3).
+  return Array.from({ length: k }, (_, i) => Math.round((i * n) / k));
 }
 const isAnchor = (e: ExerciseDefinition) => !!e.patterns?.includes('compound') && (e.equipment === 'barbell' || e.equipment === 'dumbbell');
 
@@ -199,9 +229,12 @@ export function generateWeek(
       const idx = occ[m] || 0; occ[m] = idx + 1;
       const setsToday = (alloc[m] as number[])[idx] || 0;
       if (setsToday <= 0) return;
-      const pool = poolFor(m, library, items, hidden);
+      const pool = poolFor(m, library, items, hidden, state.exercisePicks?.[m]);
       if (pool.length === 0) return;
-      const nEx = Math.max(1, Math.round(setsToday / DEFAULT_SETS));
+      // Never more exercises than the pool holds — a user who picked one
+      // exercise for a muscle gets all its sets there, not the same movement
+      // listed twice.
+      const nEx = Math.min(pool.length, Math.max(1, Math.round(setsToday / DEFAULT_SETS)));
       const b = Math.floor(setsToday / nEx), r = setsToday - b * nEx;
       for (let i = 0; i < nEx; i++) {
         const sets = b + (i < r ? 1 : 0); if (sets <= 0) continue;
@@ -222,15 +255,36 @@ export function generateWeek(
   if (cm && cm !== 'none' && cm !== 'compound') {
     const n = ({ '1-2': 2, '2-3': 3, '3-4': 4 } as Record<string, number>)[state.core.blockExercises] || 3;
     const lowback = state.profile.injuries.includes('lowback');
-    let corePool = poolFor('core', library, items, hidden);
+    let corePool = poolFor('core', library, items, hidden, state.exercisePicks?.core);
     if (lowback) corePool = corePool.filter((e) => !e.patterns?.includes('hinge'));
-    const targets = cm === 'day' ? (days[0] ? [days[0]] : []) : days;
+    const targets = coreDayIndices(state, days.map((d) => d.dow)).map((i) => days[i]!).filter(Boolean);
     targets.forEach((d, di) => {
       if (corePool.length === 0) return;
       if (!d.dayMuscles.includes('core')) d.dayMuscles.push('core');
-      for (let i = 0; i < n; i++) {
-        const e = corePool[(di * n + i) % corePool.length];
-        d.exercises.push({ exerciseId: e.id, name: e.name, muscle: 'core', sets: 3, reps: countFor(state, e, false), metric: e.metric || 'weight-reps', setStyle: 'straight', anchor: false });
+      const coreEx = (i: number): GeneratedExercise => {
+        const e = corePool[(di * n + i) % corePool.length]!;
+        return { exerciseId: e.id, name: e.name, muscle: 'core', sets: 3, reps: countFor(state, e, false), metric: e.metric || 'weight-reps', setStyle: 'straight', anchor: false };
+      };
+      if (cm === 'superset') {
+        // "Superset between lifts": each core exercise is paired with a lift
+        // (compounds lead the day, so the first lifts are the compounds) and
+        // slotted right after it, sharing a supersetGroup — the same shape the
+        // review page's manual pairing and the day-of structure sheet produce.
+        const lifts = d.exercises.filter((e) => e.muscle !== 'core');
+        let group = d.exercises.reduce((mx, e) => Math.max(mx, e.supersetGroup ?? 0), 0);
+        const pairs = Math.min(n, lifts.length);
+        for (let i = 0; i < pairs; i++) {
+          const partner = lifts[i]!;
+          group += 1;
+          partner.setStyle = 'superset'; partner.supersetGroup = group;
+          const c = coreEx(i); c.setStyle = 'superset'; c.supersetGroup = group;
+          const at = d.exercises.indexOf(partner);
+          d.exercises.splice(at + 1, 0, c);
+        }
+        // Nothing to pair with (empty day) — fall back to a straight block.
+        for (let i = pairs; i < (lifts.length ? pairs : n); i++) d.exercises.push(coreEx(i));
+      } else {
+        for (let i = 0; i < n; i++) d.exercises.push(coreEx(i));
       }
     });
   }
