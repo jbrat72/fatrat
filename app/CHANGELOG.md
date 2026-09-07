@@ -9,6 +9,17 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.107.6 — 2026-09-07
+
+Custom single workouts open with every exercise you put in them. The Start
+Workout picker filtered each template's exercises through your DEFAULT
+equipment profile, which is right for the stock workouts but wrong for one you
+built yourself — the single-workout wizard offers the whole library, so any
+exercise outside that profile was silently dropped when you went to use it. A
+4-exercise "Day 1: Glutes" opened as 2 exercises while the workout library page
+still said 4. Custom workouts are no longer equipment-filtered (the filter
+logic moved to `lib/workout/templateSlots.ts`, with tests).
+
 ## v0.107.5 — 2026-09-07
 
 Two fixes from the post-handoff review.

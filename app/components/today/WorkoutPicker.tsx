@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation';
 import { Button, MuscleBadge } from '@/components/ui';
 import { useUser } from '@/components/app';
 import { getRepository } from '@/lib/firestore';
-import { canUseExercise, itemsForProfile } from '@/lib/exercise/equipment';
+import { itemsForProfile } from '@/lib/exercise/equipment';
+import { usableTemplateSlots } from '@/lib/workout/templateSlots';
 import type { ProgramTemplate, WorkoutCategory, ExerciseDefinition, ExerciseEntry, SetEntry } from '@/types';
 
 interface Props {
@@ -64,18 +65,15 @@ export function WorkoutPicker({ open, onClose, onPick, onCreateCustom }: Props) 
   // actually do, not whatever the stock template happened to include.
   const equipItems = useMemo(() => (user ? itemsForProfile(user) : []), [user]);
 
-  /** A template's exercise slots the user's gear supports. Slots whose def
-   *  hasn't loaded are kept (we can't judge them yet). */
+  /** A template's exercise slots to offer. Stock templates are filtered to the
+   *  user's gear; CUSTOM workouts keep every exercise their author picked (see
+   *  lib/workout/templateSlots). */
   const usableSlots = useMemo(() => {
     const cache = new Map<string, ProgramTemplate['weeks'][number]['days'][number]['exercises']>();
     return (tpl: ProgramTemplate) => {
       const hit = cache.get(tpl.id);
       if (hit) return hit;
-      const day = tpl.weeks[0]?.days[0];
-      const slots = (day?.exercises ?? []).filter((slot) => {
-        const def = defs[slot.exerciseId];
-        return def ? canUseExercise(def, equipItems) : true;
-      });
+      const slots = usableTemplateSlots(tpl, defs, equipItems);
       cache.set(tpl.id, slots);
       return slots;
     };
