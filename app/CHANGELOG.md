@@ -9,6 +9,21 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.107.5 — 2026-09-07
+
+Two fixes from the post-handoff review.
+
+- **Set prefill matches like the PREV column.** `hydrateFromHistory` looked up
+  last time's exercise by exact id only, while the PREV column already falls
+  back to the swapped-from id and then a normalized name. So on an exercise
+  whose id had drifted (or was swapped in), PREV showed last time's weight and
+  reps but the inputs stayed at the generator defaults. Hydration now uses the
+  same id → swapped-from → name order.
+- **Typecheck was red.** `isPlanElapsed`'s parameter type required `startDate`
+  even though the function (and its test) handles plans without one — plans
+  migrated from the old Macrocycle model can lack it. `npx tsc --noEmit` failed
+  on the test file; the parameter is now typed optional.
+
 ## v0.107.4 — 2026-08-03
 
 History's "All blocks (by date)" calendar no longer labels weeks as "Week N of

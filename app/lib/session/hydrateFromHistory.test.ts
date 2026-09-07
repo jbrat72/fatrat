@@ -99,6 +99,26 @@ describe('hydrateFromHistory', () => {
     expect(out.exercises[0]!.sets[0]!.timeSec).toBe(45);
   });
 
+  it('matches a prior exercise by swapped-from id when the id changed', () => {
+    const prior = mkSession('p1', '2026-05-01', [{ weight: 60, reps: 10, completed: true }]);
+    const today = mkSession('t1', '2026-05-08', [{}]);
+    today.exercises[0] = { ...today.exercises[0]!, exerciseId: 'incline-bench', name: 'Incline Bench', swappedFromExerciseId: 'bench' };
+    const out = hydrateFromHistory(today, [prior]);
+    expect(out.exercises[0]!.sets[0]!.weightKg).toBe(60);
+    expect(out.exercises[0]!.sets[0]!.reps).toBe(10);
+  });
+
+  it('falls back to a normalized-name match when the id drifted', () => {
+    // Same matching order as the PREV column — otherwise PREV showed last
+    // time's numbers while the inputs stayed empty.
+    const prior = mkSession('p1', '2026-05-01', [{ weight: 100, reps: 8, completed: true }]);
+    prior.exercises[0]!.exerciseId = 'bench-old-id';
+    prior.exercises[0]!.name = ' bench ';
+    const today = mkSession('t1', '2026-05-08', [{}]);
+    const out = hydrateFromHistory(today, [prior]);
+    expect(out.exercises[0]!.sets[0]!.weightKg).toBe(100);
+  });
+
   it('handles no history gracefully', () => {
     const today = mkSession('t1', '2026-05-08', [{}, {}, {}]);
     const out = hydrateFromHistory(today, []);
