@@ -1,6 +1,6 @@
 # FATRAT — Project Handoff
 
-_Last updated: 2026-07-18 (app v0.107.0)_
+_Last updated: 2026-09-08 (app v0.109.0)_
 
 Paste this file (or point the new chat at it) to bring a fresh session up to speed.
 
@@ -8,8 +8,15 @@ Paste this file (or point the new chat at it) to bring a fresh session up to spe
 
 ## 0. NEXT TASK — none assigned
 
-The four-phase codebase audit (v0.104–v0.107, see §9) is complete. Nothing is
-queued — ask Brian for direction.
+Both wizard reworks shipped (v0.108.0 plan wizard, v0.109.0 single-workout
+wizard — §6C/§6D). Ask Brian for direction. Worth confirming on a real device:
+the single-workout weights step prefilling from history, and that a saved
+core superset shows as an A/B pair on the workout screen.
+
+**Session note (2026-09-07):** the v0.107.5–v0.108.0 work was done in a
+Claude Code web session on branch `claude/fatrat-handoff-bugs-ue0gu8`, where
+git runs natively (no FUSE bridge — the §2 rules don't apply there). Brian
+merges the branch to `main` from GitHub/PowerShell to deploy.
 
 Open threads worth raising first:
 - **Hydration contract changed in v0.104** (last time's values beat generator
@@ -291,6 +298,20 @@ and the ad-hoc `StructureSheet`, and now by the in-workout superset menu.
 
 ### C) Plan Wizard v2 — `components/plan/PlanWizardV2.tsx` + `lib/wizard/*`
 
+**v0.108.0:** two wizards. A chooser (Basic / Advanced) precedes page 1 of a
+NEW plan; `state.mode` records it (absent on older saves → Advanced). Pages
+are keyed by `WizardPageId` and ordered by `wizardFlow(mode)` in
+`lib/wizard/types.ts` (`BASIC_FLOW` = equipment, schedule, style, split, core,
+exercises, review, program; `ADVANCED_FLOW` = the 17-step full flow). NEVER
+key wizard logic on a page index. Defaults for every question live in
+`lib/wizard/defaults.ts` (`applyBasicDefaults` fills what Basic skips; the
+Advanced pages pre-fill from the same functions). The **Exercises page**
+(`state.exercisePicks`, per-muscle id lists) narrows `poolFor` in the engine
+and `assignExercises` for variety weeks (`CustomProgramInput.exercisePicks`).
+Core method `superset` now pairs core with lifts (shared `supersetGroup`) and
+core `frequency` picks the days (`coreDayIndices`). Reorder on the program
+page is ▲/▼ buttons (`moveBlock`); HTML5 drag never fired on iOS.
+
 The wizard rebuild (the old "next task") shipped. Multi-page flow accumulating
 a `WizardState` (`lib/wizard/types.ts`), engine (`engine.ts`), persistence
 (`persist.ts`: `activateWizardProgram`, `saveWizardToGallery`, `saveWizardDraft`
@@ -301,7 +322,23 @@ that lack saved state, `lib/wizard/editFromMeso.ts` reconstructs a best-effort
 `WizardState` from the meso + week-1 sessions (name, length, equipment, tiers,
 set types, fixed flag, days, week-1 exercises; goal/experience/style reset).
 
-### D) Equipment profiles + fixed-vs-variety exercises
+### D) Single Workout Wizard — `components/plan/SingleWorkoutWizard.tsx` (v0.109.0)
+
+Six id-keyed steps (setup → muscles → exercises → structure → weights →
+review). Shares atoms with the plan wizard via `components/plan/wizardUi.tsx`
+(Eyebrow, SecHead, cardChoice, chip, note, badge — edit there, not inline).
+Pure helpers in `lib/workout/singleWorkout.ts`: `slotsToEntries` (THE way a
+workout template becomes session exercises — used by WorkoutPicker, the
+template detail page and the wizard's structure step), `inferCategory`,
+`describeWorkout` / `estimateMinutes`, `repRangeForIntent`. Last-time lookup
+in `lib/session/lastPerformance.ts` (`buildLastPerf`/`lookupLastPerf`). Set
+structure is edited with the shared `StructureEditor` and saved on
+`TemplateExerciseSlot.setStyle/supersetGroup/restSeconds`; `ExerciseEntry`
+gained `restSeconds` (per-exercise rest, honored by the workout page).
+Unsaved NEW workouts autosave to localStorage `fatrat:workoutWizardDraft:v1`.
+`ProgramTemplate.createdById` is set on save.
+
+### E) Equipment profiles + fixed-vs-variety exercises
 
 - Granular equipment lives in the profile (`lib/exercise/equipment.ts`,
   profiles with item lists). The wizard, Swap, and Add filter against the plan's
@@ -317,7 +354,7 @@ set types, fixed flag, days, week-1 exercises; goal/experience/style reset).
 Bump three files in sync on every change: `lib/version.ts` (`APP_VERSION`),
 `package.json` `"version"`, and `app/CHANGELOG.md` (newest on top). Semver.
 
-**Current version: 0.107.0.**
+**Current version: 0.109.0.**
 
 PowerShell deploy (Brian copies this verbatim; note the `;` separators and the
 index.lock guard):

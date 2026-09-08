@@ -159,11 +159,18 @@ export function assignExercises(
   library: ExerciseDefinition[],
   allowed: Set<EquipmentType>,
   rotationOffset = 0,
+  /** Per-muscle allow-list (wizard Exercises page). Empty/absent = any. */
+  picks?: Partial<Record<MuscleGroup, string[]>>,
 ): AssignedWeek {
   const rotation = new Map<MuscleGroup, number>();
   return layout.map((day) =>
     day.map((slot): AssignedSlot => {
-      const options = exercisesForMuscle(slot.muscle, library, allowed);
+      let options = exercisesForMuscle(slot.muscle, library, allowed);
+      const want = picks?.[slot.muscle];
+      if (want && want.length) {
+        const narrowed = options.filter((e) => want.includes(e.id));
+        if (narrowed.length) options = narrowed;
+      }
       const i = rotation.get(slot.muscle) ?? rotationOffset;
       rotation.set(slot.muscle, i + 1);
       const pick = options.length > 0 ? options[i % options.length] : undefined;
@@ -268,6 +275,9 @@ export interface CustomProgramInput {
   /** Repeat week 1's exact exercises every week instead of rotating them for
    *  variety. Keeps the user's reviewed/swapped picks stable across the block. */
   fixedExercises?: boolean;
+  /** Per-muscle exercise allow-list for rotated ("variety") weeks, so weeks 2+
+   *  only draw from what the user chose on the wizard's Exercises page. */
+  exercisePicks?: Partial<Record<MuscleGroup, string[]>>;
 }
 
 export interface GeneratedProgram {
@@ -300,7 +310,7 @@ function materializeWeeks(input: CustomProgramInput): WeekMaterial[] {
   for (let w = 0; w < totalWeeks; w++) {
     const kind = kinds ? kinds[w]! : null;
     const loadIdx = kinds ? Math.max(0, kinds.slice(0, w + 1).filter((k) => k === 'load').length - 1) : w;
-    const assigned = (w === 0 || input.fixedExercises) ? input.week1 : assignExercises(layout, input.library, input.allowed, w);
+    const assigned = (w === 0 || input.fixedExercises) ? input.week1 : assignExercises(layout, input.library, input.allowed, w, input.exercisePicks);
     const trainingDays = assigned.filter((d) => d.length > 0);
 
     const slotCount = new Map<MuscleGroup, number>();
@@ -539,6 +549,8 @@ export function buildCustomTemplate(input: CustomProgramInput): ProgramTemplate 
           repsHigh: useReps && repsLow != null ? Math.max(repsLow, sw?.repsHigh ?? dr.repsHigh) : undefined,
           timeLow,
           timeHigh: useTime && timeLow != null ? Math.max(timeLow, sw?.timeHigh ?? dt.timeHigh) : undefined,
+          setStyle: slot.setStyle,
+          supersetGroup: slot.supersetGroup,
         };
       }),
     })),

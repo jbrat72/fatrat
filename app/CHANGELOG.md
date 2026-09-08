@@ -9,6 +9,115 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.109.0 — 2026-09-08
+
+Single Workout Wizard rebuilt to match the Plan Wizard.
+
+- **Six steps instead of three:** set up (name, equipment, rep range, rest) →
+  muscles → exercises → sets & structure → starting weights & reps → review.
+  Same visual atoms as the Plan Wizard (`components/plan/wizardUi.tsx`, now
+  shared by both).
+- **Equipment comes from your profile.** Exercises are filtered through your
+  equipment profile (with a profile picker if you have several) instead of a
+  free-floating equipment-type filter. "Show every exercise" is the escape
+  hatch, and it's automatic when no equipment is set up.
+- **Pick muscles, then exercises.** Tap the muscle groups the workout trains,
+  then pick exercises per muscle as chips (favorites first, hidden ones
+  excluded). A search box narrows every group at once.
+- **Structure is part of the workout.** Sets per exercise, supersets, pyramid
+  and drop sets, plus one-tap core placement (core last / core first /
+  superset core with lifts). Saved on the template and carried into the
+  session, so the day-of Structure sheet opens already paired; it remains
+  the override.
+- **Weights prefill from history.** Each exercise starts at the weight you
+  used last time (id, swapped-from id, or name match — the PREV column's
+  rule) with a "Last time: 60 lb × 9" hint. Rep ranges follow one rep-range
+  intent (strength / hypertrophy / endurance) and stay editable per exercise.
+  Optional per-exercise rest override; the workout screen honors it.
+- **Review before saving:** name, inferred category (Auto, or override),
+  muscles, every exercise with sets × range @ weight and superset letters,
+  rest, and an estimated duration. The library card description is now
+  derived — "Chest, Triceps, Core · 14 sets · ~40 min" — instead of
+  "Custom upper body workout".
+- **Drafts and duplicates.** An unsaved new workout persists locally and is
+  restored (with Start over) when the wizard reopens. Custom workouts have a
+  Duplicate button on their detail page.
+- Also: rest offers Auto (compounds long, isolations short); set cap raised
+  to 10; Modify reloads the template every time it opens; templates record
+  the creator's user id alongside the display name; the picker and template
+  detail page share one materializer (`lib/workout/singleWorkout.ts`).
+
+## v0.108.0 — 2026-09-07
+
+Plan Wizard: Basic vs Advanced, pick your exercises before generating, working
+reorder, and core supersets that actually get built.
+
+- **Basic or Advanced.** A new plan now starts with a choice. **Basic** asks
+  eight screens — equipment, schedule (days/week, session length, duration),
+  training style, split & rest days, core strategy, exercise preferences, then
+  review and the generated program — and defaults everything else (goal Build
+  Muscle, intermediate/consistent, volume framework and periodization from the
+  style, straight sets, rest and progression from the style/goal, scheduled
+  deload every 4th week, no cardio, conservative baselines). **Advanced** is the
+  full flow, now 17 steps. Editing an existing plan reopens in the wizard it
+  was built with (pre-0.108 plans open as Advanced).
+- **Exercise preferences page** (both wizards, right before Review). For each
+  muscle group in your plan — and core, if programmed — tap the exercises you
+  want used. Untouched muscles draw from everything your equipment allows, as
+  before. Picks drive week 1 and every rotated "variety" week; a muscle with a
+  single pick gets all its sets there instead of the same movement listed
+  twice. The Review page summarizes your picks.
+- **Reorder works on the phone.** The generated-program page relied on HTML5
+  drag-and-drop, which iOS Safari never fires, so reordering was dead on the
+  device the app is used on. Each row now has ▲/▼ buttons (superset pairs move
+  together); drag is still there on desktop.
+- **"Superset between lifts" is real.** Choosing that core strategy used to
+  produce the same end-of-session core block as "Dedicated Core Block." It now
+  pairs each core exercise with a lift (the compounds lead the day), slotted
+  right after it and sharing a superset group — the same structure the day-of
+  Structure sheet and the in-workout ⋮ menu create, so the workout screen shows
+  them as A/B pairs. Saved templates now keep that pairing too (template
+  exercise slots carry set style + superset group), so a gallery template
+  reopened with "Use this template" doesn't flatten back to straight sets. Core **frequency** (every session / every other / 2×/3×
+  per week) is honored too; it was previously ignored and core landed on every
+  day.
+
+## v0.107.7 — 2026-09-07
+
+The timer alarm no longer stops your music. On iPhone the page's audio was
+treated as "playback," so the rest/exercise alarm — and even the silent
+priming play on the first tap — took over the audio session and paused Music,
+Spotify, podcasts, etc. The page now declares itself a `transient` audio
+session (Audio Session API, Safari 17+): the alarm mixes with whatever is
+playing and may briefly duck it, but never interrupts it. Browsers without
+the API are unchanged.
+
+## v0.107.6 — 2026-09-07
+
+Custom single workouts open with every exercise you put in them. The Start
+Workout picker filtered each template's exercises through your DEFAULT
+equipment profile, which is right for the stock workouts but wrong for one you
+built yourself — the single-workout wizard offers the whole library, so any
+exercise outside that profile was silently dropped when you went to use it. A
+4-exercise "Day 1: Glutes" opened as 2 exercises while the workout library page
+still said 4. Custom workouts are no longer equipment-filtered (the filter
+logic moved to `lib/workout/templateSlots.ts`, with tests).
+
+## v0.107.5 — 2026-09-07
+
+Two fixes from the post-handoff review.
+
+- **Set prefill matches like the PREV column.** `hydrateFromHistory` looked up
+  last time's exercise by exact id only, while the PREV column already falls
+  back to the swapped-from id and then a normalized name. So on an exercise
+  whose id had drifted (or was swapped in), PREV showed last time's weight and
+  reps but the inputs stayed at the generator defaults. Hydration now uses the
+  same id → swapped-from → name order.
+- **Typecheck was red.** `isPlanElapsed`'s parameter type required `startDate`
+  even though the function (and its test) handles plans without one — plans
+  migrated from the old Macrocycle model can lack it. `npx tsc --noEmit` failed
+  on the test file; the parameter is now typed optional.
+
 ## v0.107.4 — 2026-08-03
 
 History's "All blocks (by date)" calendar no longer labels weeks as "Week N of

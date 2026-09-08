@@ -6,6 +6,7 @@ import type { WizardState } from './types';
 import { WIZARD_MUSCLES } from './types';
 import { representativeWeek, generateWeek } from './engine';
 import { buildWizardInput } from './persist';
+import { buildCustomTemplate } from '@/lib/program/templateProgram';
 
 const USER: UserProfile = {
   userId: 'u1', displayName: 'Tester', units: 'imperial', experience: '2yr-plus',
@@ -65,5 +66,32 @@ describe('buildWizardInput', () => {
     // 100 lb 1RM -> ~78.9 lb working for 8 reps -> ~35.8 kg
     expect(sw!.weightKg!).toBeGreaterThan(30);
     expect(sw!.weightKg!).toBeLessThan(40);
+  });
+
+  it('carries exercise picks and core superset groups through to the saved template', () => {
+    const s = st();
+    s.core = { method: 'superset', frequency: 'every', blockExercises: '1-2', days: [] };
+    const chestPool = GLOBAL_EXERCISES.filter((e) => e.primaryMuscle === 'chest');
+    s.exercisePicks = { chest: [chestPool[2]!.id, chestPool[3]!.id] };
+    s.split.fixedExercises = false; // rotated weeks must ALSO respect picks
+    const { wk, loadCount } = representativeWeek(s);
+    const days = generateWeek(s, GLOBAL_EXERCISES, wk, loadCount);
+    const input = buildWizardInput(s, days, USER, GLOBAL_EXERCISES);
+    expect(input.exercisePicks).toEqual(s.exercisePicks);
+    const tpl = buildCustomTemplate(input);
+    for (const week of tpl.weeks) {
+      const chest = week.days.flatMap((d) => d.exercises).filter((e) => chestPool.some((c) => c.id === e.exerciseId));
+      expect(chest.length).toBeGreaterThan(0);
+      expect(chest.every((e) => s.exercisePicks!.chest!.includes(e.exerciseId))).toBe(true);
+    }
+    // Every week-1 day has core paired with a lift via a shared superset group.
+    for (const d of tpl.weeks[0]!.days) {
+      const core = d.exercises.filter((e) => GLOBAL_EXERCISES.find((g) => g.id === e.exerciseId)?.primaryMuscle === 'core');
+      expect(core.length).toBe(2);
+      for (const c of core) {
+        expect(c.setStyle).toBe('superset');
+        expect(d.exercises.filter((e) => e !== c && e.supersetGroup === c.supersetGroup)).toHaveLength(1);
+      }
+    }
   });
 });

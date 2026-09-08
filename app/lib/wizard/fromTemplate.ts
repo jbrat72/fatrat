@@ -69,8 +69,8 @@ export function wizardFromTemplate(
           sets: slot.prescribedSets,
           reps: (timeBased ? slot.timeLow : slot.repsLow) ?? 0,
           metric,
-          setStyle: 'straight',
-          supersetGroup: undefined,
+          setStyle: slot.setStyle ?? 'straight',
+          supersetGroup: slot.supersetGroup,
           anchor: false,
         };
       });

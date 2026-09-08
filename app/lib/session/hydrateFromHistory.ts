@@ -28,11 +28,21 @@ export function hydrateFromHistory(
 
   // Per-exercise hydration: copy weight/reps from prior session's matching exercise.
   const exercises = session.exercises.map((ex) => {
+    // Same matching order as the PREV column (workout page `priorFor`): exact
+    // id, then the id this exercise was swapped from, then a normalized name.
+    // Matching on id alone left PREV showing last time's numbers while the
+    // inputs stayed at the generator defaults whenever the id had drifted.
+    const nameKey = ex.name.trim().toLowerCase();
+    const matches = (e: typeof ex) =>
+      e.exerciseId === ex.exerciseId
+      || (ex.swappedFromExerciseId != null && e.exerciseId === ex.swappedFromExerciseId)
+      || e.name.trim().toLowerCase() === nameKey;
     let priorEx: typeof ex | undefined;
     for (const prior of sorted) {
       if (prior.id === session.id) continue;
-      const candidate = prior.exercises.find((e) => e.exerciseId === ex.exerciseId);
-      if (candidate && candidate.sets.some(usable)) {
+      const candidate = prior.exercises.find((e) => e.exerciseId === ex.exerciseId && e.sets.some(usable))
+        ?? prior.exercises.find((e) => matches(e) && e.sets.some(usable));
+      if (candidate) {
         priorEx = candidate;
         break;
       }

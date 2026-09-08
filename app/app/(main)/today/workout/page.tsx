@@ -415,7 +415,8 @@ export default function WorkoutPage() {
     if (anyPending && !intoSupersetPartner) {
       const def = exerciseDefs[ex.exerciseId];
       const patterns: MovementPattern[] = def?.patterns ?? [];
-      const rest = next.restSeconds
+      const rest = ex.restSeconds
+        ?? next.restSeconds
         ?? meso?.restSeconds
         ?? defaultRestSec(meso?.phaseType ?? 'hypertrophy', patterns);
       setRestSec(rest);

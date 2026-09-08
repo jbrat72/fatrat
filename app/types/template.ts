@@ -10,6 +10,7 @@ import type {
   MuscleTier,
 } from './periodization';
 import type { MuscleGroup } from './exercise';
+import type { SetStyle } from './session';
 
 export interface TemplateExerciseSlot {
   exerciseId: string;
@@ -31,6 +32,13 @@ export interface TemplateExerciseSlot {
   startingRIR?: number;
   /** Optional acceptable swap muscle group when user lacks equipment. */
   fallbackMuscle?: MuscleGroup;
+  /** Set structure the plan was built with (e.g. the wizard's core-superset
+   *  pairing). Exercises in one day sharing `supersetGroup` are performed
+   *  back-to-back. Absent = straight sets. */
+  setStyle?: SetStyle;
+  supersetGroup?: number;
+  /** Per-exercise rest override (seconds). Absent = the workout's rest. */
+  restSeconds?: number;
 }
 
 export interface TemplateDay {
@@ -71,6 +79,8 @@ export interface ProgramTemplate {
   isCustom?: boolean;
   /** Display name of the user who created a custom template. */
   createdBy?: string;
+  /** User id of the creator (display names aren't unique or stable). */
+  createdById?: string;
   /** Suggested goals this template is good for. */
   goodForGoals?: string[];
   /** Per-muscle volume priority. Set by the Template Wizard for custom

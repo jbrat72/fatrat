@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, ConfirmDialog } from '@/components/ui';
 import { FinishPlanModal } from './FinishPlanModal';
+import { Eyebrow, Field, SecHead, cardChoice, chip, note, badge } from './wizardUi';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
 import { getRepository } from '@/lib/firestore';
 import { EQUIP_GROUPS, equipLabel, isBodyweightOnly, getEquipmentProfiles, defaultProfileId, itemsForProfile } from '@/lib/exercise/equipment';
@@ -19,19 +20,22 @@ import type { MuscleGroup, UserProfile, SetStyle, ExerciseDefinition } from '@/t
 import type {
   WizardState, WizGoal, WizExperience, WizStatus, WizTier, BaseStyle,
   VolumeFramework, PeriodizationStrategy, RepRange, CoreMethod, RestPref,
-  GeneratedDay, GeneratedExercise,
+  GeneratedDay, GeneratedExercise, WizardPageId,
 } from '@/lib/wizard/types';
-import { WIZARD_MUSCLES } from '@/lib/wizard/types';
+import { WIZARD_MUSCLES, wizardFlow } from '@/lib/wizard/types';
+import {
+  defaultRestDays, levelRank, effLevel, defaultTier, defaultVolumeFramework, defaultPeriodization,
+  defaultRepRange, defaultRestPreference, defaultCore, defaultCardio, defaultProgression,
+  applyBasicDefaults, applyBasicIdentity,
+} from '@/lib/wizard/defaults';
 import {
   SPLIT_SEQ, weekStructure,
   muscleSetsForWeek, timesPerWeek, durationWeeks,
   poolFor, generateWeek,
 } from '@/lib/wizard/engine';
 
-const TOTAL = 16;
 const DOW_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DOW_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const DAY_OFFSETS: Record<number, number[]> = { 1: [0], 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 4], 5: [0, 1, 2, 4, 5], 6: [0, 1, 2, 3, 4, 5], 7: [0, 1, 2, 3, 4, 5, 6] };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
@@ -51,12 +55,6 @@ function NameField({ value, onCommit }: { value: string; onCommit: (v: string) =
       onBlur={() => { if (draft !== value) onCommit(draft); }}
     />
   );
-}
-
-function defaultRestDays(startDow: number, d: number): number[] {
-  const work = new Set(DAY_OFFSETS[d] || []); const rest: number[] = [];
-  for (let off = 0; off < 7; off++) if (!work.has(off)) rest.push((startDow + off) % 7);
-  return rest;
 }
 
 /* ---- profile mapping ---- */
@@ -97,12 +95,6 @@ function initState(user: UserProfile): WizardState {
 }
 
 /* ---- small helpers ---- */
-function levelRank(l: WizExperience | null) { return ({ beginner: 0, novice: 1, intermediate: 2, advanced: 3 } as Record<string, number>)[l || ''] ?? 0; }
-function effLevel(s: WizardState): WizExperience | null {
-  let l = s.experience.level;
-  if (s.experience.status === 'layoff12' && l) { const o: WizExperience[] = ['beginner', 'novice', 'intermediate', 'advanced']; const i = o.indexOf(l); if (i > 0) return o[i - 1]; }
-  return l;
-}
 const isBeginnerScratch = (s: WizardState) => s.experience.level === 'beginner' && s.experience.status === 'scratch';
 
 export interface PlanWizardV2Props {
@@ -129,6 +121,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
       // Profile basics are read-only from the FATRAT profile — refresh them from
       // the live user so an old saved plan doesn't show stale age/sex/weight.
       const s = structuredClone(initialState);
+      if (!s.mode) s.mode = 'advanced'; // saved before Basic existed
       s.profile = {
         ...s.profile,
         ageBand: ageBandFromDob(user.dob),
@@ -144,16 +137,35 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   const [savedTick, setSavedTick] = useState(false);
   const savedIdRef = useRef<string | undefined>(initialDraftId);
   const [drag, setDrag] = useState<{ di: number; ei: number } | null>(null);
+  /** Consecutive superset members move as one block. */
+  function dayBlocks(day: GeneratedExercise[]): number[][] {
+    const blocks: number[][] = []; let i = 0;
+    while (i < day.length) {
+      const g = day[i].supersetGroup;
+      if (g != null) { const b: number[] = []; while (i < day.length && day[i].supersetGroup === g) { b.push(i); i++; } blocks.push(b); }
+      else { blocks.push([i]); i++; }
+    }
+    return blocks;
+  }
+  /** Tap-to-reorder: swap the exercise's block with its neighbour. HTML5 drag
+   *  (kept for desktop) never fired on iOS Safari, so reorder was dead on the
+   *  phone — the ▲▼ buttons are the primary control now. */
+  function moveBlock(di: number, ei: number, dir: -1 | 1) {
+    setProgram((pr) => {
+      const c = structuredClone(pr); const day = c[0][di].exercises;
+      const blocks = dayBlocks(day);
+      const sb = blocks.findIndex((b) => b.includes(ei)); const tb = sb + dir;
+      if (sb < 0 || tb < 0 || tb >= blocks.length) return pr;
+      const items = blocks.map((b) => b.map((idx) => day[idx]));
+      [items[sb], items[tb]] = [items[tb], items[sb]];
+      c[0][di].exercises = items.flat();
+      return c;
+    });
+  }
   function moveExercise(di: number, fromEi: number, toEi: number) {
     setProgram((pr) => {
       const c = structuredClone(pr); const day = c[0][di].exercises;
-      // group consecutive superset members into contiguous blocks
-      const blocks: number[][] = []; let i = 0;
-      while (i < day.length) {
-        const g = day[i].supersetGroup;
-        if (g != null) { const b: number[] = []; while (i < day.length && day[i].supersetGroup === g) { b.push(i); i++; } blocks.push(b); }
-        else { blocks.push([i]); i++; }
-      }
+      const blocks = dayBlocks(day);
       const blockOf = (idx: number) => blocks.findIndex((b) => b.includes(idx));
       const sb = blockOf(fromEi); const tb = blockOf(toEi);
       if (sb < 0 || tb < 0 || sb === tb) return c;
@@ -180,12 +192,20 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   // scroll-to-bottom gate doesn't re-block the Next button on done pages.
   const [seen, setSeen] = useState(isResuming);
   const [finishOpen, setFinishOpen] = useState(false);
-  const seenPages = useRef<Set<number>>(new Set(isResuming ? Array.from({ length: TOTAL }, (_, i) => i) : []));
+  const seenPages = useRef<Set<number>>(new Set(isResuming ? Array.from({ length: wizardFlow(initialState?.mode).length }, (_, i) => i) : []));
   const pageRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingScroll = useRef<number | null>(null);
 
   const update = (fn: (s: WizardState) => void) => setState((s) => { const n: WizardState = structuredClone(s); fn(n); return n; });
+
+  // Page ORDER depends on the chosen wizard (Basic asks a subset). Everything
+  // below keys on the page id, never on its index.
+  const flow = wizardFlow(state.mode);
+  const TOTAL = flow.length;
+  const pageId: WizardPageId = flow[page] ?? 'goal';
+  const basic = state.mode === 'basic';
+  const pageIndex = (id: WizardPageId) => flow.indexOf(id);
 
   /* ---------- derived option lists & defaults (mirror mockup) ---------- */
   // Pull the live library (global + the user's custom exercises) so anything
@@ -224,22 +244,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
     else if (state.experience.level === 'novice') list = list.filter((p) => p.id !== 'hit');
     return list.sort((a, b) => b.s - a.s);
   }
-  function defaultVolumeFramework(): VolumeFramework {
-    const bs = state.trainingStyle.baseStyle, lv = effLevel(state);
-    if (bs === 'hit' || bs === 'fullbody') return 'med';
-    if (state.equipment.environment === 'bodyweight') return 'auto';
-    if (state.experience.level === 'beginner' || state.experience.level === 'novice') return 'fixed';
-    if (bs === 'bodybuilding' || state.goal.primary === 'leanout') return 'evidence';
-    if (levelRank(lv) >= 3) return 'auto';
-    return 'evidence';
-  }
   const volumeAllowed = (id: VolumeFramework) => state.trainingStyle.baseStyle === 'hit' ? id === 'med' : !(state.experience.level === 'beginner' && id === 'auto');
-  function defaultPeriodization(): PeriodizationStrategy {
-    const bs = state.trainingStyle.baseStyle;
-    if (state.experience.level === 'beginner' || bs === 'hit') return 'none';
-    if (bs === 'powerbuilding') return 'dup';
-    return 'none';
-  }
   function periodizationAllowed(id: PeriodizationStrategy) {
     const bs = state.trainingStyle.baseStyle, wks = durationWeeks(state);
     if (state.experience.level === 'beginner') return id === 'none';
@@ -258,33 +263,31 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
     if (state.goal.primary === 'strength' && state.schedule.daysPerWeek === 4) boost('ul2');
     return list;
   }
-  function defaultTier(m: MuscleGroup): WizTier {
-    const g = state.goal.primary;
-    if (g === 'strength') return (['chest', 'back', 'quads'] as string[]).includes(m) ? 'emphasize' : (['biceps', 'forearms', 'calves'] as string[]).includes(m) ? 'maintain' : 'grow';
-    if (g === 'athletic') return (['quads', 'hamstrings', 'glutes'] as string[]).includes(m) ? 'emphasize' : (['biceps', 'forearms', 'calves'] as string[]).includes(m) ? 'maintain' : 'grow';
-    if (g === 'transform') return (['chest', 'back', 'quads'] as string[]).includes(m) ? 'emphasize' : 'grow';
-    return 'grow';
-  }
 
   /* ---------- onEnter side-effects per page ---------- */
-  function onEnter(p: number) {
+  function onEnter(id: WizardPageId) {
     update((s) => {
-      if (p === 3 && s.schedule.daysPerWeek && s.schedule.restDays.length === 0) s.schedule.restDays = defaultRestDays(s.schedule.startDow, s.schedule.daysPerWeek);
-      if (p === 6 && s.schedule.restDays.length === 0 && s.schedule.daysPerWeek) s.schedule.restDays = defaultRestDays(s.schedule.startDow, s.schedule.daysPerWeek);
-      if (p === 7 && Object.keys(s.prioritization.tiers).length === 0) WIZARD_MUSCLES.forEach((m) => (s.prioritization.tiers[m] = defaultTier(m)));
-      if (p === 8) {
-        if (!s.setsAndReps.repRange) { const bs = s.trainingStyle.baseStyle, g = s.goal.primary; s.setsAndReps.repRange = bs === 'powerlifting' ? 'strength' : bs === 'bodybuilding' ? 'hypertrophy' : bs === 'powerbuilding' ? 'mixed' : g === 'transform' ? 'mixed' : g === 'leanout' ? 'hypertrophy' : g === 'strength' ? 'strength' : 'hypertrophy'; }
+      if ((id === 'schedule' || id === 'split') && s.schedule.daysPerWeek && s.schedule.restDays.length === 0) s.schedule.restDays = defaultRestDays(s.schedule.startDow, s.schedule.daysPerWeek);
+      if (id === 'tiers' && Object.keys(s.prioritization.tiers).length === 0) WIZARD_MUSCLES.forEach((m) => (s.prioritization.tiers[m] = defaultTier(s, m)));
+      if (id === 'setsReps') {
+        if (!s.setsAndReps.repRange) s.setsAndReps.repRange = defaultRepRange(s);
         if (s.setsAndReps.setTypes.length === 0) s.setsAndReps.setTypes = ['straight'];
         if (s.trainingStyle.baseStyle === 'hit') s.setsAndReps.setTypes = ['straight'];
       }
-      if (p === 9 && !s.restAndTempo.restPreference) { const bs = s.trainingStyle.baseStyle, g = s.goal.primary; s.restAndTempo.restPreference = (bs === 'powerlifting' || g === 'strength') ? 'long' : (g === 'transform' || g === 'leanout' || g === 'fitness' || g === 'muscle') ? 'moderate' : 'auto'; }
-      if (p === 10 && !s.core.method) { const bs = s.trainingStyle.baseStyle; s.core.method = bs === 'bodybuilding' ? 'block' : (bs === 'fullbody' || bs === 'hit') ? 'superset' : s.goal.primary === 'athletic' ? 'superset' : 'block'; s.core.frequency = s.experience.level === 'beginner' ? '2x' : s.goal.primary === 'athletic' ? '3x' : 'everyother'; }
-      if (p === 11 && s.cardio.included === null) { const g = s.goal.primary; if (g === 'transform') Object.assign(s.cardio, { included: 'yes', type: ['hiit', 'liss'], frequency: 3, placement: 'offdays', durationMinutes: 20 }); else if (g === 'leanout') Object.assign(s.cardio, { included: 'yes', type: ['liss'], frequency: 3, placement: 'offdays', durationMinutes: 30 }); else if (g === 'athletic') Object.assign(s.cardio, { included: 'yes', type: ['circuit'], frequency: 2, placement: 'separate', durationMinutes: 20 }); else if (g === 'fitness') Object.assign(s.cardio, { included: 'yes', type: ['liss', 'hiit'], frequency: 3, placement: 'separate', durationMinutes: 30 }); else if (g === 'muscle' || g === 'strength') s.cardio.included = 'no'; }
-      if (p === 12 && !s.progression.type) { const lv = effLevel(s); s.progression.type = s.experience.level === 'beginner' ? 'linear' : levelRank(lv) >= 3 ? 'rpe' : 'double'; if (s.trainingStyle.periodizationStrategy === 'dup') s.progression.type = 'undulating'; if (s.trainingStyle.baseStyle === 'hit') s.progression.type = 'double'; if (!s.progression.deloadProtocol) { s.progression.deloadProtocol = 'scheduled'; s.progression.deloadFrequency = 4; s.progression.deloadStyle = 'volume'; } }
+      if (id === 'rest' && !s.restAndTempo.restPreference) s.restAndTempo.restPreference = defaultRestPreference(s);
+      if (id === 'core' && !s.core.method) { const c = defaultCore(s); s.core.method = c.method; s.core.frequency = c.frequency; }
+      if (id === 'cardio' && s.cardio.included === null) s.cardio = defaultCardio(s);
+      if (id === 'progression' && !s.progression.type) {
+        const pz = defaultProgression(s); s.progression.type = pz.type;
+        if (!s.progression.deloadProtocol) { s.progression.deloadProtocol = pz.deloadProtocol; s.progression.deloadFrequency = pz.deloadFrequency; s.progression.deloadStyle = pz.deloadStyle; }
+      }
+      // Basic never shows most pages — answer them before the pages that
+      // depend on those answers (the exercise pool needs tiers + core method).
+      if (s.mode === 'basic' && (id === 'exercises' || id === 'review' || id === 'program')) applyBasicDefaults(s);
     });
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { onEnter(page); }, [page]);
+  useEffect(() => { onEnter(pageId); }, [page, state.mode]);
   // Normalize training-style modifiers whenever the base style changes.
   useEffect(() => {
     const bs = state.trainingStyle.baseStyle;
@@ -295,8 +298,8 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
     }
     if (bs) update((s) => {
       if (s.trainingStyle.baseStyle === 'hit') { s.trainingStyle.volumeFramework = 'med'; s.trainingStyle.periodizationStrategy = 'none'; return; }
-      if (!s.trainingStyle.volumeFramework) s.trainingStyle.volumeFramework = defaultVolumeFramework();
-      if (!s.trainingStyle.periodizationStrategy) s.trainingStyle.periodizationStrategy = defaultPeriodization();
+      if (!s.trainingStyle.volumeFramework) s.trainingStyle.volumeFramework = defaultVolumeFramework(state);
+      if (!s.trainingStyle.periodizationStrategy) s.trainingStyle.periodizationStrategy = defaultPeriodization(state);
     });
     /* eslint-disable-next-line */
   }, [state.trainingStyle.baseStyle]);
@@ -311,6 +314,8 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
       env: state.equipment.environment, items: state.equipment.items,
       base: state.trainingStyle.baseStyle, vol: state.trainingStyle.volumeFramework,
       reps: state.setsAndReps.repRange,
+      picks: state.exercisePicks,
+      core: [state.core.method, state.core.frequency, state.core.blockExercises, state.core.days],
     });
   }
   const genSig = useRef<string | null>(null);
@@ -320,7 +325,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   useEffect(() => { if (program[0] && program[0].length) genSig.current = genSignature(); }, []);
   // Generate the program for the review/exercises pages (effect, not during render).
   useEffect(() => {
-    if (page !== 15) return;
+    if (pageId !== 'program') return;
     const sig = genSignature();
     if (program[0] && program[0].length && genSig.current === sig) return; // keep existing edits
     const { cols, loadCount } = weekStructure(state);
@@ -363,8 +368,9 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   function scrollToSection(idx: number) { const c = scrollRef.current; const secs = sectionAnchors(); const el = secs[idx]; if (!c || !el) return; const top = el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 84; c.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }
 
   function goTo(i: number) { setSeen(seenPages.current.has(i)); setPage(i); }
-  function next() { if (!isValid()) return; if (page === 14) { setSeen(seenPages.current.has(15)); setPage(15); return; } if (page < TOTAL - 1) goTo(page + 1); else setFinishOpen(true); }
-  function back() { if (page > 0) goTo(page - 1); }
+  function next() { if (!isValid()) return; if (page < TOTAL - 1) goTo(page + 1); else setFinishOpen(true); }
+  // From the first page of a NEW plan, Back returns to the Basic/Advanced chooser.
+  function back() { if (page > 0) goTo(page - 1); else if (!isResuming) update((s) => { s.mode = undefined; }); }
 
   /* selection that advances to next section */
   function selectSingle(el: HTMLElement | null, fn: (s: WizardState) => void) {
@@ -375,20 +381,18 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   /* ---------- validity per page ---------- */
   function isValid(): boolean {
     const s = state;
-    switch (page) {
-      case 0: return !!s.goal.primary;
-      case 1: return !!s.experience.level && !!s.experience.status;
-      case 2: return true;
-      case 3: return !!s.schedule.daysPerWeek && !!s.schedule.sessionMinutes && !!s.schedule.durationWeeks;
-      case 4: return true;
-      case 5: return !!s.trainingStyle.baseStyle && !!s.trainingStyle.volumeFramework && !!s.trainingStyle.periodizationStrategy;
-      case 6: if (!s.split.type) return false; if (s.split.type === 'custom') return !!s.split.customDays && s.split.customDays.length > 0 && s.split.customDays.every((d) => d.length > 0); return true;
-      case 7: return true;
-      case 8: return !!s.setsAndReps.repRange && (s.trainingStyle.baseStyle === 'hit' || s.setsAndReps.setTypes.length > 0);
-      case 9: return s.trainingStyle.baseStyle === 'hit' || !!s.restAndTempo.restPreference;
-      case 10: return !!s.core.method && !(s.core.method === 'day' && s.core.days.length === 0);
-      case 11: return s.cardio.included !== null;
-      case 12: return !!s.progression.type && !!s.progression.deloadProtocol;
+    switch (pageId) {
+      case 'goal': return !!s.goal.primary;
+      case 'experience': return !!s.experience.level && !!s.experience.status;
+      case 'schedule': return !!s.schedule.daysPerWeek && !!s.schedule.sessionMinutes && !!s.schedule.durationWeeks;
+      // Basic asks only the base style; the two modifiers default from it.
+      case 'style': { const t = s.trainingStyle; return !!t.baseStyle && t.baseStyle !== ('auto' as BaseStyle) && (basic || (!!t.volumeFramework && !!t.periodizationStrategy)); }
+      case 'split': if (!s.split.type) return false; if (s.split.type === 'custom') return !!s.split.customDays && s.split.customDays.length > 0 && s.split.customDays.every((d) => d.length > 0); return true;
+      case 'setsReps': return !!s.setsAndReps.repRange && (s.trainingStyle.baseStyle === 'hit' || s.setsAndReps.setTypes.length > 0);
+      case 'rest': return s.trainingStyle.baseStyle === 'hit' || !!s.restAndTempo.restPreference;
+      case 'core': return !!s.core.method && !(s.core.method === 'day' && s.core.days.length === 0);
+      case 'cardio': return s.cardio.included !== null;
+      case 'progression': return !!s.progression.type && !!s.progression.deloadProtocol;
       default: return true;
     }
   }
@@ -396,34 +400,9 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   /* =====================================================================
      RENDER
   ===================================================================== */
-  // ---- shared UI atoms ----
-  const note = (type: 'info' | 'warn' | 'ok', txt: React.ReactNode) => {
-    const cls = type === 'warn' ? 'border-warn/40 bg-warn/10' : type === 'ok' ? 'border-ok/30 bg-ok/10' : 'border-info/30 bg-info/10';
-    const ic = type === 'warn' ? '⚠' : type === 'ok' ? '✓' : 'ℹ';
-    return <div className={`flex gap-2.5 rounded-xl border ${cls} px-3.5 py-3 text-[13px] my-3`}><span className="shrink-0">{ic}</span><span>{txt}</span></div>;
-  };
-  const SecHead = ({ children }: { children: React.ReactNode }) => <div className="wz-sec text-[11px] font-semibold uppercase tracking-wider text-ink-dim mt-5 mb-2.5">{children}</div>;
-  function cardChoice(sel: boolean, onClick: (e: React.MouseEvent) => void, label: React.ReactNode, desc?: React.ReactNode, extra?: React.ReactNode) {
-    return (
-      <button type="button" onClick={onClick} className={`relative w-full text-left rounded-2xl border p-4 transition ${sel ? '!border-accent !bg-accent/10' : 'border-ink-line bg-bg-card hover:border-ink-mute'}`}>
-        <span className={`absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs ${sel ? 'bg-accent border-accent text-white' : 'border-ink-line'}`}>{sel ? '✓' : ''}</span>
-        <div className="font-semibold text-[15px] pr-7 flex items-center gap-2 flex-wrap">{label}</div>
-        {desc && <div className="text-[13px] text-ink-dim mt-1">{desc}</div>}
-        {extra}
-      </button>
-    );
-  }
-  const chip = (sel: boolean, label: React.ReactNode, onClick: (e: React.MouseEvent) => void, key?: string | number, disabled?: boolean) => (
-    <button key={key} type="button" disabled={disabled} onClick={onClick} className={`rounded-full border px-3.5 py-2 text-[13px] font-medium transition disabled:opacity-30 ${sel ? 'border-accent bg-accent/15 text-ink' : 'border-ink-line bg-bg-card text-ink-dim hover:text-ink'}`}>{label}</button>
-  );
-  const badge = (kind: 'rec' | 'fit' | 'lvl', txt: string) => {
-    const c = kind === 'rec' ? 'bg-accent/15 text-accent-hot' : kind === 'fit' ? 'bg-ok/15 text-ok' : 'bg-info/15 text-info';
-    return <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${c}`}>{txt}</span>;
-  };
-
   /* ---------- page renderers ---------- */
-  const pages: Record<number, () => React.ReactNode> = {
-    0: () => {
+  const pages: Record<WizardPageId, () => React.ReactNode> = {
+    goal: () => {
       const sel = state.goal.primary;
       const secOpts = [
         { id: 'muscle', label: '…build more muscle', hide: ['muscle', 'transform'] },
@@ -432,7 +411,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
         { id: 'cond', label: '…improve conditioning', hide: ['fitness'] },
       ].filter((o) => !o.hide.includes(sel || ''));
       return (<>
-        <Eyebrow n={1} title="Let's build your program" sub="Name it for your library, then pick your main goal — every later page adapts to it." />
+        <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Let's build your program" sub="Name it for your library, then pick your main goal — every later page adapts to it." />
         <div className="wz-field mb-4"><label className="block text-[13px] font-semibold mb-1.5">Program name</label>
           <NameField value={state.name} onCommit={(v) => update((s) => { s.name = v; })} /></div>
         <SecHead>Primary goal</SecHead>
@@ -440,17 +419,17 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
         {sel && <><SecHead>I also want to… (optional)</SecHead><div className="flex flex-wrap gap-2">{secOpts.map((o) => chip(state.goal.secondary === o.id, o.label, () => update((s) => { s.goal.secondary = s.goal.secondary === o.id ? null : o.id; }), o.id))}</div></>}
       </>);
     },
-    1: () => (<>
-      <Eyebrow n={2} title="How much training experience?" sub="“Consistent” = at least 3×/week on a structured program, not occasional gym visits." />
+    experience: () => (<>
+      <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="How much training experience?" sub="“Consistent” = at least 3×/week on a structured program, not occasional gym visits." />
       <div className="grid gap-2.5">{EXPERIENCE.map((o) => cardChoice(state.experience.level === o.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.experience.level = o.id; }), o.label, o.desc))}</div>
       <SecHead>Current status</SecHead>
       <div className="grid gap-2.5">{STATUS.map((o) => cardChoice(state.experience.status === o.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.experience.status = o.id; }), o.label))}</div>
       {['break_short', 'break_long', 'layoff12'].includes(state.experience.status || '') && note('info', 'We’ll add a 1–2 week ramp-up note.' + (state.experience.status === 'layoff12' ? ' After 12+ months off, volume defaults drop one tier.' : ''))}
     </>),
-    2: () => {
+    profile: () => {
       const bands: Record<string, string> = { u18: 'Under 18', '18': '18–29', '30': '30–39', '40': '40–49', '50': '50–59', '60': '60+' };
       return (<>
-        <Eyebrow n={3} title="Body profile & constraints" sub="Your basics come from your FATRAT profile. Tell us what to target and work around." />
+        <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Body profile & constraints" sub="Your basics come from your FATRAT profile. Tell us what to target and work around." />
         <div className="wz-field rounded-2xl border border-ink-line bg-bg-card p-4">
           <div className="flex justify-between items-center mb-2"><div className="text-[11px] font-semibold uppercase tracking-wider text-ink-dim">From your profile</div></div>
           <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-[14px]">
@@ -466,8 +445,8 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
         {state.profile.injuries.length > 0 && note('info', 'Flagged areas trigger automatic exercise substitutions (e.g. lower-back → trap-bar deadlift).')}
       </>);
     },
-    3: () => (<>
-      <Eyebrow n={4} title="Schedule & availability" sub="Determines which splits are possible and how much fits per session." />
+    schedule: () => (<>
+      <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Schedule & availability" sub="Determines which splits are possible and how much fits per session." />
       <div className="wz-field mb-1"><label className="block text-[13px] font-semibold mb-1.5">How many days per week?</label>
         <div className="flex flex-wrap gap-2">{[2, 3, 4, 5, 6, 7].map((n) => chip(state.schedule.daysPerWeek === n, String(n), (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.schedule.daysPerWeek = n; s.schedule.restDays = defaultRestDays(s.schedule.startDow, n); s.split.type = null; }), n))}</div></div>
       <div className="wz-field"><label className="block text-[13px] font-semibold mb-1.5 mt-3">Session length</label>
@@ -475,7 +454,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
       <div className="wz-field"><label className="block text-[13px] font-semibold mb-1.5 mt-3">Program duration</label>
         <div className="flex flex-wrap gap-2">{[{ id: 4, label: '4 weeks' }, { id: 6, label: '6 weeks' }, { id: 8, label: '8 weeks' }, { id: 12, label: '12 weeks' }, { id: 'ongoing', label: 'Ongoing' }].map((o) => chip(state.schedule.durationWeeks === o.id, o.label, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.schedule.durationWeeks = o.id as number | 'ongoing'; }), String(o.id)))}</div></div>
     </>),
-    4: () => {
+    equipment: () => {
       const profiles = getEquipmentProfiles(user);
       const items = state.equipment.items;
       const groups = Object.entries(EQUIP_GROUPS).map(([grp, list]) => [grp, list.filter((i) => items.includes(i))] as [string, string[]]).filter(([, l]) => l.length > 0);
@@ -485,32 +464,32 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
             {groups.map(([grp, list]) => (<div key={grp} className="mb-2.5"><div className="text-[12px] text-ink-mute mb-1">{grp}</div><div className="flex flex-wrap gap-1.5">{list.map((i) => <span key={i} className="rounded-full border border-ink-line bg-bg-input px-2.5 py-1 text-[12px]">{equipLabel(i)}</span>)}</div></div>))}
           </div>;
       return (<>
-        <Eyebrow n={5} title="Equipment" sub={profiles.length > 1 ? 'Which setup is this program for? (You have more than one.)' : 'Pulled from your profile — your program only uses gear you own.'} />
+        <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Equipment" sub={profiles.length > 1 ? 'Which setup is this program for? (You have more than one.)' : 'Pulled from your profile — your program only uses gear you own.'} />
         {profiles.length > 1 && <div className="grid gap-2.5 mb-1">{profiles.map((pr) => cardChoice(state.equipment.profileId === pr.id, () => update((s) => { s.equipment.profileId = pr.id; s.equipment.items = pr.items; s.equipment.environment = isBodyweightOnly(pr.items) ? 'bodyweight' : 'gym'; }), pr.name, `${pr.items.length} item${pr.items.length === 1 ? '' : 's'}`))}</div>}
         {profiles.length > 1 ? <><SecHead>Selected setup</SecHead>{summary}</> : summary}
         {note('info', 'Manage your equipment setups in Settings → My Equipment. Changes apply everywhere — including when you swap exercises mid-program.')}
       </>);
     },
-    5: () => {
+    style: () => {
       const list = allowedBaseStyles();
       return (<>
-        <Eyebrow n={6} title="Training style & modifiers" sub="First, how your sessions are structured. Then two refinements — most people leave them on the defaults." />
+        <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Training style & modifiers" sub={basic ? 'How your sessions are structured. Volume and periodization are set for you from this.' : 'First, how your sessions are structured. Then two refinements — most people leave them on the defaults.'} />
         <SecHead>Base training style</SecHead>
         <div className="grid gap-2.5">{list.map((p, i) => cardChoice(state.trainingStyle.baseStyle === p.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.trainingStyle.baseStyle = p.id; s.trainingStyle.volumeFramework = null; s.trainingStyle.periodizationStrategy = null; }), <>{p.label} {i === 0 && p.s > 0 ? badge('rec', 'Recommended') : p.s > 0 ? badge('fit', 'Good fit') : null}</>, p.desc, p.why && p.s > 0 ? <div className="text-[12px] text-ok mt-1.5">★ {p.why}</div> : null))}
           {cardChoice(false, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.trainingStyle.baseStyle = 'auto' as BaseStyle; }), 'Not sure — recommend everything for me', 'We’ll pick the style and both modifiers.')}</div>
-        {state.trainingStyle.baseStyle && state.trainingStyle.baseStyle !== ('auto' as BaseStyle) && <>
+        {!basic && state.trainingStyle.baseStyle && state.trainingStyle.baseStyle !== ('auto' as BaseStyle) && <>
           <SecHead>Volume framework</SecHead>
-          <div className="grid gap-2.5">{VOL_FRAMEWORKS.filter((v) => volumeAllowed(v.id)).map((v) => cardChoice(state.trainingStyle.volumeFramework === v.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.trainingStyle.volumeFramework = v.id; }), <>{v.label} {v.id === defaultVolumeFramework() ? badge('rec', 'Default') : null}</>, v.desc))}</div>
+          <div className="grid gap-2.5">{VOL_FRAMEWORKS.filter((v) => volumeAllowed(v.id)).map((v) => cardChoice(state.trainingStyle.volumeFramework === v.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.trainingStyle.volumeFramework = v.id; }), <>{v.label} {v.id === defaultVolumeFramework(state) ? badge('rec', 'Default') : null}</>, v.desc))}</div>
           {state.trainingStyle.baseStyle === 'hit' && note('info', 'HIT locks volume to Minimum Effective Dose — it rejects the volume paradigm by design.')}
           <SecHead>Periodization strategy</SecHead>
-          <div className="grid gap-2.5">{PERIODIZATIONS.filter((p) => periodizationAllowed(p.id)).map((p) => cardChoice(state.trainingStyle.periodizationStrategy === p.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.trainingStyle.periodizationStrategy = p.id; }), <>{p.label} {p.id === defaultPeriodization() ? badge('rec', 'Default') : null}</>, p.desc))}</div>
+          <div className="grid gap-2.5">{PERIODIZATIONS.filter((p) => periodizationAllowed(p.id)).map((p) => cardChoice(state.trainingStyle.periodizationStrategy === p.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.trainingStyle.periodizationStrategy = p.id; }), <>{p.label} {p.id === defaultPeriodization(state) ? badge('rec', 'Default') : null}</>, p.desc))}</div>
           </>}
       </>);
     },
-    6: () => {
+    split: () => {
       const list = [...allowedSplits(), { id: 'custom', label: 'Custom — build each day', sub: 'Assign muscle groups to each training day yourself', boosted: false }];
       return (<>
-        <Eyebrow n={7} title="Training split & rest days" sub={`How muscle groups spread across your ${state.schedule.daysPerWeek} days. Only feasible options shown.`} />
+        <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Training split & rest days" sub={`How muscle groups spread across your ${state.schedule.daysPerWeek} days. Only feasible options shown.`} />
         <div className="grid gap-2.5">{list.map((sp) => (<div key={sp.id}>
           {cardChoice(state.split.type === sp.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.split.type = sp.id; if (sp.id === 'custom') { const n = s.schedule.daysPerWeek || 0; if (!s.split.customDays || s.split.customDays.length !== n) s.split.customDays = Array.from({ length: n }, () => [] as MuscleGroup[]); } }), <>{sp.label} {sp.boosted ? badge('rec', 'Top pick') : null}</>, sp.sub, state.split.type === sp.id ? splitPreview(sp.id) : null)}
           {state.split.type === sp.id ? restPicker() : null}
@@ -519,10 +498,10 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
         {state.split.type === 'custom' && (state.split.customDays || []).some((d) => d.length === 0) && note('warn', 'Assign at least one muscle group to every training day to continue.')}
       </>);
     },
-    7: () => {
+    tiers: () => {
       const tiers = state.prioritization.tiers; const nE = Object.values(tiers).filter((t) => t === 'emphasize').length;
       return (<>
-        <Eyebrow n={8} title="Prioritize muscles" sub="Emphasize the 2–3 you most want to grow. Grow = moderate. Maintain = once a week. N/A drops it." />
+        <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Prioritize muscles" sub="Emphasize the 2–3 you most want to grow. Grow = moderate. Maintain = once a week. N/A drops it." />
         <div className={`text-[12px] mb-3 ${nE >= 3 ? 'text-warn' : 'text-ink-mute'}`}>{nE} / 3 emphasized</div>
         <div className="space-y-1.5">{WIZARD_MUSCLES.map((m) => { const t = tiers[m]; const na = t == null; return (
           <div key={m} className="flex items-center gap-2">
@@ -536,8 +515,8 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
         {nE > 3 && note('warn', 'Emphasizing too many dilutes the benefit — 3 at most is recommended.')}
       </>);
     },
-    8: () => (<>
-      <Eyebrow n={9} title="Sets & rep preferences" sub="Pre-set by your training style — override anything." />
+    setsReps: () => (<>
+      <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Sets & rep preferences" sub="Pre-set by your training style — override anything." />
       <SecHead>Primary rep range</SecHead>
       <div className="grid gap-2.5">{REP_RANGES.map((o) => cardChoice(state.setsAndReps.repRange === o.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.setsAndReps.repRange = o.id; }), o.label, o.desc))}</div>
       {state.trainingStyle.baseStyle === 'hit' ? note('info', 'HIT uses one working set to failure. Intensity techniques apply within that single set.') : <>
@@ -545,8 +524,8 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
         <div className="grid gap-2.5">{SET_TYPES.map((o) => { const lv = levelRank(effLevel(state)); const dis = lv < o.min; return cardChoice(state.setsAndReps.setTypes.includes(o.id), () => { if (dis) return; update((s) => toggle(s.setsAndReps.setTypes, o.id)); }, <>{o.label} {dis ? badge('lvl', ['', 'Novice+', 'Intermediate+', 'Advanced'][o.min]) : null}</>, o.desc); })}</div>
       </>}
     </>),
-    9: () => (<>
-      <Eyebrow n={10} title="Rest periods & tempo" sub="Affects session length, stimulus and energy systems." />
+    rest: () => (<>
+      <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Rest periods & tempo" sub="Affects session length, stimulus and energy systems." />
       {state.trainingStyle.baseStyle === 'hit' ? note('info', 'HIT: rest between exercises is 1–2 min. Tempo defaults to controlled negatives.') : <>
         <SecHead>Rest between sets</SecHead>
         <div className="grid gap-2.5">{REST_OPTS.map((o) => cardChoice(state.restAndTempo.restPreference === o.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.restAndTempo.restPreference = o.id; }), <>{o.label} {o.id === 'auto' ? badge('rec', 'Recommended') : null}</>, o.desc))}</div>
@@ -554,13 +533,13 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
       <SecHead>Tempo prescription</SecHead>
       {cardChoice(state.restAndTempo.tempoEnabled, () => update((s) => { s.restAndTempo.tempoEnabled = !s.restAndTempo.tempoEnabled; }), 'Prescribe rep tempo', 'Adds time-under-tension control. Off by default.')}
     </>),
-    10: () => {
+    core: () => {
       const tight = state.schedule.sessionMinutes === 30;
       const freq = () => (<><SecHead>Core frequency</SecHead><div className="flex flex-wrap gap-2">{[{ id: 'every', label: 'Every session' }, { id: 'everyother', label: 'Every other' }, { id: '2x', label: '2×/week' }, { id: '3x', label: '3×/week' }].map((o) => chip(state.core.frequency === o.id, o.label, () => update((s) => { s.core.frequency = o.id; }), o.id))}</div></>);
       const qty = () => (<><SecHead>Exercises per core session</SecHead><div className="flex flex-wrap gap-2">{['1-2', '2-3', '3-4'].map((o) => chip(state.core.blockExercises === o, o + ' exercises', () => update((s) => { s.core.blockExercises = o; }), o))}</div></>);
       const dayPick = () => (<><SecHead>Which day(s)?</SecHead><div className="grid grid-cols-7 gap-1.5">{Array.from({ length: 7 }, (_, p) => { const dow = (state.schedule.startDow + p) % 7; const on = state.core.days.includes(dow); return <button key={p} type="button" onClick={() => update((s) => toggle(s.core.days, dow))} className={`h-9 rounded-lg border text-[11px] font-semibold ${on ? 'bg-accent/15 border-accent/40 text-accent-hot' : 'bg-bg-input border-ink-line text-ink-dim'}`}>{DOW_ABBR[dow]}</button>; })}</div></>);
       return (<>
-        <Eyebrow n={11} title="Core & abs strategy" sub="Intentionally programmed — not an afterthought." />
+        <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Core & abs strategy" sub="Intentionally programmed — not an afterthought." />
         <div className="grid gap-2.5">{CORE_METHODS.map((o) => { const dis = (o.id === 'block' || o.id === 'day') && tight; const seld = state.core.method === o.id; return (<div key={o.id}>
           {cardChoice(seld, () => { if (dis) return; update((s) => { s.core.method = o.id; }); }, o.label, o.desc)}
           {seld && (o.id === 'block') && <div className="rounded-2xl border border-ink-line bg-bg-card p-3 mt-0.5">{qty()}{freq()}</div>}
@@ -570,8 +549,8 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
         {state.core.method === 'day' && state.core.days.length === 0 && note('warn', 'Pick at least one day for your dedicated core session.')}
       </>);
     },
-    11: () => (<>
-      <Eyebrow n={12} title="Cardio & conditioning" sub="Pre-filled from your goal — adjust freely." />
+    cardio: () => (<>
+      <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Cardio & conditioning" sub="Pre-filled from your goal — adjust freely." />
       <div className="grid gap-2.5">{[{ id: 'yes', label: 'Yes — include it' }, { id: 'restdays', label: 'On rest days only', desc: 'Guidelines, not structured workouts' }, { id: 'no', label: 'No — skip cardio' }].map((o) => cardChoice(state.cardio.included === o.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.cardio.included = o.id; }), o.label, (o as { desc?: string }).desc))}</div>
       {state.cardio.included === 'yes' && <>
         <SecHead>Type</SecHead><div className="grid gap-2.5">{[{ id: 'liss', label: 'Steady-State (LISS)' }, { id: 'hiit', label: 'HIIT' }, { id: 'circuit', label: 'Conditioning Circuits' }].map((o) => cardChoice(state.cardio.type.includes(o.id), () => update((s) => toggle(s.cardio.type, o.id)), o.label))}</div>
@@ -579,18 +558,18 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
         <SecHead>Duration</SecHead><div className="flex flex-wrap gap-2">{[10, 15, 20, 30, 45].map((n) => chip(state.cardio.durationMinutes === n, n + ' min', () => update((s) => { s.cardio.durationMinutes = n; }), n))}</div>
       </>}
     </>),
-    12: () => (<>
-      <Eyebrow n={13} title="Progression model" sub="How load, volume and intensity advance over time." />
+    progression: () => (<>
+      <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Progression model" sub="How load, volume and intensity advance over time." />
       <div className="grid gap-2.5">{PROGRESSIONS.map((p) => { const lv = levelRank(effLevel(state)); const dis = lv < p.min; return cardChoice(state.progression.type === p.id, (e) => { if (dis) return; selectSingle(e.currentTarget as HTMLElement, (s) => { s.progression.type = p.id; }); }, <>{p.label} {p.min > 0 ? badge('lvl', ['', '', 'Intermediate+', 'Advanced'][p.min]) : null}</>, p.desc); })}</div>
       <SecHead>Deload protocol</SecHead>
       <div className="grid gap-2.5">{[{ id: 'scheduled', label: 'Scheduled Deload', desc: 'Auto-reduce every Nth week' }, { id: 'reactive', label: 'Reactive Deload', desc: 'Triggered when performance stalls' }, { id: 'none', label: 'No Deload', desc: 'Not recommended past 4 weeks' }].map((o) => cardChoice(state.progression.deloadProtocol === o.id, (e) => selectSingle(e.currentTarget as HTMLElement, (s) => { s.progression.deloadProtocol = o.id as 'scheduled' | 'reactive' | 'none'; }), o.label, o.desc))}</div>
       {state.progression.deloadProtocol === 'scheduled' && <><SecHead>Frequency</SecHead><div className="flex flex-wrap gap-2">{[3, 4, 5, 6].map((n) => chip(state.progression.deloadFrequency === n, 'Every ' + n + 'th wk', () => update((s) => { s.progression.deloadFrequency = n; }), n))}</div></>}
     </>),
-    13: () => {
+    baselines: () => {
       const bodyweight = state.equipment.environment === 'bodyweight';
       const lifts = programLifts();
       return (<>
-        <Eyebrow n={14} title="Strength baselines" sub={bodyweight ? 'Bodyweight program — movement milestones instead of 1RM.' : 'Set starting weights for each main lift. Pick a method per lift.'} />
+        <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Strength baselines" sub={bodyweight ? 'Bodyweight program — movement milestones instead of 1RM.' : 'Set starting weights for each main lift. Pick a method per lift.'} />
         {!bodyweight && <>
           <div className="flex flex-wrap gap-2 mb-3">
             {chip(state.baselines.allConservative, (state.baselines.allConservative ? '✓ ' : '↺ ') + 'Start all conservative', () => update((s) => { s.baselines.allConservative = !s.baselines.allConservative; if (s.baselines.allConservative) { s.baselines.calibrationWeek = false; lifts.forEach((l) => (s.baselines.methods[l.id] = 'conservative')); } }))}
@@ -610,8 +589,9 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
         {bodyweight && note('info', 'We’ll assess push-ups, pull-ups, plank and squat depth to set starting progression levels.')}
       </>);
     },
-    14: () => renderReview(),
-    15: () => renderExercises(),
+    exercises: () => renderExercisePrefs(),
+    review: () => renderReview(),
+    program: () => renderExercises(),
   };
 
   /* ---------- page 7 sub-renders ---------- */
@@ -670,21 +650,66 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   }
   function renderReview() {
     const G: Record<string, string> = { muscle: 'Build Muscle', strength: 'Build Strength', transform: 'Transform My Body', leanout: 'Lean Out & Preserve', fitness: 'General Fitness', athletic: 'Athletic Performance' };
-    const sec = (title: string, goPage: number, body: React.ReactNode) => <div className="rounded-2xl border border-ink-line bg-bg-card p-3.5 mb-2.5"><div className="flex justify-between items-center mb-1.5"><b className="text-[14px]">{title}</b><button className="text-[12px] text-accent-hot" onClick={() => goTo(goPage)}>Edit</button></div><div className="text-[13px] text-ink-dim leading-relaxed">{body}</div></div>;
+    const sec = (title: string, goPage: WizardPageId, body: React.ReactNode) => <div className="rounded-2xl border border-ink-line bg-bg-card p-3.5 mb-2.5"><div className="flex justify-between items-center mb-1.5"><b className="text-[14px]">{title}</b>{flow.includes(goPage) && <button className="text-[12px] text-accent-hot" onClick={() => goTo(pageIndex(goPage))}>Edit</button>}</div><div className="text-[13px] text-ink-dim leading-relaxed">{body}</div></div>;
     const bs = (allowedBaseStyles().find((x) => x.id === state.trainingStyle.baseStyle)?.label) || state.trainingStyle.baseStyle;
     const byT = (t: WizTier) => WIZARD_MUSCLES.filter((m) => state.prioritization.tiers[m] === t).map(cap);
     return (<>
-      <Eyebrow n={15} title="Review & generate" sub="Everything you chose. Tap Edit on any section to jump back." />
-      {sec('Program', 0, <>Name: <span className="text-ink">{state.name || 'Untitled'}</span> · Goal: {G[state.goal.primary || ''] || '—'}</>)}
-      {sec('Training Style', 5, <>Style: <span className="text-ink">{bs || '—'}</span><br />Volume: {state.trainingStyle.volumeFramework || '—'} · Periodization: {state.trainingStyle.periodizationStrategy || '—'}</>)}
-      {sec('Split', 6, <>{(allowedSplits().find((x) => x.id === state.split.type)?.label) || '—'} · rest: {state.schedule.restDays.map((d) => DOW_ABBR[d]).join(', ') || 'none'}</>)}
-      {sec('Prioritization', 7, <>Emphasize: <span className="text-ink">{byT('emphasize').join(', ') || 'none'}</span><br />Grow: {byT('grow').join(', ') || 'none'}<br />Maintain: {byT('maintain').join(', ') || 'none'}</>)}
+      <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Review & generate" sub="Everything you chose. Tap Edit on any section to jump back." />
+      {basic
+        ? <div className="rounded-2xl border border-ink-line bg-bg-card p-3.5 mb-2.5"><div className="wz-field"><label className="block text-[13px] font-semibold mb-1.5">Program name</label><NameField value={state.name} onCommit={(v) => update((s) => { s.name = v; })} /></div></div>
+        : sec('Program', 'goal', <>Name: <span className="text-ink">{state.name || 'Untitled'}</span> · Goal: {G[state.goal.primary || ''] || '—'}</>)}
+      {sec('Training Style', 'style', <>Style: <span className="text-ink">{bs || '—'}</span><br />Volume: {state.trainingStyle.volumeFramework || '—'} · Periodization: {state.trainingStyle.periodizationStrategy || '—'}</>)}
+      {sec('Split', 'split', <>{(allowedSplits().find((x) => x.id === state.split.type)?.label) || '—'} · rest: {state.schedule.restDays.map((d) => DOW_ABBR[d]).join(', ') || 'none'}</>)}
+      {sec('Prioritization', 'tiers', <>Emphasize: <span className="text-ink">{byT('emphasize').join(', ') || 'none'}</span><br />Grow: {byT('grow').join(', ') || 'none'}<br />Maintain: {byT('maintain').join(', ') || 'none'}</>)}
+      {sec('Core', 'core', <>{CORE_METHODS.find((c) => c.id === state.core.method)?.label || '—'}{state.core.method === 'block' || state.core.method === 'superset' ? ` · ${({ every: 'every session', everyother: 'every other session', '2x': '2×/week', '3x': '3×/week' } as Record<string, string>)[state.core.frequency || ''] || ''}` : ''}</>)}
+      {sec('Exercises', 'exercises', picksSummary())}
       {volumeCard()}
       <p className="text-[12px] text-ink-mute">Tap <b>Generate</b> below to build your exercises.</p>
     </>);
   }
 
-  /* ---------- page 16 exercises ---------- */
+  /* ---------- exercises page: pick the pool per muscle ---------- */
+  function pickMuscles(): MuscleGroup[] {
+    const ms = WIZARD_MUSCLES.filter((m) => state.prioritization.tiers[m] != null);
+    const cm = state.core.method;
+    if (cm && cm !== 'none' && cm !== 'compound') ms.push('core');
+    return ms;
+  }
+  function picksSummary(): React.ReactNode {
+    const picks = state.exercisePicks || {};
+    const chosen = pickMuscles().filter((m) => (picks[m]?.length || 0) > 0);
+    if (chosen.length === 0) return <>Any — we choose from every exercise your equipment allows.</>;
+    return <>{chosen.map((m) => `${cap(m)}: ${picks[m]!.length}`).join(' · ')}<br />Other muscles: any exercise.</>;
+  }
+  function renderExercisePrefs() {
+    const picks = state.exercisePicks || {};
+    return (<>
+      <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Exercise preferences" sub="Tap the exercises you want in your program, muscle by muscle. Leave a muscle untouched and we choose from everything your equipment allows. You can still swap on the next page." />
+      {pickMuscles().map((m) => {
+        const pool = poolDefs(m);
+        const sel = new Set(picks[m] || []);
+        return <div key={m} className="wz-sec rounded-2xl border border-ink-line bg-bg-card p-3.5 mb-2.5">
+          <div className="flex justify-between items-center mb-2">
+            <b className="text-[14px]">{cap(m)}</b>
+            <span className="text-[12px] text-ink-dim">
+              {sel.size === 0 ? 'Any' : `${sel.size} of ${pool.length}`}
+              {sel.size > 0 && <button type="button" className="ml-2 text-accent-hot font-semibold" onClick={() => update((s) => { if (s.exercisePicks) delete s.exercisePicks[m]; })}>Clear</button>}
+            </span>
+          </div>
+          {pool.length === 0
+            ? <div className="text-[12px] text-ink-mute">No exercises match your equipment.</div>
+            : <div className="flex flex-wrap gap-2">{pool.map((e) => chip(sel.has(e.id), e.name, () => update((s) => {
+                if (!s.exercisePicks) s.exercisePicks = {};
+                const cur = s.exercisePicks[m] || [];
+                s.exercisePicks[m] = cur.includes(e.id) ? cur.filter((x) => x !== e.id) : [...cur, e.id];
+                if (s.exercisePicks[m]!.length === 0) delete s.exercisePicks[m];
+              }), e.id))}</div>}
+        </div>;
+      })}
+    </>);
+  }
+
+  /* ---------- program page ---------- */
   function poolDefs(muscle: MuscleGroup) { return poolFor(muscle, lib, itemsForEngine(state)); }
   const fmtPresc = (e: GeneratedExercise) => `${e.sets}×${e.reps}${e.metric === 'time' || e.metric === 'weight-time' ? 's' : ''}`;
   function renderExercises() {
@@ -692,7 +717,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
     const days = program[phase] || [];
     const fixed = state.split.fixedExercises ?? true;
     return (<>
-      <Eyebrow n={16} title="Your program" sub="Swap, reorder, or add and remove exercises. Set styles like supersets are chosen on workout day." />
+      <Eyebrow n={page + 1} tag={basic ? 'Basic' : undefined} title="Your program" sub="Swap, reorder (▲▼), or add and remove exercises. Core supersets from your core strategy are built in; other set styles are chosen on workout day." />
       <div className="rounded-2xl border border-ink-line bg-bg-card p-3 mb-2.5">
         <div className="text-[13px] font-semibold mb-2">Exercises week to week</div>
         <div className="flex gap-2">
@@ -713,7 +738,11 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
             const names = defs.map((x) => x.name);
             const list = names.includes(e.name) ? names : [e.name, ...names];
             return <div key={ei} onDragOver={(ev) => { if (drag && drag.di === di) ev.preventDefault(); }} onDrop={() => { if (drag && drag.di === di) moveExercise(di, drag.ei, ei); setDrag(null); }} className={`flex items-center gap-2 px-4 py-2.5 border-t border-ink-line text-[13px] ${drag && drag.di === di && drag.ei === ei ? 'opacity-40' : ''}`}>
-              <span draggable onDragStart={() => setDrag({ di, ei })} onDragEnd={() => setDrag(null)} className="shrink-0 cursor-grab text-ink-mute select-none text-[14px] leading-none" aria-label="Drag to reorder">⋮⋮</span>
+              <span className="flex flex-col shrink-0 -my-1">
+                <button type="button" aria-label="Move up" disabled={ei === 0} onClick={() => moveBlock(di, ei, -1)} className="px-1 text-[11px] leading-[14px] text-ink-mute hover:text-ink disabled:opacity-20">▲</button>
+                <button type="button" aria-label="Move down" disabled={ei === d.exercises.length - 1} onClick={() => moveBlock(di, ei, 1)} className="px-1 text-[11px] leading-[14px] text-ink-mute hover:text-ink disabled:opacity-20">▼</button>
+              </span>
+              <span draggable onDragStart={() => setDrag({ di, ei })} onDragEnd={() => setDrag(null)} className="hidden sm:inline shrink-0 cursor-grab text-ink-mute select-none text-[14px] leading-none" aria-label="Drag to reorder">⋮⋮</span>
               <span className="w-[60px] shrink-0 text-[12px] font-semibold text-ink-dim">{cap(e.muscle)}{e.anchor ? ' 🔒' : ''}</span>
               <select className="flex-1 min-w-0 rounded-lg border border-ink-line bg-bg-input px-2 py-2 text-[13px]" value={e.name} onChange={(ev) => setProgram((pr) => { const c = structuredClone(pr); const ex = c[phase][di].exercises[ei]; const def = defs.find((x) => x.name === ev.target.value); ex.name = ev.target.value; if (def) { ex.exerciseId = def.id; const tb = def.metric === 'time' || def.metric === 'weight-time'; const wasTb = ex.metric === 'time' || ex.metric === 'weight-time'; ex.metric = def.metric || 'weight-reps'; ex.reps = tb ? 30 : (wasTb ? 10 : ex.reps); } return c; })}>{list.map((o) => <option key={o} value={o}>{o}</option>)}</select>
               <span className="font-mono text-[12px] text-ink-dim shrink-0">{fmtPresc(e)}</span>
@@ -738,7 +767,7 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
   }
 
   /* ---------- chrome ---------- */
-  const genBtn = page === 14; const lastBtn = page === 15;
+  const genBtn = pageId === 'review'; const lastBtn = pageId === 'program';
 
   // Gate: if the user hasn't configured any equipment yet, surface the same
   // "set up equipment & exercises" prompt as the Today screen before they build
@@ -773,6 +802,30 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
     );
   }
 
+  // Basic vs Advanced — asked once, before the first page of a NEW plan.
+  // Resumed/edited plans carry their mode and skip this.
+  if (!state.mode) {
+    return (
+      <div className="max-w-[720px] mx-auto h-screen overflow-y-auto px-[18px]">
+        <div className="sticky top-0 z-20 bg-bg/90 backdrop-blur border-b border-ink-line -mx-[18px] px-[18px] pt-3.5 pb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 font-bold tracking-wide"><span className="w-2.5 h-2.5 rounded bg-accent" />FATRAT &middot; Plan Wizard</div>
+          {onClose && <button type="button" onClick={() => onClose()} className="text-ink-mute hover:text-ink text-[13px] font-semibold px-1">Cancel</button>}
+        </div>
+        <div className="pt-8 max-w-md mx-auto">
+          <div className="text-[11px] font-semibold uppercase tracking-widest text-accent">New program</div>
+          <h1 className="text-2xl font-bold tracking-tight mt-1.5 mb-2">Which wizard?</h1>
+          <p className="text-[14px] text-ink-dim leading-relaxed mb-5">Both build a complete multi-week plan you can review and edit before starting.</p>
+          <div className="grid gap-2.5">
+            {cardChoice(false, () => update((s) => { applyBasicIdentity(s); }), 'Basic Wizard',
+              `${wizardFlow('basic').length - 2} quick questions — equipment, schedule, training style, split, core, and the exercises you want. We make sensible calls on everything else.`)}
+            {cardChoice(false, () => update((s) => { s.mode = 'advanced'; }), 'Advanced Wizard',
+              `Full control in ${wizardFlow('advanced').length} steps — goals, experience, volume framework, periodization, set types, rest, cardio, progression and baselines.`)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div ref={scrollRef} className="max-w-[720px] mx-auto h-screen overflow-y-auto pb-[140px]">
       <div className="sticky top-0 z-20 bg-bg/90 backdrop-blur border-b border-ink-line px-[18px] pt-3.5 pb-3">
@@ -785,11 +838,11 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
         </div>
         <div className="h-1 rounded-full bg-ink-line mt-3 overflow-hidden"><i className="block h-full bg-accent rounded-full transition-all" style={{ width: ((page + 1) / TOTAL * 100) + '%' }} /></div>
       </div>
-      <div ref={pageRef} className="px-[18px] pt-5">{pages[page]()}</div>
+      <div ref={pageRef} className="px-[18px] pt-5">{pages[pageId]()}</div>
       <div className="fixed left-0 right-0 bottom-0 z-30 bg-bg/95 backdrop-blur border-t border-ink-line">
         <div className="text-[11px] text-ink-mute text-center pt-1.5 font-mono min-h-[18px]">{!seen ? 'Scroll down to see the whole page ↓' : !isValid() ? 'Make a selection to continue' : ''}</div>
         <div className="max-w-[720px] mx-auto px-[18px] pb-3.5 pt-2 flex items-center gap-2.5">
-          <Button variant="ghost" onClick={back} className={page === 0 ? 'invisible' : ''}>Back</Button>
+          <Button variant="ghost" onClick={back} className={page === 0 && isResuming ? 'invisible' : ''}>Back</Button>
           <div className="ml-auto flex items-center gap-2.5">
             {onSaveDraft && <Button variant="ghost" onClick={saveDraft} disabled={saving}>{saving ? 'Saving…' : savedTick ? 'Saved ✓' : 'Save'}</Button>}
             <Button disabled={!isValid() || !seen} onClick={next}>{genBtn ? '⚡ Generate My Program' : lastBtn ? 'Finish' : 'Next'}</Button>
@@ -825,10 +878,6 @@ export function PlanWizardV2({ user, initialName, initialState, initialProgram, 
 }
 
 /* ---------------- sub-components & static data ---------------- */
-function Eyebrow({ n, title, sub }: { n: number; title: string; sub?: React.ReactNode }) {
-  return <div className="mb-2"><div className="text-[11px] font-semibold uppercase tracking-widest text-accent">Step {n}</div><h1 className="text-2xl font-bold tracking-tight mt-1.5 mb-1">{title}</h1>{sub && <div className="text-[14px] text-ink-dim">{sub}</div>}</div>;
-}
-function Field({ k, v }: { k: string; v: React.ReactNode }) { return <div><span className="block text-[11px] uppercase tracking-wide text-ink-mute">{k}</span>{v}</div>; }
 function AddRow({ muscles, onAdd }: { muscles: string[]; onAdd: (m: string) => void }) {
   const [m, setM] = useState(muscles[0] || '');
   useEffect(() => { if (!muscles.includes(m)) setM(muscles[0] || ''); }, [muscles, m]);

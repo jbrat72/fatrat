@@ -8,7 +8,27 @@
  *
  * Both are gated by the user's Sounds setting. On iOS the hardware silent
  * switch can still mute everything — that's outside our control.
+ *
+ * Audio session: by default iOS treats page audio as "playback", which takes
+ * the audio session and STOPS whatever the user was listening to (Music,
+ * Spotify, a podcast) the moment the alarm — or even the silent priming play —
+ * fires. Safari 17+ exposes the Audio Session API; declaring the page
+ * 'transient' (a notification-style ping) mixes with other apps' audio,
+ * ducking it briefly instead of interrupting it. Browsers without the API
+ * ignore the call.
  */
+type AudioSessionType = 'auto' | 'playback' | 'transient' | 'transient-solo' | 'ambient' | 'play-and-record';
+
+/** Declare how this page's audio should coexist with other apps' audio.
+ *  Idempotent and cheap; re-asserted before every play in case the platform
+ *  reset it (e.g. after an interruption). */
+function setAudioSessionType(type: AudioSessionType): void {
+  if (typeof navigator === 'undefined') return;
+  const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+  if (!session) return;
+  try { if (session.type !== type) session.type = type; } catch { /* unsupported value */ }
+}
+
 let _ctx: AudioContext | null = null;
 
 function ctx(): AudioContext | null {
@@ -69,6 +89,7 @@ function audioEl(): HTMLAudioElement | null {
 
 /** Resume Web Audio + prime the <audio> element. Must run in a user gesture. */
 export function unlockAudio(): void {
+  setAudioSessionType('transient');
   const c = ctx();
   if (c) {
     if (c.state === 'suspended') c.resume().catch(() => {});
@@ -89,6 +110,7 @@ export function unlockAudio(): void {
 /** Timer-done alarm. Fires both audio paths. */
 export function doubleBeep(enabled = true): void {
   if (!enabled) return;
+  setAudioSessionType('transient');
   const c = ctx();
   if (c) {
     const play = () => { const t = c.currentTime + 0.02; pulse(c, t, 880); pulse(c, t + 0.22, 880); pulse(c, t + 0.44, 1175); };
@@ -100,6 +122,9 @@ export function doubleBeep(enabled = true): void {
 
 // Resume + prime audio on every interaction so a later timer beep can sound.
 if (typeof window !== 'undefined') {
+  // Declare the session type BEFORE any AudioContext / <audio> exists so the
+  // very first priming play doesn't already claim the session as playback.
+  setAudioSessionType('transient');
   for (const e of ['pointerdown', 'touchend', 'keydown', 'click'] as const) {
     window.addEventListener(e, unlockAudio, { passive: true });
   }

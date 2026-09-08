@@ -22,7 +22,9 @@ import { todayIso } from '@/lib/ui/date';
  *  elapsed — the point past which no scheduled day remains. Plans without a
  *  start date can't be dated, so they're never auto-completed. */
 export function isPlanElapsed(
-  meso: Pick<Mesocycle, 'startDate' | 'weeks'>,
+  // startDate is optional here (not Pick<Mesocycle>): the type says it is
+  // required, but plans migrated from the old Macrocycle model can lack it.
+  meso: { startDate?: Mesocycle['startDate']; weeks: Mesocycle['weeks'] },
   today: string = todayIso(),
 ): boolean {
   if (!meso.startDate) return false;

@@ -9,10 +9,11 @@ import { wizardEditFromMeso } from '@/lib/wizard/editFromMeso';
 import { wizardFromTemplate } from '@/lib/wizard/fromTemplate';
 import type { WizardState, GeneratedDay } from '@/lib/wizard/types';
 import { SingleWorkoutWizard } from '@/components/plan/SingleWorkoutWizard';
+import { slotsToEntries } from '@/lib/workout/singleWorkout';
 import { getRepository } from '@/lib/firestore';
 import { GLOBAL_EXERCISES } from '@/lib/firestore/seed';
 import { todayIso } from '@/lib/ui/date';
-import type { ProgramTemplate, ExerciseDefinition, Mesocycle, ExerciseEntry, SetEntry, WorkoutSession } from '@/types';
+import type { ProgramTemplate, ExerciseDefinition, Mesocycle, ExerciseEntry, WorkoutSession } from '@/types';
 
 export default function TemplateDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -71,34 +72,24 @@ export default function TemplateDetailPage() {
   // Single-workout flow: materialize exercise entries from the template's
   // single day, then open AdHocWorkoutModal pre-populated.
   const workoutEntries: ExerciseEntry[] = isWorkout
-    ? (template.weeks[0]?.days[0]?.exercises ?? []).map((slot) => {
-        const def = defs[slot.exerciseId];
-        const muscle = def?.primaryMuscle ?? slot.muscle ?? 'core';
-        const metric = def?.metric ?? 'weight-reps';
-        const useReps = metric === 'weight-reps' || metric === 'reps';
-        const useTime = metric === 'time' || metric === 'weight-time';
-        const useWeight = metric === 'weight-reps' || metric === 'weight-time';
-        const sets: SetEntry[] = Array.from({ length: slot.prescribedSets }, (_, i) => ({
-          setIndex: i,
-          weightKg: useWeight ? slot.startingWeightKg : undefined,
-          reps: useReps ? slot.repsLow : undefined,
-          timeSec: useTime ? slot.timeLow : undefined,
-          completed: false,
-        }));
-        return {
-          exerciseId: slot.exerciseId,
-          name: def?.name ?? slot.name ?? slot.exerciseId,
-          muscle,
-          metric,
-          prescribedSets: slot.prescribedSets,
-          prescribedRepsLow: slot.repsLow,
-          prescribedRepsHigh: slot.repsHigh,
-          prescribedTimeLow: slot.timeLow,
-          prescribedTimeHigh: slot.timeHigh,
-          sets,
-        };
-      })
+    ? slotsToEntries(template.weeks[0]?.days[0]?.exercises ?? [], defs)
     : [];
+
+  // Copy a custom workout so it can be tweaked without losing the original
+  // (the library was filling with near-duplicate names re-created from scratch).
+  const duplicateWorkout = async () => {
+    if (!user) return;
+    const copy: ProgramTemplate = {
+      ...template,
+      id: 'wk-custom-' + Date.now().toString(36),
+      name: `${template.name} (copy)`,
+      isCustom: true,
+      createdBy: user.displayName,
+      createdById: user.userId,
+    };
+    await getRepository().upsertTemplate(copy);
+    router.push(`/plan/templates/${copy.id}`);
+  };
 
   const startUsing = async () => {
     if (isWorkout) {
@@ -250,6 +241,11 @@ export default function TemplateDetailPage() {
             onClick={openModify}
           >
             Modify
+          </Button>
+        )}
+        {template.isCustom && isWorkout && (
+          <Button block variant="ghost" size="lg" onClick={duplicateWorkout}>
+            Duplicate
           </Button>
         )}
         <p className="text-xs text-ink-mute text-center">
