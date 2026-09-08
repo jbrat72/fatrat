@@ -37,6 +37,8 @@ export interface TemplateExerciseSlot {
    *  back-to-back. Absent = straight sets. */
   setStyle?: SetStyle;
   supersetGroup?: number;
+  /** Per-exercise rest override (seconds). Absent = the workout's rest. */
+  restSeconds?: number;
 }
 
 export interface TemplateDay {
@@ -77,6 +79,8 @@ export interface ProgramTemplate {
   isCustom?: boolean;
   /** Display name of the user who created a custom template. */
   createdBy?: string;
+  /** User id of the creator (display names aren't unique or stable). */
+  createdById?: string;
   /** Suggested goals this template is good for. */
   goodForGoals?: string[];
   /** Per-muscle volume priority. Set by the Template Wizard for custom

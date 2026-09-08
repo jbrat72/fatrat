@@ -52,6 +52,8 @@ export interface ExerciseEntry {
   setStyle?: SetStyle;
   /** Exercises sharing a supersetGroup (within a session) are a superset. */
   supersetGroup?: number;
+  /** Per-exercise rest override (seconds); beats the session/meso default. */
+  restSeconds?: number;
   sets: SetEntry[];
   notes?: string;
   /** When user swaps an exercise mid-session we remember the original. */

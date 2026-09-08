@@ -9,6 +9,44 @@ The current version also lives in `lib/version.ts` (`APP_VERSION`) and
 in `package.json`; all three are kept in sync on every change.
 
 
+## v0.109.0 — 2026-09-08
+
+Single Workout Wizard rebuilt to match the Plan Wizard.
+
+- **Six steps instead of three:** set up (name, equipment, rep range, rest) →
+  muscles → exercises → sets & structure → starting weights & reps → review.
+  Same visual atoms as the Plan Wizard (`components/plan/wizardUi.tsx`, now
+  shared by both).
+- **Equipment comes from your profile.** Exercises are filtered through your
+  equipment profile (with a profile picker if you have several) instead of a
+  free-floating equipment-type filter. "Show every exercise" is the escape
+  hatch, and it's automatic when no equipment is set up.
+- **Pick muscles, then exercises.** Tap the muscle groups the workout trains,
+  then pick exercises per muscle as chips (favorites first, hidden ones
+  excluded). A search box narrows every group at once.
+- **Structure is part of the workout.** Sets per exercise, supersets, pyramid
+  and drop sets, plus one-tap core placement (core last / core first /
+  superset core with lifts). Saved on the template and carried into the
+  session, so the day-of Structure sheet opens already paired; it remains
+  the override.
+- **Weights prefill from history.** Each exercise starts at the weight you
+  used last time (id, swapped-from id, or name match — the PREV column's
+  rule) with a "Last time: 60 lb × 9" hint. Rep ranges follow one rep-range
+  intent (strength / hypertrophy / endurance) and stay editable per exercise.
+  Optional per-exercise rest override; the workout screen honors it.
+- **Review before saving:** name, inferred category (Auto, or override),
+  muscles, every exercise with sets × range @ weight and superset letters,
+  rest, and an estimated duration. The library card description is now
+  derived — "Chest, Triceps, Core · 14 sets · ~40 min" — instead of
+  "Custom upper body workout".
+- **Drafts and duplicates.** An unsaved new workout persists locally and is
+  restored (with Start over) when the wizard reopens. Custom workouts have a
+  Duplicate button on their detail page.
+- Also: rest offers Auto (compounds long, isolations short); set cap raised
+  to 10; Modify reloads the template every time it opens; templates record
+  the creator's user id alongside the display name; the picker and template
+  detail page share one materializer (`lib/workout/singleWorkout.ts`).
+
 ## v0.108.0 — 2026-09-07
 
 Plan Wizard: Basic vs Advanced, pick your exercises before generating, working

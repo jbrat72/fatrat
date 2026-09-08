@@ -1,19 +1,17 @@
 # FATRAT — Project Handoff
 
-_Last updated: 2026-09-07 (app v0.108.0)_
+_Last updated: 2026-09-08 (app v0.109.0)_
 
 Paste this file (or point the new chat at it) to bring a fresh session up to speed.
 
 ---
 
-## 0. NEXT TASK — single-workout wizard changes
+## 0. NEXT TASK — none assigned
 
-Brian's stated sequence (2026-09-07): first the multi-week wizard rework
-(shipped as v0.108.0, see §6C), THEN "changes to the single-workout plan"
-(`components/plan/SingleWorkoutWizard.tsx`). He hasn't specified them yet —
-ask. Known context: the Start Workout picker no longer equipment-filters
-custom workouts (v0.107.6); the wizard itself still lets you pick any library
-exercise regardless of equipment profile.
+Both wizard reworks shipped (v0.108.0 plan wizard, v0.109.0 single-workout
+wizard — §6C/§6D). Ask Brian for direction. Worth confirming on a real device:
+the single-workout weights step prefilling from history, and that a saved
+core superset shows as an A/B pair on the workout screen.
 
 **Session note (2026-09-07):** the v0.107.5–v0.108.0 work was done in a
 Claude Code web session on branch `claude/fatrat-handoff-bugs-ue0gu8`, where
@@ -324,7 +322,23 @@ that lack saved state, `lib/wizard/editFromMeso.ts` reconstructs a best-effort
 `WizardState` from the meso + week-1 sessions (name, length, equipment, tiers,
 set types, fixed flag, days, week-1 exercises; goal/experience/style reset).
 
-### D) Equipment profiles + fixed-vs-variety exercises
+### D) Single Workout Wizard — `components/plan/SingleWorkoutWizard.tsx` (v0.109.0)
+
+Six id-keyed steps (setup → muscles → exercises → structure → weights →
+review). Shares atoms with the plan wizard via `components/plan/wizardUi.tsx`
+(Eyebrow, SecHead, cardChoice, chip, note, badge — edit there, not inline).
+Pure helpers in `lib/workout/singleWorkout.ts`: `slotsToEntries` (THE way a
+workout template becomes session exercises — used by WorkoutPicker, the
+template detail page and the wizard's structure step), `inferCategory`,
+`describeWorkout` / `estimateMinutes`, `repRangeForIntent`. Last-time lookup
+in `lib/session/lastPerformance.ts` (`buildLastPerf`/`lookupLastPerf`). Set
+structure is edited with the shared `StructureEditor` and saved on
+`TemplateExerciseSlot.setStyle/supersetGroup/restSeconds`; `ExerciseEntry`
+gained `restSeconds` (per-exercise rest, honored by the workout page).
+Unsaved NEW workouts autosave to localStorage `fatrat:workoutWizardDraft:v1`.
+`ProgramTemplate.createdById` is set on save.
+
+### E) Equipment profiles + fixed-vs-variety exercises
 
 - Granular equipment lives in the profile (`lib/exercise/equipment.ts`,
   profiles with item lists). The wizard, Swap, and Add filter against the plan's
@@ -340,7 +354,7 @@ set types, fixed flag, days, week-1 exercises; goal/experience/style reset).
 Bump three files in sync on every change: `lib/version.ts` (`APP_VERSION`),
 `package.json` `"version"`, and `app/CHANGELOG.md` (newest on top). Semver.
 
-**Current version: 0.108.0.**
+**Current version: 0.109.0.**
 
 PowerShell deploy (Brian copies this verbatim; note the `;` separators and the
 index.lock guard):

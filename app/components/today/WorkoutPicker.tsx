@@ -6,7 +6,8 @@ import { useUser } from '@/components/app';
 import { getRepository } from '@/lib/firestore';
 import { itemsForProfile } from '@/lib/exercise/equipment';
 import { usableTemplateSlots } from '@/lib/workout/templateSlots';
-import type { ProgramTemplate, WorkoutCategory, ExerciseDefinition, ExerciseEntry, SetEntry } from '@/types';
+import { slotsToEntries } from '@/lib/workout/singleWorkout';
+import type { ProgramTemplate, WorkoutCategory, ExerciseDefinition, ExerciseEntry } from '@/types';
 
 interface Props {
   open: boolean;
@@ -95,37 +96,10 @@ export function WorkoutPicker({ open, onClose, onPick, onCreateCustom }: Props) 
   if (!open) return null;
 
   const choose = (tpl: ProgramTemplate) => {
-    const day = tpl.weeks[0]?.days[0];
-    if (!day) return;
-    const entries: ExerciseEntry[] = usableSlots(tpl).map((slot) => {
-      const def = defs[slot.exerciseId];
-      const muscle = def?.primaryMuscle ?? 'core';
-      const metric = def?.metric ?? 'weight-reps';
-      const useReps = metric === 'weight-reps' || metric === 'reps';
-      const useTime = metric === 'time' || metric === 'weight-time';
-      const useWeight = metric === 'weight-reps' || metric === 'weight-time';
-      // Pre-fill the rep / time count from the prescribed low end so the
-      // user only has to confirm or bump it, not type from scratch.
-      const sets: SetEntry[] = Array.from({ length: slot.prescribedSets }, (_, i) => ({
-        setIndex: i,
-        weightKg: useWeight ? slot.startingWeightKg : undefined,
-        reps: useReps ? slot.repsLow : undefined,
-        timeSec: useTime ? slot.timeLow : undefined,
-        completed: false,
-      }));
-      return {
-        exerciseId: slot.exerciseId,
-        name: def?.name ?? slot.exerciseId,
-        muscle,
-        metric,
-        prescribedSets: slot.prescribedSets,
-        prescribedRepsLow: slot.repsLow,
-        prescribedRepsHigh: slot.repsHigh,
-        prescribedTimeLow: slot.timeLow,
-        prescribedTimeHigh: slot.timeHigh,
-        sets,
-      };
-    });
+    if (!tpl.weeks[0]?.days[0]) return;
+    // Shared materializer: carries the saved set structure (supersets, drop /
+    // pyramid, per-exercise rest) and starting weights into the session.
+    const entries: ExerciseEntry[] = slotsToEntries(usableSlots(tpl), defs);
     onPick(entries, tpl.name, { restSeconds: tpl.restSeconds });
   };
 
